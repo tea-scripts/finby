@@ -12,7 +12,8 @@
     "emitDecoratorMetadata": true,
     "strictPropertyInitialization": false,
     "declaration": false,
-    "sourceMap": true
+    "sourceMap": true,
+    "incremental": false
   },
   "include": ["src/**/*"],
   "exclude": ["node_modules", "dist"]
