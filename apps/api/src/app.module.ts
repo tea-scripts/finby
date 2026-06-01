@@ -1,12 +1,19 @@
 import { Module } from '@nestjs/common';
+import { APP_FILTER, APP_GUARD } from '@nestjs/core';
 import { AppController } from './app.controller';
+import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { ConfigModule } from './config/config.module';
+import { AuthModule } from './modules/auth/auth.module';
+import { JwtAuthGuard } from './modules/auth/guards/jwt-auth.guard';
 import { PrismaModule } from './prisma/prisma.module';
 import { RedisModule } from './redis/redis.module';
 
 @Module({
-  imports: [ConfigModule, PrismaModule, RedisModule],
+  imports: [ConfigModule, PrismaModule, RedisModule, AuthModule],
   controllers: [AppController],
-  providers: [],
+  providers: [
+    { provide: APP_GUARD, useClass: JwtAuthGuard },
+    { provide: APP_FILTER, useClass: HttpExceptionFilter },
+  ],
 })
 export class AppModule {}
