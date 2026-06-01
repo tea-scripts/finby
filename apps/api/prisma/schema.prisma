@@ -1,0 +1,676 @@
+// ============================================================
+// BUDGY — Prisma Schema
+// Version: 1.0.0
+// Derived from: Budgy PRD v1.0 (LOCKED)
+// Architecture: Workspace-first multi-tenancy
+//               Every financial entity is workspace-scoped.
+//               Users belong to workspaces via WorkspaceMember.
+//               Solo tiers = single-member workspace.
+//               Family tier = up to 5 members.
+// ============================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================================
+// ENUMS
+// ============================================================
+
+enum SubscriptionTier {
+  FREE
+  PRO
+  PREMIUM
+  FAMILY
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  TRIALING
+  PAST_DUE
+  CANCELED
+  PAUSED
+}
+
+enum WorkspaceMemberRole {
+  OWNER        // Full control — billing, settings, invites
+  CO_MANAGER   // Can log, edit, manage budgets. Cannot manage billing or members.
+  VIEWER       // Read-only. Can view transactions and analytics, cannot log.
+}
+
+enum TransactionType {
+  EXPENSE
+  INCOME
+  TRANSFER      // Between accounts/currencies within same workspace
+  INVESTMENT    // Portfolio buy/sell logged manually (no brokerage execution)
+}
+
+enum TransactionStatus {
+  CONFIRMED
+  PENDING       // e.g. logged as "I think I spent ~$40" — user can confirm
+  VOID          // Cancelled/reversed, kept for audit trail
+}
+
+enum BudgetPeriod {
+  MONTHLY
+  WEEKLY
+  QUARTERLY
+  ANNUAL
+}
+
+enum AlertType {
+  BUDGET_75_PERCENT
+  BUDGET_90_PERCENT
+  BUDGET_EXCEEDED
+  UNUSUAL_SPEND        // Anomaly detected vs historical average
+  MONTHLY_SUMMARY
+  AI_COACHING_NUDGE
+  PORTFOLIO_INSIGHT
+}
+
+enum AlertStatus {
+  UNREAD
+  READ
+  DISMISSED
+}
+
+enum InvestmentAction {
+  BUY
+  SELL
+  DIVIDEND
+  SPLIT
+  ADD            // Adding to position (same as BUY but semantically different in UI)
+  REBALANCE
+}
+
+enum MessageRole {
+  USER
+  ASSISTANT
+  TOOL_CALL      // LLM tool invocation record
+  TOOL_RESULT    // Backend tool execution result
+}
+
+enum BillingProvider {
+  STRIPE
+  PAYSTACK
+}
+
+// ============================================================
+// USERS
+// Represents an authenticated individual.
+// A user can belong to multiple workspaces (e.g., their own solo
+// workspace AND a family workspace they were invited to).
+// ============================================================
+
+model User {
+  id                String   @id @default(cuid())
+  email             String   @unique
+  passwordHash      String
+  displayName       String
+  avatarUrl         String?
+
+  // Timezone stored as IANA string e.g. "Asia/Manila", "Africa/Lagos"
+  timezone          String   @default("UTC")
+
+  // Email verification
+  emailVerified     Boolean  @default(false)
+  emailVerifyToken  String?  @unique
+  emailVerifyExpiry DateTime?
+
+  // Password reset
+  resetToken        String?  @unique
+  resetTokenExpiry  DateTime?
+
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  lastLoginAt       DateTime?
+
+  // Relations
+  workspaceMemberships  WorkspaceMember[]
+  refreshTokens         RefreshToken[]
+
+  @@index([email])
+  @@map("users")
+}
+
+// ============================================================
+// REFRESH TOKENS
+// Short-lived JWTs (15min) + long-lived refresh tokens (7 days).
+// Stored hashed. One per device/session.
+// ============================================================
+
+model RefreshToken {
+  id          String   @id @default(cuid())
+  tokenHash   String   @unique   // bcrypt hash of the raw token
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  deviceHint  String?            // Optional: "iPhone 15 / Safari" for user-visible session mgmt
+  expiresAt   DateTime
+  revokedAt   DateTime?          // Null = active; set on logout or rotation
+  createdAt   DateTime @default(now())
+
+  @@index([userId])
+  @@index([tokenHash])
+  @@map("refresh_tokens")
+}
+
+// ============================================================
+// WORKSPACES
+// The core multi-tenancy unit. Every financial entity belongs
+// to a workspace, never directly to a user.
+//
+// Solo plans: workspace has exactly 1 member (OWNER).
+// Family plan: workspace has up to 5 members.
+//
+// Design note: even though Family ships post-MVP, this model
+// is workspace-first from day one. Retrofitting multi-tenancy
+// into a solo-first schema is the #1 cause of painful rewrites.
+// ============================================================
+
+model Workspace {
+  id          String             @id @default(cuid())
+  name        String             // e.g. "Aisha's Finances" or "The Johnson Family"
+  slug        String             @unique  // URL-safe identifier
+
+  // Subscription
+  tier        SubscriptionTier   @default(FREE)
+  maxMembers  Int                @default(1)  // Enforced at invite time
+
+  // Base currency for cross-currency analytics
+  // All monetary summaries normalize to this currency.
+  baseCurrency  String           @default("USD")  // ISO 4217 e.g. "USD", "PHP", "NGN"
+
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+
+  // Relations
+  members           WorkspaceMember[]
+  subscription      Subscription?
+  transactions      Transaction[]
+  categories        Category[]
+  budgets           Budget[]
+  accounts          Account[]
+  portfolioHoldings PortfolioHolding[]
+  conversations     Conversation[]
+  alerts            Alert[]
+  fxRateSnapshots   FxRateSnapshot[]
+
+  @@index([slug])
+  @@map("workspaces")
+}
+
+// ============================================================
+// WORKSPACE MEMBERS
+// Junction table: User <-> Workspace with role.
+// ============================================================
+
+model WorkspaceMember {
+  id          String              @id @default(cuid())
+  workspaceId String
+  workspace   Workspace           @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  userId      String
+  user        User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role        WorkspaceMemberRole @default(VIEWER)
+
+  // Invite flow
+  invitedByUserId String?
+  inviteEmail     String?       // Email used for invite (may differ from user.email pre-signup)
+  inviteToken     String?       @unique
+  inviteExpiry    DateTime?
+  acceptedAt      DateTime?
+
+  joinedAt    DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+
+  @@unique([workspaceId, userId])  // One membership record per user per workspace
+  @@index([workspaceId])
+  @@index([userId])
+  @@map("workspace_members")
+}
+
+// ============================================================
+// SUBSCRIPTIONS
+// One subscription per workspace.
+// Supports both Stripe (international) and Paystack (NGN/PHP).
+// ============================================================
+
+model Subscription {
+  id                    String             @id @default(cuid())
+  workspaceId           String             @unique
+  workspace             Workspace          @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  tier                  SubscriptionTier
+  status                SubscriptionStatus @default(ACTIVE)
+  billingProvider       BillingProvider
+
+  // Provider-specific IDs (kept separate — don't mix Stripe and Paystack IDs)
+  stripeCustomerId      String?
+  stripeSubscriptionId  String?
+  stripePriceId         String?
+
+  paystackCustomerCode  String?
+  paystackSubscriptionCode String?
+  paystackPlanCode      String?
+
+  // Billing cycle
+  currentPeriodStart    DateTime
+  currentPeriodEnd      DateTime
+  cancelAtPeriodEnd     Boolean            @default(false)
+  canceledAt            DateTime?
+  trialEndsAt           DateTime?
+
+  createdAt             DateTime           @default(now())
+  updatedAt             DateTime           @updatedAt
+
+  @@index([workspaceId])
+  @@map("subscriptions")
+}
+
+// ============================================================
+// ACCOUNTS
+// A workspace can have multiple accounts: bank account, cash,
+// e-wallet, brokerage, etc.
+// Transactions are attributed to an account.
+// ============================================================
+
+model Account {
+  id            String    @id @default(cuid())
+  workspaceId   String
+  workspace     Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  name          String    // e.g. "BDO Peso Savings", "Wise USD", "GCash"
+  currency      String    // ISO 4217 — primary currency of this account
+  accountType   String    // "BANK" | "CASH" | "EWALLET" | "BROKERAGE" | "CRYPTO" | "OTHER"
+  color         String?   // Hex for UI display
+  icon          String?   // Icon identifier for UI
+
+  // Current balance — maintained by transaction ledger
+  // Do NOT compute this on the fly from transactions for performance reasons.
+  // Updated atomically with each transaction via DB transaction.
+  balance       Decimal   @default(0) @db.Decimal(20, 8)
+
+  isArchived    Boolean   @default(false)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // Relations
+  transactionsFrom  Transaction[] @relation("TransactionFromAccount")
+  transactionsTo    Transaction[] @relation("TransactionToAccount")
+
+  @@index([workspaceId])
+  @@map("accounts")
+}
+
+// ============================================================
+// CATEGORIES
+// Workspace-scoped spending categories.
+// Seeds: Groceries, Dining, Transport, Entertainment, etc.
+// Free tier: max 5 custom categories (enforced in service layer).
+// ============================================================
+
+model Category {
+  id            String    @id @default(cuid())
+  workspaceId   String
+  workspace     Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  name          String    // e.g. "Groceries", "Dining Out", "Side Hustle Income"
+  color         String?   // Hex for UI
+  icon          String?   // Icon identifier
+  isDefault     Boolean   @default(false)  // System-seeded categories
+  isArchived    Boolean   @default(false)
+
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  transactions  Transaction[]
+  budgets       Budget[]
+
+  @@unique([workspaceId, name])
+  @@index([workspaceId])
+  @@map("categories")
+}
+
+// ============================================================
+// TRANSACTIONS
+// The core financial record. Every money movement in Budgy
+// is a Transaction.
+//
+// MULTI-CURRENCY DESIGN (non-negotiable):
+//   - amountOriginal  : the amount as entered by the user
+//   - currencyOriginal: the currency as entered
+//   - amountBase      : equivalent in workspace.baseCurrency AT TIME OF ENTRY
+//   - fxRateUsed      : the FX rate applied at entry
+//   - fxRateTimestamp : when that rate was fetched
+//
+// The base-currency equivalent is IMMUTABLE after creation.
+// Historical analytics must never recompute from live FX rates.
+// This prevents analytic drift as rates change over time.
+// ============================================================
+
+model Transaction {
+  id              String            @id @default(cuid())
+  workspaceId     String
+  workspace       Workspace         @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  // Attribution
+  loggedByUserId  String            // Which workspace member logged this
+  categoryId      String?
+  category        Category?         @relation(fields: [categoryId], references: [id])
+  fromAccountId   String?
+  fromAccount     Account?          @relation("TransactionFromAccount", fields: [fromAccountId], references: [id])
+  toAccountId     String?           // For TRANSFER type only
+  toAccount       Account?          @relation("TransactionToAccount", fields: [toAccountId], references: [id])
+
+  // Classification
+  type            TransactionType
+  status          TransactionStatus @default(CONFIRMED)
+
+  // Original amount (as entered)
+  amountOriginal  Decimal           @db.Decimal(20, 8)
+  currencyOriginal String           // ISO 4217
+
+  // Base currency equivalent (frozen at entry time)
+  amountBase      Decimal           @db.Decimal(20, 8)
+  currencyBase    String            // = workspace.baseCurrency at time of entry
+  fxRateUsed      Decimal           @db.Decimal(20, 10)  // amountBase = amountOriginal * fxRateUsed
+  fxRateTimestamp DateTime          // When the FX rate was fetched
+
+  // Metadata
+  merchant        String?           // e.g. "SM Supermarket", "Shein", "Shell"
+  description     String?           // Free-text note, often AI-extracted
+  transactionDate DateTime          // The actual date of the transaction (not created_at)
+  tags            String[]          // Flexible tagging e.g. ["travel", "work-expense"]
+
+  // AI extraction confidence (0.0 - 1.0)
+  // < 0.7 = flagged as PENDING for user confirmation
+  aiConfidence    Float?
+
+  // Link back to the conversation message that created this
+  sourceMessageId String?
+
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  @@index([workspaceId])
+  @@index([workspaceId, transactionDate])
+  @@index([workspaceId, type])
+  @@index([workspaceId, categoryId])
+  @@index([loggedByUserId])
+  @@map("transactions")
+}
+
+// ============================================================
+// BUDGETS
+// Monthly (or other period) spending limits per category.
+// Utilization is tracked in real time by the budget service.
+// Alerts fire at 75%, 90%, and 100%.
+// ============================================================
+
+model Budget {
+  id            String       @id @default(cuid())
+  workspaceId   String
+  workspace     Workspace    @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  categoryId    String
+  category      Category     @relation(fields: [categoryId], references: [id])
+
+  // Budget is always stored in the workspace base currency
+  // for consistent cross-currency comparison.
+  amountLimit   Decimal      @db.Decimal(20, 8)
+  currency      String       // = workspace.baseCurrency (denormalized for query speed)
+
+  period        BudgetPeriod @default(MONTHLY)
+
+  // Period bounds — for MONTHLY: start=first of month, end=last of month
+  // Budgets are created per-period. A new record is created each cycle.
+  periodStart   DateTime
+  periodEnd     DateTime
+
+  // Running total — updated atomically when relevant transactions are saved.
+  // Avoids expensive SUM() on every alert check.
+  amountSpent   Decimal      @default(0) @db.Decimal(20, 8)
+
+  isActive      Boolean      @default(true)
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  @@unique([workspaceId, categoryId, periodStart])
+  @@index([workspaceId])
+  @@index([workspaceId, periodStart, periodEnd])
+  @@map("budgets")
+}
+
+// ============================================================
+// PORTFOLIO HOLDINGS
+// Manual stock/ETF/fund position records.
+// No brokerage API — user logs buy/sell events via chat.
+// Market value is fetched on-demand from Alpha Vantage + cached.
+// ============================================================
+
+model PortfolioHolding {
+  id            String    @id @default(cuid())
+  workspaceId   String
+  workspace     Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  ownedByUserId String    // Which member owns this holding
+
+  ticker        String    // e.g. "AAPL", "VOO", "TSLA"
+  exchange      String?   // e.g. "NASDAQ", "NYSE"
+  name          String?   // e.g. "Apple Inc." — cached from market data lookup
+
+  // Current position (updated by investment events)
+  quantity      Decimal   @db.Decimal(20, 8)
+  avgCostBasis  Decimal   @db.Decimal(20, 8)  // Average cost per unit in costCurrency
+  costCurrency  String    // Currency of the cost basis e.g. "USD"
+
+  isActive      Boolean   @default(true)     // false = fully exited position
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // Investment event history
+  events        InvestmentEvent[]
+
+  @@unique([workspaceId, ownedByUserId, ticker])
+  @@index([workspaceId])
+  @@map("portfolio_holdings")
+}
+
+// ============================================================
+// INVESTMENT EVENTS
+// Immutable ledger of every portfolio action.
+// Holdings are computed from event history, not stored as
+// mutable state alone. avgCostBasis on the holding is a
+// materialized view of this ledger for query performance.
+// ============================================================
+
+model InvestmentEvent {
+  id          String           @id @default(cuid())
+  holdingId   String
+  holding     PortfolioHolding @relation(fields: [holdingId], references: [id], onDelete: Cascade)
+
+  action      InvestmentAction
+  quantity    Decimal          @db.Decimal(20, 8)
+  pricePerUnit Decimal         @db.Decimal(20, 8)
+  currency    String           // Currency of pricePerUnit
+
+  // FX snapshot (same pattern as Transaction)
+  priceBase         Decimal    @db.Decimal(20, 8)  // pricePerUnit in workspace base currency
+  fxRateUsed        Decimal    @db.Decimal(20, 10)
+  fxRateTimestamp   DateTime
+
+  eventDate         DateTime
+  notes             String?
+
+  // Link back to conversation message that triggered this
+  sourceMessageId   String?
+
+  createdAt         DateTime   @default(now())
+
+  @@index([holdingId])
+  @@index([holdingId, eventDate])
+  @@map("investment_events")
+}
+
+// ============================================================
+// CONVERSATIONS
+// Each conversation is a chat session tied to a workspace.
+// A workspace member starts a conversation; messages accumulate.
+//
+// MEMORY MODEL (tiered by subscription):
+//   FREE    : activeWindowSize = 20 (sliding window, older pruned from context)
+//   PRO     : 90 days of messages retained; older messages compressed into
+//             rollingContextSummary by a background job
+//   PREMIUM : Full history retained forever; compressionEnabled = true
+//   FAMILY  : Same as PREMIUM per member
+//
+// The LLM always receives:
+//   1. systemPrompt (financial dossier + workspace context)
+//   2. rollingContextSummary (compressed history, if any)
+//   3. Recent messages up to token budget
+// ============================================================
+
+model Conversation {
+  id            String    @id @default(cuid())
+  workspaceId   String
+  workspace     Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  userId        String    // The workspace member this conversation belongs to
+
+  // Title auto-generated from first meaningful message
+  title         String?
+
+  // Rolling compressed context for Pro/Premium/Family tiers.
+  // Updated by background summarization job when message count grows.
+  // Injected as context before recent messages in every LLM call.
+  rollingContextSummary     String?  @db.Text
+
+  // Token count of rollingContextSummary for budget tracking
+  summarizedTokenCount      Int      @default(0)
+
+  // Last time the rolling summary was updated
+  lastSummarizedAt          DateTime?
+
+  // Total messages in this conversation (used for paging and window calculation)
+  messageCount              Int      @default(0)
+
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+
+  messages      ConversationMessage[]
+
+  @@index([workspaceId])
+  @@index([workspaceId, userId])
+  @@map("conversations")
+}
+
+// ============================================================
+// CONVERSATION MESSAGES
+// Individual messages within a conversation.
+// Stores USER, ASSISTANT, TOOL_CALL, and TOOL_RESULT roles
+// to enable full replay and audit of AI actions.
+//
+// tokenCount: tracked per message to enforce tier token budgets
+// isInActiveWindow: false = compressed into summary, excluded
+//   from LLM context injection (but retained in DB for Premium)
+// ============================================================
+
+model ConversationMessage {
+  id              String      @id @default(cuid())
+  conversationId  String
+  conversation    Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  role            MessageRole
+  content         String      @db.Text   // Raw message content or tool JSON
+
+  // For TOOL_CALL messages: the tool name invoked
+  toolName        String?
+
+  // For TOOL_RESULT messages: the structured result (JSON string)
+  toolResult      String?     @db.Text
+
+  // AI metadata
+  tokenCount      Int?        // Approximate tokens for this message
+  modelUsed       String?     // e.g. "claude-sonnet-4-20250514"
+  aiConfidence    Float?      // Extraction confidence for tool-call messages
+
+  // Memory window management
+  isInActiveWindow Boolean    @default(true)   // false = compressed into summary
+
+  // Links to entities created by this message
+  createdTransactionId    String?  // If this message logged a transaction
+  createdInvestmentEventId String? // If this message logged an investment event
+
+  createdAt       DateTime    @default(now())
+
+  @@index([conversationId])
+  @@index([conversationId, createdAt])
+  @@index([conversationId, isInActiveWindow])
+  @@map("conversation_messages")
+}
+
+// ============================================================
+// FX RATE SNAPSHOTS
+// Cached FX rates per workspace per day.
+// Sourced from Frankfurter API (free) or Open Exchange Rates.
+// Redis holds the live 15-min cache; this table is the
+// persistent historical record used for:
+//   - Retroactive transaction entry ("I spent $40 last Tuesday")
+//   - Analytics consistency checks
+// ============================================================
+
+model FxRateSnapshot {
+  id            String    @id @default(cuid())
+  workspaceId   String
+  workspace     Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  baseCurrency  String    // The base currency of the rate
+  targetCurrency String   // The target currency
+  rate          Decimal   @db.Decimal(20, 10)  // 1 baseCurrency = rate targetCurrency
+  source        String    @default("frankfurter")
+  snapshotDate  DateTime  // Date this rate applies to (normalized to midnight UTC)
+
+  createdAt     DateTime  @default(now())
+
+  @@unique([workspaceId, baseCurrency, targetCurrency, snapshotDate])
+  @@index([workspaceId, baseCurrency, snapshotDate])
+  @@map("fx_rate_snapshots")
+}
+
+// ============================================================
+// ALERTS
+// System-generated notifications for budget thresholds,
+// anomalies, coaching nudges, and portfolio insights.
+// Surfaced in the chat interface and (future) push notifications.
+// ============================================================
+
+model Alert {
+  id            String      @id @default(cuid())
+  workspaceId   String
+  workspace     Workspace   @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  userId        String      // Which member this alert is for
+
+  type          AlertType
+  status        AlertStatus @default(UNREAD)
+
+  title         String
+  body          String      @db.Text    // Full alert content (may be AI-generated)
+
+  // Optional links to relevant entities
+  budgetId      String?
+  categoryId    String?
+  transactionId String?
+  holdingId     String?
+
+  // Metadata (JSON for flexible alert-type-specific data)
+  metadata      String?     @db.Text    // JSON: e.g. { "utilization": 0.75, "limit": 15000 }
+
+  createdAt     DateTime    @default(now())
+  readAt        DateTime?
+  dismissedAt   DateTime?
+
+  @@index([workspaceId, userId, status])
+  @@index([workspaceId, createdAt])
+  @@map("alerts")
+}
