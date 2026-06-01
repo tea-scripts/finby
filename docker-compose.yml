@@ -1,0 +1,36 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: budgy-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: budgy
+      POSTGRES_PASSWORD: budgy
+      POSTGRES_DB: budgy
+    ports:
+      - "5434:5432"
+    volumes:
+      - budgy_pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U budgy -d budgy"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: budgy-redis
+    restart: unless-stopped
+    ports:
+      - "6380:6379"
+    volumes:
+      - budgy_redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  budgy_pg_data:
+  budgy_redis_data:
