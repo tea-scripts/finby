@@ -28,3 +28,9 @@ pnpm-debug.log*
 .DS_Store
 .idea/
 *.swp
+
+# internal design docs (not committed)
+BUDGY_API_CONTRACT.md
+BUDGY_SCHEMA_DECISIONS.md
+*.docx
+*.pdf
