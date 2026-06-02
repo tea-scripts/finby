@@ -19,6 +19,7 @@
     "seed": "dotenv -e ../../.env -- ts-node --project tsconfig.seed.json prisma/seed.ts"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.100.1",
     "@budgy/shared": "workspace:*",
     "@nestjs/common": "^10.4.15",
     "@nestjs/config": "^3.3.0",
