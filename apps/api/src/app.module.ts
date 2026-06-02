@@ -12,6 +12,7 @@ import { CategoriesModule } from './modules/categories/categories.module';
 import { ChatModule } from './modules/chat/chat.module';
 import { JwtAuthGuard } from './modules/auth/guards/jwt-auth.guard';
 import { FxModule } from './modules/fx/fx.module';
+import { MarketModule } from './modules/market/market.module';
 import { TransactionsModule } from './modules/transactions/transactions.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { RedisModule } from './redis/redis.module';
@@ -23,6 +24,7 @@ import { RedisModule } from './redis/redis.module';
     RedisModule,
     AuthModule,
     FxModule,
+    MarketModule,
     AccountsModule,
     CategoriesModule,
     TransactionsModule,

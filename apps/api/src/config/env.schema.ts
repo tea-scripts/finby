@@ -34,6 +34,7 @@ export const envSchema = z.object({
 
   // Market data / Alpha Vantage (Phase 4)
   ALPHA_VANTAGE_API_KEY: z.string().optional(),
+  ALPHA_VANTAGE_API_URL: z.string().url().default('https://www.alphavantage.co'),
 
   // Billing (Phase 5)
   STRIPE_SECRET_KEY: z.string().optional(),
