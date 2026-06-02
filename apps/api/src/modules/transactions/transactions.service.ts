@@ -1,9 +1,10 @@
-import { Injectable, NotFoundException, UnprocessableEntityException } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException, UnprocessableEntityException } from '@nestjs/common';
 import type { Account, Prisma } from '@prisma/client';
 import type { SubscriptionTier } from '@budgy/shared';
 import { PrismaService } from '../../prisma/prisma.service';
 import { FxService } from '../fx/fx.service';
 import { BudgetsService } from '../budgets/budgets.service';
+import { AlertsService } from '../alerts/alerts.service';
 import type { BudgetSpendChange } from '../budgets/budgets.types';
 import type { ListTransactionsQuery, UpdateTransactionInput } from './dto/transactions.schemas';
 import type {
@@ -24,10 +25,13 @@ type TxWithRelations = Prisma.TransactionGetPayload<{ include: typeof VIEW_INCLU
 
 @Injectable()
 export class TransactionsService {
+  private readonly logger = new Logger(TransactionsService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly fx: FxService,
     private readonly budgets: BudgetsService,
+    private readonly alerts: AlertsService,
   ) {}
 
   async create(params: CreateTransactionParams): Promise<CreateTransactionResult> {
@@ -116,6 +120,25 @@ export class TransactionsService {
 
       return { created: transaction, budgetChange: change };
     });
+
+    // Budget threshold alerts are non-critical and fire after the financial
+    // write commits — a failure here must not roll back the transaction.
+    if (budgetChange && params.categoryId) {
+      try {
+        await this.alerts.generateBudgetAlert({
+          workspaceId: params.workspaceId,
+          userId: params.loggedByUserId,
+          budgetId: budgetChange.budgetId,
+          categoryId: params.categoryId,
+          currency: params.baseCurrency,
+          change: budgetChange,
+        });
+      } catch (error) {
+        this.logger.error(
+          `Budget alert generation failed: ${error instanceof Error ? error.message : String(error)}`,
+        );
+      }
+    }
 
     return { transaction: this.toView(created), budgetChange };
   }

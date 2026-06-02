@@ -3,10 +3,15 @@ import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { FxService } from '../fx/fx.service';
 import { BudgetsService } from '../budgets/budgets.service';
+import { AlertsService } from '../alerts/alerts.service';
 import { TransactionsService } from './transactions.service';
 
 function buildBudgets() {
   return { applyTransactionSpend: jest.fn().mockResolvedValue(null) };
+}
+
+function buildAlerts() {
+  return { generateBudgetAlert: jest.fn().mockResolvedValue(null) };
 }
 
 function buildPrisma() {
@@ -77,7 +82,7 @@ describe('TransactionsService.create', () => {
     prisma.account.findFirst.mockResolvedValue({ id: 'a1', workspaceId: 'w1', currency: 'USD', name: 'Wise USD' });
     prisma.transaction.create.mockResolvedValue(txRow());
     const fx = buildFx({ amountBase: '50' });
-    const service = new TransactionsService(prisma as unknown as PrismaService, fx as unknown as FxService, buildBudgets() as unknown as BudgetsService);
+    const service = new TransactionsService(prisma as unknown as PrismaService, fx as unknown as FxService, buildBudgets() as unknown as BudgetsService, buildAlerts() as unknown as AlertsService);
 
     const { transaction: view } = await service.create({
       ...baseParams,
@@ -98,7 +103,7 @@ describe('TransactionsService.create', () => {
     prisma.account.findFirst.mockResolvedValue({ id: 'a1', workspaceId: 'w1', currency: 'USD', name: 'Wise' });
     prisma.transaction.create.mockResolvedValue(txRow({ type: 'INCOME' }));
     const fx = buildFx();
-    const service = new TransactionsService(prisma as unknown as PrismaService, fx as unknown as FxService, buildBudgets() as unknown as BudgetsService);
+    const service = new TransactionsService(prisma as unknown as PrismaService, fx as unknown as FxService, buildBudgets() as unknown as BudgetsService, buildAlerts() as unknown as AlertsService);
 
     await service.create({ ...baseParams, type: 'INCOME', accountId: 'a1' });
 
@@ -114,7 +119,7 @@ describe('TransactionsService.create', () => {
       .mockResolvedValueOnce({ id: 'a2', workspaceId: 'w1', currency: 'PHP', name: 'BDO Peso' });
     prisma.transaction.create.mockResolvedValue(txRow({ type: 'TRANSFER', toAccountId: 'a2' }));
     const fx = buildFx({ convertAmount: '2860' });
-    const service = new TransactionsService(prisma as unknown as PrismaService, fx as unknown as FxService, buildBudgets() as unknown as BudgetsService);
+    const service = new TransactionsService(prisma as unknown as PrismaService, fx as unknown as FxService, buildBudgets() as unknown as BudgetsService, buildAlerts() as unknown as AlertsService);
 
     await service.create({ ...baseParams, type: 'TRANSFER', accountId: 'a1', toAccountId: 'a2' });
 
@@ -130,7 +135,7 @@ describe('TransactionsService.create', () => {
     const prisma = buildPrisma();
     prisma.transaction.create.mockResolvedValue(txRow({ fromAccount: null, fromAccountId: null }));
     const fx = buildFx();
-    const service = new TransactionsService(prisma as unknown as PrismaService, fx as unknown as FxService, buildBudgets() as unknown as BudgetsService);
+    const service = new TransactionsService(prisma as unknown as PrismaService, fx as unknown as FxService, buildBudgets() as unknown as BudgetsService, buildAlerts() as unknown as AlertsService);
 
     const { transaction: view } = await service.create({ ...baseParams, type: 'EXPENSE' });
 
@@ -142,7 +147,7 @@ describe('TransactionsService.create', () => {
     const prisma = buildPrisma();
     prisma.account.findFirst.mockResolvedValue({ id: 'a1', workspaceId: 'w1', currency: 'PHP', name: 'BDO' });
     const fx = buildFx();
-    const service = new TransactionsService(prisma as unknown as PrismaService, fx as unknown as FxService, buildBudgets() as unknown as BudgetsService);
+    const service = new TransactionsService(prisma as unknown as PrismaService, fx as unknown as FxService, buildBudgets() as unknown as BudgetsService, buildAlerts() as unknown as AlertsService);
 
     await expect(
       service.create({ ...baseParams, type: 'EXPENSE', currencyOriginal: 'USD', accountId: 'a1' }),
@@ -154,7 +159,7 @@ describe('TransactionsService.create', () => {
     const prisma = buildPrisma();
     prisma.account.findFirst.mockResolvedValue(null);
     const fx = buildFx();
-    const service = new TransactionsService(prisma as unknown as PrismaService, fx as unknown as FxService, buildBudgets() as unknown as BudgetsService);
+    const service = new TransactionsService(prisma as unknown as PrismaService, fx as unknown as FxService, buildBudgets() as unknown as BudgetsService, buildAlerts() as unknown as AlertsService);
 
     await expect(
       service.create({ ...baseParams, type: 'EXPENSE', accountId: 'missing' }),
@@ -167,7 +172,7 @@ describe('TransactionsService.void', () => {
     const prisma = buildPrisma();
     prisma.transaction.findFirst.mockResolvedValue(txRow());
     const fx = buildFx();
-    const service = new TransactionsService(prisma as unknown as PrismaService, fx as unknown as FxService, buildBudgets() as unknown as BudgetsService);
+    const service = new TransactionsService(prisma as unknown as PrismaService, fx as unknown as FxService, buildBudgets() as unknown as BudgetsService, buildAlerts() as unknown as AlertsService);
 
     const result = await service.void('w1', 't1');
 
@@ -184,7 +189,7 @@ describe('TransactionsService.void', () => {
     const prisma = buildPrisma();
     prisma.transaction.findFirst.mockResolvedValue(txRow({ status: 'VOID' }));
     const fx = buildFx();
-    const service = new TransactionsService(prisma as unknown as PrismaService, fx as unknown as FxService, buildBudgets() as unknown as BudgetsService);
+    const service = new TransactionsService(prisma as unknown as PrismaService, fx as unknown as FxService, buildBudgets() as unknown as BudgetsService, buildAlerts() as unknown as AlertsService);
 
     await service.void('w1', 't1');
     expect(prisma.account.update).not.toHaveBeenCalled();
@@ -196,7 +201,7 @@ describe('TransactionsService.list', () => {
     const prisma = buildPrisma();
     prisma.transaction.findMany.mockResolvedValue([]);
     const fx = buildFx();
-    const service = new TransactionsService(prisma as unknown as PrismaService, fx as unknown as FxService, buildBudgets() as unknown as BudgetsService);
+    const service = new TransactionsService(prisma as unknown as PrismaService, fx as unknown as FxService, buildBudgets() as unknown as BudgetsService, buildAlerts() as unknown as AlertsService);
 
     await service.list('w1', 'FREE', { limit: 20, fromDate: '2000-01-01', tags: [] } as never);
 

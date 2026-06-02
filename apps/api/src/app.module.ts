@@ -4,6 +4,7 @@ import { AppController } from './app.controller';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { ConfigModule } from './config/config.module';
 import { AccountsModule } from './modules/accounts/accounts.module';
+import { AlertsModule } from './modules/alerts/alerts.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { BudgetsModule } from './modules/budgets/budgets.module';
 import { CategoriesModule } from './modules/categories/categories.module';
@@ -25,6 +26,7 @@ import { RedisModule } from './redis/redis.module';
     CategoriesModule,
     TransactionsModule,
     BudgetsModule,
+    AlertsModule,
     ChatModule,
   ],
   controllers: [AppController],
