@@ -7,6 +7,8 @@ import { LlmService } from '../llm/llm.service';
 import { TransactionsService } from '../transactions/transactions.service';
 import { BudgetsService } from '../budgets/budgets.service';
 import { AnalyticsService } from '../analytics/analytics.service';
+import { MarketDataService } from '../market/market.service';
+import { PortfolioService } from '../portfolio/portfolio.service';
 import type { WorkspaceContext } from '../../common/context';
 import type { LlmToolCall } from '../llm/llm.types';
 import { ChatService } from './chat.service';
@@ -32,6 +34,8 @@ function build(overrides?: {
   const accounts = { findByName: overrides?.findAccount ?? jest.fn().mockResolvedValue(null) };
   const budgets = { createOrUpdate: jest.fn(), list: jest.fn().mockResolvedValue([]) };
   const analytics = { summary: jest.fn(), byCategory: jest.fn(), trend: jest.fn(), topMerchants: jest.fn() };
+  const market = { getQuote: jest.fn(), getOverview: jest.fn() };
+  const portfolio = { logEvent: jest.fn(), getPortfolio: jest.fn() };
   const service = new ChatService(
     {} as unknown as PrismaService,
     {} as unknown as ConversationsService,
@@ -42,8 +46,10 @@ function build(overrides?: {
     accounts as unknown as AccountsService,
     budgets as unknown as BudgetsService,
     analytics as unknown as AnalyticsService,
+    market as unknown as MarketDataService,
+    portfolio as unknown as PortfolioService,
   );
-  return { service, transactions, fx, categories, accounts, budgets, analytics };
+  return { service, transactions, fx, categories, accounts, budgets, analytics, market, portfolio };
 }
 
 function call(name: string, input: Record<string, unknown>): LlmToolCall {
@@ -127,6 +133,48 @@ describe('ChatService.executeTool', () => {
     expect(analytics.summary).toHaveBeenCalledWith('w1', 'USD', '2026-06-01', '2026-06-30');
     expect(result.toolResult).toContain('1840');
   });
+
+  it('get_market_data is blocked on FREE tier (Pro feature)', async () => {
+    const { service, market } = build();
+    const result = await service.executeTool(workspace, 'u1', call('get_market_data', { ticker: 'AAPL' }));
+    expect(market.getQuote).not.toHaveBeenCalled();
+    expect(result.toolResult).toContain('tier_limit');
+  });
+
+  it('get_market_data returns a quote on a PRO workspace', async () => {
+    const { service, market } = build();
+    (market.getQuote as jest.Mock).mockResolvedValue({ ticker: 'AAPL', price: '191.20' });
+    const result = await service.executeTool(
+      { ...workspace, tier: 'PRO' },
+      'u1',
+      call('get_market_data', { ticker: 'AAPL' }),
+    );
+    expect(market.getQuote).toHaveBeenCalledWith('AAPL');
+    expect(result.toolResult).toContain('191.20');
+  });
+
+  it('log_investment_event logs a BUY on a PRO workspace', async () => {
+    const { service, portfolio } = build();
+    (portfolio.logEvent as jest.Mock).mockResolvedValue({
+      holding: { ticker: 'AAPL', quantity: '5', avgCostBasis: '189', costCurrency: 'USD' },
+      event: {},
+    });
+    const result = await service.executeTool(
+      { ...workspace, tier: 'PRO' },
+      'u1',
+      call('log_investment_event', {
+        ticker: 'AAPL',
+        action: 'BUY',
+        quantity: '5',
+        pricePerUnit: '189',
+        currency: 'USD',
+        eventDate: '2026-05-28',
+        confidence: 0.95,
+      }),
+    );
+    expect(portfolio.logEvent).toHaveBeenCalledTimes(1);
+    expect(result.toolResult).toContain('logged');
+  });
 });
 
 describe('ChatService.handleMessage — LLM provider failure', () => {
@@ -164,6 +212,8 @@ describe('ChatService.handleMessage — LLM provider failure', () => {
       accounts as unknown as AccountsService,
       budgets as unknown as BudgetsService,
       analytics as unknown as AnalyticsService,
+      {} as unknown as MarketDataService,
+      {} as unknown as PortfolioService,
     );
     return { service, create };
   }

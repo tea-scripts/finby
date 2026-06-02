@@ -42,3 +42,11 @@ export interface TopMerchantsResult {
   merchants: TopMerchantItem[];
   currency: string;
 }
+
+export interface NetWorthResult {
+  cashTotal: string;
+  portfolioTotal: string;
+  netWorth: string;
+  currency: string;
+  snapshot: string;
+}

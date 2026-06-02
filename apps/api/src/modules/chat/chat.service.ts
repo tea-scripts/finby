@@ -9,6 +9,9 @@ import { LlmService } from '../llm/llm.service';
 import { TransactionsService } from '../transactions/transactions.service';
 import { BudgetsService } from '../budgets/budgets.service';
 import { AnalyticsService } from '../analytics/analytics.service';
+import { MarketDataService } from '../market/market.service';
+import { PortfolioService } from '../portfolio/portfolio.service';
+import type { InvestmentActionP4 } from '../portfolio/portfolio.types';
 import type { LlmMessage, LlmResponse, LlmToolCall } from '../llm/llm.types';
 import type { WorkspaceContext } from '../../common/context';
 import { ConversationsService } from './conversations.service';
@@ -48,6 +51,8 @@ export class ChatService {
     private readonly accounts: AccountsService,
     private readonly budgets: BudgetsService,
     private readonly analytics: AnalyticsService,
+    private readonly market: MarketDataService,
+    private readonly portfolio: PortfolioService,
   ) {}
 
   async handleMessage(
@@ -194,6 +199,10 @@ export class ChatService {
         return this.execSetBudget(workspace, call.input);
       case 'query_analytics':
         return this.execQueryAnalytics(workspace, call.input);
+      case 'log_investment_event':
+        return this.execLogInvestment(workspace, userId, call.input);
+      case 'get_market_data':
+        return this.execGetMarketData(workspace, call.input);
       case 'get_fx_rate':
         return this.execFxRate(call.input);
       default:
@@ -493,6 +502,101 @@ export class ChatService {
     const months =
       (b.getUTCFullYear() - a.getUTCFullYear()) * 12 + (b.getUTCMonth() - a.getUTCMonth()) + 1;
     return Math.min(Math.max(months, 1), 24);
+  }
+
+  private async execLogInvestment(
+    workspace: WorkspaceContext,
+    userId: string,
+    input: Record<string, unknown>,
+  ): Promise<ToolExecResult> {
+    if (!TIER_LIMITS[workspace.tier].portfolio) {
+      return {
+        toolResult: JSON.stringify({
+          error: 'tier_limit',
+          message: 'Portfolio tracking requires the Pro plan. Tell the user to upgrade.',
+        }),
+      };
+    }
+
+    const ticker = asString(input.ticker)?.toUpperCase();
+    const action = asString(input.action)?.toUpperCase();
+    const quantity = asString(input.quantity);
+    const pricePerUnit = asString(input.pricePerUnit);
+    const validAction =
+      action === 'BUY' || action === 'SELL' || action === 'DIVIDEND' || action === 'SPLIT' || action === 'ADD';
+    if (!ticker || !validAction || !quantity || !pricePerUnit) {
+      return { toolResult: JSON.stringify({ error: 'Missing ticker, action, quantity or price.' }) };
+    }
+
+    const confidence = asNumber(input.confidence) ?? 1;
+    if (confidence < CONFIDENCE_THRESHOLD) {
+      const draft = { ticker, action, quantity, pricePerUnit };
+      return {
+        toolResult: JSON.stringify({ status: 'pending_confirmation', draft }),
+        pending: {
+          confirmationId: randomUUID(),
+          question: `Confirm: ${action} ${quantity} ${ticker} at ${pricePerUnit}?`,
+          draft,
+        },
+      };
+    }
+
+    try {
+      const result = await this.portfolio.logEvent({
+        workspaceId: workspace.id,
+        ownedByUserId: userId,
+        baseCurrency: workspace.baseCurrency,
+        ticker,
+        action: action as InvestmentActionP4,
+        quantity,
+        pricePerUnit,
+        currency: asString(input.currency)?.toUpperCase() ?? 'USD',
+        eventDate: (asString(input.eventDate) ?? today()).slice(0, 10),
+        notes: asString(input.notes) ?? null,
+      });
+      return {
+        toolResult: JSON.stringify({
+          status: 'logged',
+          action,
+          ticker: result.holding.ticker,
+          quantity: result.holding.quantity,
+          avgCostBasis: result.holding.avgCostBasis,
+          costCurrency: result.holding.costCurrency,
+        }),
+      };
+    } catch (error) {
+      return { toolResult: JSON.stringify({ error: this.errorMessage(error) }) };
+    }
+  }
+
+  private async execGetMarketData(
+    workspace: WorkspaceContext,
+    input: Record<string, unknown>,
+  ): Promise<ToolExecResult> {
+    if (!TIER_LIMITS[workspace.tier].marketData) {
+      return {
+        toolResult: JSON.stringify({
+          error: 'tier_limit',
+          message: 'Market data requires the Pro plan. Tell the user to upgrade.',
+        }),
+      };
+    }
+
+    const ticker = asString(input.ticker);
+    if (!ticker) {
+      return { toolResult: JSON.stringify({ error: 'Missing ticker.' }) };
+    }
+
+    try {
+      const quote = await this.market.getQuote(ticker);
+      const result: Record<string, unknown> = { quote };
+      if (input.includeInsight === true) {
+        result.overview = await this.market.getOverview(ticker);
+      }
+      return { toolResult: JSON.stringify(result) };
+    } catch (error) {
+      return { toolResult: JSON.stringify({ error: this.errorMessage(error) }) };
+    }
   }
 
   private async execFxRate(input: Record<string, unknown>): Promise<ToolExecResult> {

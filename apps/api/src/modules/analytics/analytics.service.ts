@@ -2,8 +2,11 @@ import { Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { TIER_LIMITS, type SubscriptionTier } from '@budgy/shared';
 import { PrismaService } from '../../prisma/prisma.service';
+import { FxService } from '../fx/fx.service';
+import { PortfolioService } from '../portfolio/portfolio.service';
 import type {
   CategoryBreakdownResult,
+  NetWorthResult,
   SummaryResult,
   TopMerchantsResult,
   TrendResult,
@@ -24,7 +27,45 @@ function percent(part: Prisma.Decimal, whole: Prisma.Decimal): number {
 
 @Injectable()
 export class AnalyticsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly fx: FxService,
+    private readonly portfolio: PortfolioService,
+  ) {}
+
+  async netWorth(workspaceId: string, baseCurrency: string): Promise<NetWorthResult> {
+    const accounts = await this.prisma.account.findMany({
+      where: { workspaceId, isArchived: false },
+    });
+
+    let cashTotal = new Prisma.Decimal(0);
+    for (const account of accounts) {
+      const inBase = await this.fx.convertAmount(
+        account.balance.toString(),
+        account.currency,
+        baseCurrency,
+      );
+      cashTotal = cashTotal.add(inBase);
+    }
+
+    const portfolio = await this.portfolio.getPortfolio(workspaceId);
+    const portfolioTotal = new Prisma.Decimal(
+      await this.fx.convertAmount(
+        portfolio.summary.totalCurrentValue,
+        portfolio.summary.currency,
+        baseCurrency,
+      ),
+    );
+
+    const netWorth = cashTotal.add(portfolioTotal);
+    return {
+      cashTotal: cashTotal.toDecimalPlaces(2).toString(),
+      portfolioTotal: portfolioTotal.toDecimalPlaces(2).toString(),
+      netWorth: netWorth.toDecimalPlaces(2).toString(),
+      currency: baseCurrency,
+      snapshot: new Date().toISOString(),
+    };
+  }
 
   async summary(
     workspaceId: string,

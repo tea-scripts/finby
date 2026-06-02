@@ -19,6 +19,8 @@ describe('LlmService', () => {
       'log_transfer',
       'set_budget',
       'query_analytics',
+      'log_investment_event',
+      'get_market_data',
       'get_fx_rate',
     ]);
   });

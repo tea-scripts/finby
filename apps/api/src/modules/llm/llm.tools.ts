@@ -116,6 +116,45 @@ export const PHASE2_TOOLS: LlmToolDef[] = [
     },
   },
   {
+    name: 'log_investment_event',
+    description:
+      'Log a portfolio investment action — buying, selling, receiving dividends, etc. Record only; no brokerage execution.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        ticker: { type: 'string', description: "Stock/ETF ticker symbol, e.g. 'AAPL', 'VOO'" },
+        action: {
+          type: 'string',
+          enum: ['BUY', 'SELL', 'DIVIDEND', 'SPLIT', 'ADD'],
+          description: 'The type of investment action.',
+        },
+        quantity: { type: 'string', description: 'Number of shares/units as a decimal string.' },
+        pricePerUnit: { type: 'string', description: 'Price per share/unit as a decimal string.' },
+        currency: { type: 'string', description: 'Currency of pricePerUnit. Defaults to USD.' },
+        eventDate: { type: 'string', description: 'ISO date. Defaults to today.' },
+        notes: { type: 'string' },
+        confidence: { type: 'number', description: 'Extraction confidence 0.0-1.0.' },
+      },
+      required: ['ticker', 'action', 'quantity', 'pricePerUnit', 'currency', 'eventDate', 'confidence'],
+    },
+  },
+  {
+    name: 'get_market_data',
+    description:
+      'Fetch the current market price and basic data for a stock/ETF ticker. Use when the user asks about a stock price or wants investment insight. Never quote prices from memory.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        ticker: { type: 'string', description: "Stock or ETF ticker symbol, e.g. 'AAPL', 'VOO'" },
+        includeInsight: {
+          type: 'boolean',
+          description: 'If true, also fetch company fundamentals for a hold/sell/compound take.',
+        },
+      },
+      required: ['ticker'],
+    },
+  },
+  {
     name: 'get_fx_rate',
     description:
       'Get the exchange rate between two currencies. Use for conversions or when logging in an unusual currency.',

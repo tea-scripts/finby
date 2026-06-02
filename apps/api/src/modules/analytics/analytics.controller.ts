@@ -1,5 +1,7 @@
 import { Controller, Get, Query, UseGuards } from '@nestjs/common';
+import { RequireTier } from '../../common/decorators/require-tier.decorator';
 import { Workspace } from '../../common/decorators/workspace.decorator';
+import { TierGuard } from '../../common/guards/tier.guard';
 import { WorkspaceMemberGuard } from '../../common/guards/workspace-member.guard';
 import { ZodValidationPipe } from '../../common/pipes/zod-validation.pipe';
 import type { WorkspaceContext } from '../../common/context';
@@ -12,7 +14,12 @@ import {
   type SummaryQuery,
   type TrendQuery,
 } from './dto/analytics.schemas';
-import type { CategoryBreakdownResult, SummaryResult, TrendResult } from './analytics.types';
+import type {
+  CategoryBreakdownResult,
+  NetWorthResult,
+  SummaryResult,
+  TrendResult,
+} from './analytics.types';
 
 @Controller('workspaces/:workspaceId/analytics')
 @UseGuards(WorkspaceMemberGuard)
@@ -47,5 +54,12 @@ export class AnalyticsController {
     @Query(new ZodValidationPipe(trendQuerySchema)) query: TrendQuery,
   ): Promise<TrendResult> {
     return this.analytics.trend(workspace.id, workspace.baseCurrency, query.months, workspace.tier);
+  }
+
+  @Get('net-worth')
+  @RequireTier('PRO')
+  @UseGuards(TierGuard)
+  netWorth(@Workspace() workspace: WorkspaceContext): Promise<NetWorthResult> {
+    return this.analytics.netWorth(workspace.id, workspace.baseCurrency);
   }
 }

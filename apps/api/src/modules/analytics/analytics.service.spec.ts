@@ -1,5 +1,7 @@
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
+import { FxService } from '../fx/fx.service';
+import { PortfolioService } from '../portfolio/portfolio.service';
 import { AnalyticsService } from './analytics.service';
 
 function dec(v: string) {
@@ -14,7 +16,7 @@ describe('AnalyticsService.summary', () => {
       .mockResolvedValueOnce({ _sum: { amountBase: dec('1840') } }); // expense
     const count = jest.fn().mockResolvedValue(47);
     const prisma = { transaction: { aggregate, count } };
-    const service = new AnalyticsService(prisma as unknown as PrismaService);
+    const service = new AnalyticsService(prisma as unknown as PrismaService, {} as unknown as FxService, {} as unknown as PortfolioService);
 
     const result = await service.summary('w1', 'USD', '2026-06-01', '2026-06-30');
 
@@ -33,7 +35,7 @@ describe('AnalyticsService.summary', () => {
       .mockResolvedValueOnce({ _sum: { amountBase: dec('500') } });
     const count = jest.fn().mockResolvedValue(2);
     const prisma = { transaction: { aggregate, count } };
-    const service = new AnalyticsService(prisma as unknown as PrismaService);
+    const service = new AnalyticsService(prisma as unknown as PrismaService, {} as unknown as FxService, {} as unknown as PortfolioService);
 
     const result = await service.summary('w1', 'USD', '2026-06-01', '2026-06-30');
     expect(result.totalIncome).toBe('0');
@@ -53,7 +55,7 @@ describe('AnalyticsService.byCategory', () => {
       { id: 'c2', name: 'Dining' },
     ]);
     const prisma = { transaction: { groupBy }, category: { findMany } };
-    const service = new AnalyticsService(prisma as unknown as PrismaService);
+    const service = new AnalyticsService(prisma as unknown as PrismaService, {} as unknown as FxService, {} as unknown as PortfolioService);
 
     const result = await service.byCategory('w1', 'USD', '2026-06-01', '2026-06-30', 'EXPENSE');
 
@@ -69,7 +71,7 @@ describe('AnalyticsService.trend', () => {
   it('caps FREE tier to 3 months', async () => {
     const aggregate = jest.fn().mockResolvedValue({ _sum: { amountBase: null } });
     const prisma = { transaction: { aggregate } };
-    const service = new AnalyticsService(prisma as unknown as PrismaService);
+    const service = new AnalyticsService(prisma as unknown as PrismaService, {} as unknown as FxService, {} as unknown as PortfolioService);
 
     const result = await service.trend('w1', 'USD', 12, 'FREE');
     expect(result.trend).toHaveLength(3);
@@ -78,7 +80,7 @@ describe('AnalyticsService.trend', () => {
   it('honors the requested months for PRO', async () => {
     const aggregate = jest.fn().mockResolvedValue({ _sum: { amountBase: null } });
     const prisma = { transaction: { aggregate } };
-    const service = new AnalyticsService(prisma as unknown as PrismaService);
+    const service = new AnalyticsService(prisma as unknown as PrismaService, {} as unknown as FxService, {} as unknown as PortfolioService);
 
     const result = await service.trend('w1', 'USD', 6, 'PRO');
     expect(result.trend).toHaveLength(6);
