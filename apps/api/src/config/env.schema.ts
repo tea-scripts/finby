@@ -27,7 +27,7 @@ export const envSchema = z.object({
 
   // LLM / Anthropic (Phase 2)
   ANTHROPIC_API_KEY: z.string().optional(),
-  ANTHROPIC_MODEL: z.string().default('claude-sonnet-4-20250514'),
+  ANTHROPIC_MODEL: z.string().default('claude-sonnet-4-6'),
 
   // FX / Frankfurter (Phase 2)
   FRANKFURTER_API_URL: z.string().url().default('https://api.frankfurter.app'),

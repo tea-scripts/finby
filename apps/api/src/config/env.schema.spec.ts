@@ -14,7 +14,7 @@ describe('validateEnv', () => {
     expect(env.API_PORT).toBe(3001);
     expect(env.BCRYPT_ROUNDS).toBe(12);
     expect(env.JWT_ACCESS_TTL).toBe('15m');
-    expect(env.ANTHROPIC_MODEL).toBe('claude-sonnet-4-20250514');
+    expect(env.ANTHROPIC_MODEL).toBe('claude-sonnet-4-6');
   });
 
   it('throws and names a missing required var', () => {
