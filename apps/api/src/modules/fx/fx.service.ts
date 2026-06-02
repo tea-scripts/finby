@@ -121,6 +121,15 @@ export class FxService {
     };
   }
 
+  /** Convert an amount between currencies (no snapshot persisted). */
+  async convertAmount(amount: string, from: string, to: string, date?: string): Promise<string> {
+    if (from.toUpperCase() === to.toUpperCase()) {
+      return new Prisma.Decimal(amount).toDecimalPlaces(8).toString();
+    }
+    const rate = await this.getRate(from, to, date);
+    return new Prisma.Decimal(amount).mul(rate.rate).toDecimalPlaces(8).toString();
+  }
+
   private async fetchRate(
     from: string,
     to: string,
