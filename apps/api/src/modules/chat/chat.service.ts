@@ -1,4 +1,4 @@
-import { HttpException, Injectable } from '@nestjs/common';
+import { HttpException, Injectable, Logger, ServiceUnavailableException } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
 import { TIER_LIMITS, type SubscriptionTier } from '@budgy/shared';
 import { PrismaService } from '../../prisma/prisma.service';
@@ -7,7 +7,7 @@ import { CategoriesService } from '../categories/categories.service';
 import { FxService } from '../fx/fx.service';
 import { LlmService } from '../llm/llm.service';
 import { TransactionsService } from '../transactions/transactions.service';
-import type { LlmMessage, LlmToolCall } from '../llm/llm.types';
+import type { LlmMessage, LlmResponse, LlmToolCall } from '../llm/llm.types';
 import type { WorkspaceContext } from '../../common/context';
 import { ConversationsService } from './conversations.service';
 import type {
@@ -19,6 +19,8 @@ import type {
 
 const CONFIDENCE_THRESHOLD = 0.7;
 const FREE_ACTIVE_WINDOW = 20;
+const LLM_UNAVAILABLE_MESSAGE =
+  "I'm having trouble reaching my assistant right now — please try again in a moment.";
 
 function asString(value: unknown): string | undefined {
   return typeof value === 'string' && value.length > 0 ? value : undefined;
@@ -32,6 +34,8 @@ function today(): string {
 
 @Injectable()
 export class ChatService {
+  private readonly logger = new Logger(ChatService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly conversations: ConversationsService,
@@ -74,7 +78,15 @@ export class ChatService {
     }));
 
     const tools = this.llm.getTools();
-    const first = await this.llm.createMessage({ system, messages, tools });
+    let first: LlmResponse;
+    try {
+      first = await this.llm.createMessage({ system, messages, tools });
+    } catch (error) {
+      // No tool ran yet — nothing was committed. Degrade gracefully (503).
+      await this.persistLlmFailure(conversationId, conversation.title, content);
+      this.logger.error(`LLM call failed: ${this.describe(error)}`);
+      throw new ServiceUnavailableException(LLM_UNAVAILABLE_MESSAGE);
+    }
 
     const actions: ChatAction[] = [];
     const pendingConfirmations: PendingConfirmation[] = [];
@@ -113,16 +125,23 @@ export class ChatService {
         });
       }
 
-      const followup = await this.llm.createMessage({
-        system,
-        messages: [
-          ...messages,
-          { role: 'assistant', content: first.content },
-          { role: 'user', content: toolResultBlocks },
-        ],
-        tools,
-      });
-      finalText = followup.textOutput || finalText;
+      try {
+        const followup = await this.llm.createMessage({
+          system,
+          messages: [
+            ...messages,
+            { role: 'assistant', content: first.content },
+            { role: 'user', content: toolResultBlocks },
+          ],
+          tools,
+        });
+        finalText = followup.textOutput || finalText;
+      } catch (error) {
+        // Tools already executed (e.g. a transaction was created) — don't lose
+        // the action by failing. Synthesize a minimal confirmation instead.
+        this.logger.error(`LLM follow-up failed after tool execution: ${this.describe(error)}`);
+        finalText = finalText || this.fallbackSummary(actions);
+      }
     }
 
     const assistant = await this.prisma.conversationMessage.create({
@@ -366,6 +385,32 @@ export class ChatService {
       return error.message;
     }
     return 'Could not complete the action.';
+  }
+
+  private describe(error: unknown): string {
+    return error instanceof Error ? error.message : String(error);
+  }
+
+  private fallbackSummary(actions: ChatAction[]): string {
+    return actions.length > 0
+      ? "Done — I've logged that for you. (I couldn't add my usual note just now.)"
+      : LLM_UNAVAILABLE_MESSAGE;
+  }
+
+  /** Persist a friendly assistant fallback so the failed turn still reads coherently. */
+  private async persistLlmFailure(
+    conversationId: string,
+    existingTitle: string | null,
+    userContent: string,
+  ): Promise<void> {
+    await this.prisma.conversationMessage.create({
+      data: { conversationId, role: 'ASSISTANT', content: LLM_UNAVAILABLE_MESSAGE },
+    });
+    const messageCount = await this.prisma.conversationMessage.count({ where: { conversationId } });
+    await this.prisma.conversation.update({
+      where: { id: conversationId },
+      data: { messageCount, title: existingTitle ?? userContent.slice(0, 50), updatedAt: new Date() },
+    });
   }
 
   private async buildSystemPrompt(

@@ -1,3 +1,4 @@
+import { ServiceUnavailableException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AccountsService } from '../accounts/accounts.service';
 import { CategoriesService } from '../categories/categories.service';
@@ -107,5 +108,54 @@ describe('ChatService.executeTool', () => {
     const result = await service.executeTool(workspace, 'u1', call('get_fx_rate', { from: 'PHP', to: 'USD' }));
     expect(getRate).toHaveBeenCalledWith('PHP', 'USD', undefined);
     expect(result.toolResult).toContain('0.0175');
+  });
+});
+
+describe('ChatService.handleMessage — LLM provider failure', () => {
+  function buildForHandle(createMessage: jest.Mock) {
+    const create = jest.fn().mockResolvedValue({ id: 'm', createdAt: new Date('2026-06-02T00:00:00Z') });
+    const prisma = {
+      user: { findUnique: jest.fn().mockResolvedValue({ displayName: 'Aisha', timezone: 'UTC' }) },
+      conversationMessage: {
+        create,
+        findMany: jest.fn().mockResolvedValue([]),
+        count: jest.fn().mockResolvedValue(2),
+        updateMany: jest.fn(),
+      },
+      conversation: { update: jest.fn() },
+    };
+    const conversations = {
+      requireConversation: jest.fn().mockResolvedValue({ id: 'c1', title: null }),
+    };
+    const llm = {
+      getTools: jest.fn().mockReturnValue([]),
+      buildSystemPrompt: jest.fn().mockReturnValue('sys'),
+      createMessage,
+    };
+    const accounts = { list: jest.fn().mockResolvedValue([]) };
+    const categories = { list: jest.fn().mockResolvedValue([]) };
+    const service = new ChatService(
+      prisma as unknown as PrismaService,
+      conversations as unknown as ConversationsService,
+      llm as unknown as LlmService,
+      {} as unknown as TransactionsService,
+      {} as unknown as FxService,
+      categories as unknown as CategoriesService,
+      accounts as unknown as AccountsService,
+    );
+    return { service, create };
+  }
+
+  it('throws 503 and persists a fallback assistant message when the LLM call fails', async () => {
+    const createMessage = jest.fn().mockRejectedValue(new Error('credit balance too low'));
+    const { service, create } = buildForHandle(createMessage);
+
+    await expect(service.handleMessage(workspace, 'u1', 'c1', 'hi')).rejects.toBeInstanceOf(
+      ServiceUnavailableException,
+    );
+
+    const roles = create.mock.calls.map((c) => (c[0] as { data: { role: string } }).data.role);
+    expect(roles).toContain('USER');
+    expect(roles).toContain('ASSISTANT');
   });
 });

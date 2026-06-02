@@ -17,6 +17,7 @@ const STATUS_NAMES: Record<number, string> = {
   422: 'UNPROCESSABLE',
   429: 'RATE_LIMITED',
   500: 'INTERNAL',
+  503: 'SERVICE_UNAVAILABLE',
 };
 
 interface ErrorBody {
@@ -56,7 +57,10 @@ export class HttpExceptionFilter implements ExceptionFilter {
         } else {
           message = exception.message;
         }
-        if (typeof record.error === 'string') {
+        // Only honor explicit SCREAMING_SNAKE codes (e.g. TIER_LIMIT). Nest's
+        // built-in `error` strings ("Not Found", "Service Unavailable") are
+        // ignored so the contract's status->code map below wins.
+        if (typeof record.error === 'string' && /^[A-Z][A-Z0-9_]+$/.test(record.error)) {
           errorCode = record.error;
         }
         if ('details' in record) {
