@@ -6,6 +6,7 @@ import { FxService } from '../fx/fx.service';
 import { LlmService } from '../llm/llm.service';
 import { TransactionsService } from '../transactions/transactions.service';
 import { BudgetsService } from '../budgets/budgets.service';
+import { AnalyticsService } from '../analytics/analytics.service';
 import type { WorkspaceContext } from '../../common/context';
 import type { LlmToolCall } from '../llm/llm.types';
 import { ChatService } from './chat.service';
@@ -30,6 +31,7 @@ function build(overrides?: {
   const categories = { findByName: overrides?.findCategory ?? jest.fn().mockResolvedValue(null) };
   const accounts = { findByName: overrides?.findAccount ?? jest.fn().mockResolvedValue(null) };
   const budgets = { createOrUpdate: jest.fn(), list: jest.fn().mockResolvedValue([]) };
+  const analytics = { summary: jest.fn(), byCategory: jest.fn(), trend: jest.fn(), topMerchants: jest.fn() };
   const service = new ChatService(
     {} as unknown as PrismaService,
     {} as unknown as ConversationsService,
@@ -39,8 +41,9 @@ function build(overrides?: {
     categories as unknown as CategoriesService,
     accounts as unknown as AccountsService,
     budgets as unknown as BudgetsService,
+    analytics as unknown as AnalyticsService,
   );
-  return { service, transactions, fx, categories, accounts, budgets };
+  return { service, transactions, fx, categories, accounts, budgets, analytics };
 }
 
 function call(name: string, input: Record<string, unknown>): LlmToolCall {
@@ -112,6 +115,18 @@ describe('ChatService.executeTool', () => {
     expect(getRate).toHaveBeenCalledWith('PHP', 'USD', undefined);
     expect(result.toolResult).toContain('0.0175');
   });
+
+  it('query_analytics SUMMARY delegates to AnalyticsService.summary', async () => {
+    const { service, analytics } = build();
+    (analytics.summary as jest.Mock).mockResolvedValue({ totalExpenses: '1840', savingsRate: 42.5 });
+    const result = await service.executeTool(
+      workspace,
+      'u1',
+      call('query_analytics', { queryType: 'SUMMARY', fromDate: '2026-06-01', toDate: '2026-06-30' }),
+    );
+    expect(analytics.summary).toHaveBeenCalledWith('w1', 'USD', '2026-06-01', '2026-06-30');
+    expect(result.toolResult).toContain('1840');
+  });
 });
 
 describe('ChatService.handleMessage — LLM provider failure', () => {
@@ -138,6 +153,7 @@ describe('ChatService.handleMessage — LLM provider failure', () => {
     const accounts = { list: jest.fn().mockResolvedValue([]) };
     const categories = { list: jest.fn().mockResolvedValue([]) };
     const budgets = { list: jest.fn().mockResolvedValue([]) };
+    const analytics = {};
     const service = new ChatService(
       prisma as unknown as PrismaService,
       conversations as unknown as ConversationsService,
@@ -147,6 +163,7 @@ describe('ChatService.handleMessage — LLM provider failure', () => {
       categories as unknown as CategoriesService,
       accounts as unknown as AccountsService,
       budgets as unknown as BudgetsService,
+      analytics as unknown as AnalyticsService,
     );
     return { service, create };
   }

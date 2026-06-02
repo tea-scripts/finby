@@ -93,6 +93,29 @@ export const PHASE2_TOOLS: LlmToolDef[] = [
     },
   },
   {
+    name: 'query_analytics',
+    description:
+      "Fetch spending/income analytics to answer questions like 'what did I spend most on this month?' or 'how much did I save last quarter?'. Always use this before answering analytics questions — never answer from memory.",
+    input_schema: {
+      type: 'object',
+      properties: {
+        queryType: {
+          type: 'string',
+          enum: ['SUMMARY', 'BY_CATEGORY', 'TREND', 'TOP_MERCHANTS'],
+          description: 'The type of analytics to retrieve.',
+        },
+        fromDate: { type: 'string', description: 'ISO date. Start of the period.' },
+        toDate: { type: 'string', description: 'ISO date. End of the period.' },
+        transactionType: {
+          type: 'string',
+          enum: ['EXPENSE', 'INCOME'],
+          description: 'For BY_CATEGORY: which side to break down. Defaults to EXPENSE.',
+        },
+      },
+      required: ['queryType', 'fromDate', 'toDate'],
+    },
+  },
+  {
     name: 'get_fx_rate',
     description:
       'Get the exchange rate between two currencies. Use for conversions or when logging in an unusual currency.',

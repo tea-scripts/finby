@@ -13,7 +13,14 @@ describe('LlmService', () => {
   it('exposes the Phase-2 tool definitions', () => {
     const service = new LlmService(new FakeProvider());
     const names = service.getTools().map((t) => t.name);
-    expect(names).toEqual(['log_expense', 'log_income', 'log_transfer', 'set_budget', 'get_fx_rate']);
+    expect(names).toEqual([
+      'log_expense',
+      'log_income',
+      'log_transfer',
+      'set_budget',
+      'query_analytics',
+      'get_fx_rate',
+    ]);
   });
 
   it('builds a system prompt with workspace + user context', () => {

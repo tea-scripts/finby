@@ -8,6 +8,7 @@ import { FxService } from '../fx/fx.service';
 import { LlmService } from '../llm/llm.service';
 import { TransactionsService } from '../transactions/transactions.service';
 import { BudgetsService } from '../budgets/budgets.service';
+import { AnalyticsService } from '../analytics/analytics.service';
 import type { LlmMessage, LlmResponse, LlmToolCall } from '../llm/llm.types';
 import type { WorkspaceContext } from '../../common/context';
 import { ConversationsService } from './conversations.service';
@@ -46,6 +47,7 @@ export class ChatService {
     private readonly categories: CategoriesService,
     private readonly accounts: AccountsService,
     private readonly budgets: BudgetsService,
+    private readonly analytics: AnalyticsService,
   ) {}
 
   async handleMessage(
@@ -190,6 +192,8 @@ export class ChatService {
         return this.execTransfer(workspace, userId, call.input);
       case 'set_budget':
         return this.execSetBudget(workspace, call.input);
+      case 'query_analytics':
+        return this.execQueryAnalytics(workspace, call.input);
       case 'get_fx_rate':
         return this.execFxRate(call.input);
       default:
@@ -414,6 +418,81 @@ export class ChatService {
     } catch (error) {
       return { toolResult: JSON.stringify({ error: this.errorMessage(error) }) };
     }
+  }
+
+  private async execQueryAnalytics(
+    workspace: WorkspaceContext,
+    input: Record<string, unknown>,
+  ): Promise<ToolExecResult> {
+    const queryType = asString(input.queryType)?.toUpperCase();
+    const fromDate = asString(input.fromDate);
+    const toDate = asString(input.toDate);
+    if (!queryType || !fromDate || !toDate) {
+      return { toolResult: JSON.stringify({ error: 'Missing queryType, fromDate or toDate.' }) };
+    }
+
+    const txType = asString(input.transactionType)?.toUpperCase() === 'INCOME' ? 'INCOME' : 'EXPENSE';
+
+    try {
+      switch (queryType) {
+        case 'SUMMARY':
+          return {
+            toolResult: JSON.stringify(
+              await this.analytics.summary(workspace.id, workspace.baseCurrency, fromDate, toDate),
+            ),
+          };
+        case 'BY_CATEGORY':
+          return {
+            toolResult: JSON.stringify(
+              await this.analytics.byCategory(
+                workspace.id,
+                workspace.baseCurrency,
+                fromDate,
+                toDate,
+                txType,
+              ),
+            ),
+          };
+        case 'TREND': {
+          const months = this.monthsBetween(fromDate, toDate);
+          return {
+            toolResult: JSON.stringify(
+              await this.analytics.trend(workspace.id, workspace.baseCurrency, months, workspace.tier),
+            ),
+          };
+        }
+        case 'TOP_MERCHANTS':
+          return {
+            toolResult: JSON.stringify(
+              await this.analytics.topMerchants(
+                workspace.id,
+                workspace.baseCurrency,
+                fromDate,
+                toDate,
+                5,
+              ),
+            ),
+          };
+        case 'NET_WORTH':
+          return {
+            toolResult: JSON.stringify({
+              error: 'Net worth requires the portfolio feature, available on Pro (coming soon).',
+            }),
+          };
+        default:
+          return { toolResult: JSON.stringify({ error: `Unknown queryType: ${queryType}` }) };
+      }
+    } catch (error) {
+      return { toolResult: JSON.stringify({ error: this.errorMessage(error) }) };
+    }
+  }
+
+  private monthsBetween(from: string, to: string): number {
+    const a = new Date(from.slice(0, 10));
+    const b = new Date(to.slice(0, 10));
+    const months =
+      (b.getUTCFullYear() - a.getUTCFullYear()) * 12 + (b.getUTCMonth() - a.getUTCMonth()) + 1;
+    return Math.min(Math.max(months, 1), 24);
   }
 
   private async execFxRate(input: Record<string, unknown>): Promise<ToolExecResult> {
