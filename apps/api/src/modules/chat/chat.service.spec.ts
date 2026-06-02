@@ -5,6 +5,7 @@ import { CategoriesService } from '../categories/categories.service';
 import { FxService } from '../fx/fx.service';
 import { LlmService } from '../llm/llm.service';
 import { TransactionsService } from '../transactions/transactions.service';
+import { BudgetsService } from '../budgets/budgets.service';
 import type { WorkspaceContext } from '../../common/context';
 import type { LlmToolCall } from '../llm/llm.types';
 import { ChatService } from './chat.service';
@@ -28,6 +29,7 @@ function build(overrides?: {
   const fx = { getRate: overrides?.getRate ?? jest.fn() };
   const categories = { findByName: overrides?.findCategory ?? jest.fn().mockResolvedValue(null) };
   const accounts = { findByName: overrides?.findAccount ?? jest.fn().mockResolvedValue(null) };
+  const budgets = { createOrUpdate: jest.fn(), list: jest.fn().mockResolvedValue([]) };
   const service = new ChatService(
     {} as unknown as PrismaService,
     {} as unknown as ConversationsService,
@@ -36,8 +38,9 @@ function build(overrides?: {
     fx as unknown as FxService,
     categories as unknown as CategoriesService,
     accounts as unknown as AccountsService,
+    budgets as unknown as BudgetsService,
   );
-  return { service, transactions, fx, categories, accounts };
+  return { service, transactions, fx, categories, accounts, budgets };
 }
 
 function call(name: string, input: Record<string, unknown>): LlmToolCall {
@@ -57,7 +60,7 @@ const txView = {
 
 describe('ChatService.executeTool', () => {
   it('log_expense with high confidence creates a transaction and returns an action', async () => {
-    const txCreate = jest.fn().mockResolvedValue(txView);
+    const txCreate = jest.fn().mockResolvedValue({ transaction: txView, budgetChange: null });
     const { service, transactions } = build({ txCreate });
 
     const result = await service.executeTool(
@@ -134,6 +137,7 @@ describe('ChatService.handleMessage — LLM provider failure', () => {
     };
     const accounts = { list: jest.fn().mockResolvedValue([]) };
     const categories = { list: jest.fn().mockResolvedValue([]) };
+    const budgets = { list: jest.fn().mockResolvedValue([]) };
     const service = new ChatService(
       prisma as unknown as PrismaService,
       conversations as unknown as ConversationsService,
@@ -142,6 +146,7 @@ describe('ChatService.handleMessage — LLM provider failure', () => {
       {} as unknown as FxService,
       categories as unknown as CategoriesService,
       accounts as unknown as AccountsService,
+      budgets as unknown as BudgetsService,
     );
     return { service, create };
   }

@@ -47,12 +47,12 @@ export class TransactionsController {
   @Roles('OWNER', 'CO_MANAGER')
   @RequireWithinLimit('currencies', { currencyField: 'currencyOriginal' })
   @UseGuards(RolesGuard, TierLimitGuard)
-  create(
+  async create(
     @Workspace() workspace: WorkspaceContext,
     @CurrentUser() user: AuthUser,
     @Body(new ZodValidationPipe(createTransactionSchema)) body: CreateTransactionInput,
   ): Promise<TransactionView> {
-    return this.transactions.create({
+    const result = await this.transactions.create({
       workspaceId: workspace.id,
       loggedByUserId: user.userId,
       baseCurrency: workspace.baseCurrency,
@@ -67,6 +67,7 @@ export class TransactionsController {
       description: body.description,
       tags: body.tags,
     });
+    return result.transaction;
   }
 
   @Patch(':transactionId')

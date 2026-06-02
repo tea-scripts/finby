@@ -7,6 +7,15 @@ export function buildSystemPrompt(ctx: SystemPromptContext): string {
       ? ctx.accounts.map((a) => `${a.name} (${a.currency})`).join(', ')
       : 'none yet';
   const categories = ctx.categories.length > 0 ? ctx.categories.join(', ') : 'none yet';
+  const budgets =
+    ctx.budgets.length > 0
+      ? ctx.budgets
+          .map(
+            (b) =>
+              `${b.category}: ${b.spent}/${b.limit} ${ctx.workspace.baseCurrency} (${b.utilizationPercent}%)`,
+          )
+          .join('; ')
+      : 'none set';
 
   const lines = [
     'You are Budgy, a friendly and sharp personal finance assistant.',
@@ -21,6 +30,7 @@ export function buildSystemPrompt(ctx: SystemPromptContext): string {
     `- Base currency: ${ctx.workspace.baseCurrency}`,
     `- Active accounts: ${accounts}`,
     `- Active categories: ${categories}`,
+    `- Current budget utilization: ${budgets}`,
     `- Subscription tier: ${ctx.workspace.tier}`,
     '',
     'USER CONTEXT:',

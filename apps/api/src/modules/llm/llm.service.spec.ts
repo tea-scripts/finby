@@ -13,7 +13,7 @@ describe('LlmService', () => {
   it('exposes the Phase-2 tool definitions', () => {
     const service = new LlmService(new FakeProvider());
     const names = service.getTools().map((t) => t.name);
-    expect(names).toEqual(['log_expense', 'log_income', 'log_transfer', 'get_fx_rate']);
+    expect(names).toEqual(['log_expense', 'log_income', 'log_transfer', 'set_budget', 'get_fx_rate']);
   });
 
   it('builds a system prompt with workspace + user context', () => {
@@ -23,12 +23,14 @@ describe('LlmService', () => {
       workspace: { baseCurrency: 'USD', tier: 'FREE' },
       accounts: [{ name: 'Wise USD', currency: 'USD' }],
       categories: ['Groceries', 'Dining'],
+      budgets: [{ category: 'Groceries', spent: '9800', limit: '15000', utilizationPercent: 65.3 }],
       today: '2026-06-02',
     });
     expect(prompt).toContain('Aisha Bello');
     expect(prompt).toContain('Base currency: USD');
     expect(prompt).toContain('Groceries, Dining');
     expect(prompt).toContain('Wise USD (USD)');
+    expect(prompt).toContain('Groceries: 9800/15000');
   });
 
   it('delegates createMessage to the provider', async () => {

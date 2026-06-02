@@ -1,3 +1,5 @@
+import type { BudgetSpendChange } from '../budgets/budgets.types';
+
 export type TransactionTypeP2 = 'EXPENSE' | 'INCOME' | 'TRANSFER';
 export type TransactionStatusP2 = 'CONFIRMED' | 'PENDING';
 
@@ -44,4 +46,9 @@ export interface TransactionListResult {
   transactions: TransactionView[];
   nextCursor: string | null;
   hasMore: boolean;
+}
+
+export interface CreateTransactionResult {
+  transaction: TransactionView;
+  budgetChange: BudgetSpendChange | null;
 }

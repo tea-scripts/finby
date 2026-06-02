@@ -44,6 +44,7 @@ export interface SystemPromptContext {
   workspace: { baseCurrency: string; tier: string };
   accounts: Array<{ name: string; currency: string }>;
   categories: string[];
+  budgets: Array<{ category: string; spent: string; limit: string; utilizationPercent: number }>;
   today: string;
   rollingContextSummary?: string | null;
 }

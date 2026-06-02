@@ -68,6 +68,31 @@ export const PHASE2_TOOLS: LlmToolDef[] = [
     },
   },
   {
+    name: 'set_budget',
+    description:
+      'Create or update a budget for a spending category. Use when the user wants to allocate or cap spending, e.g. "budget ₱15,000 for groceries this month".',
+    input_schema: {
+      type: 'object',
+      properties: {
+        categoryName: { type: 'string', description: "Category to budget, e.g. 'Groceries'" },
+        amountLimit: {
+          type: 'string',
+          description: 'Budget limit as a decimal string in the workspace base currency.',
+        },
+        period: {
+          type: 'string',
+          enum: ['MONTHLY', 'WEEKLY', 'QUARTERLY'],
+          description: 'Budget period. Defaults to MONTHLY.',
+        },
+        periodStart: {
+          type: 'string',
+          description: 'ISO date for period start. Defaults to current period.',
+        },
+      },
+      required: ['categoryName', 'amountLimit'],
+    },
+  },
+  {
     name: 'get_fx_rate',
     description:
       'Get the exchange rate between two currencies. Use for conversions or when logging in an unusual currency.',

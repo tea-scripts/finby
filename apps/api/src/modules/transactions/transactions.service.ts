@@ -3,9 +3,12 @@ import type { Account, Prisma } from '@prisma/client';
 import type { SubscriptionTier } from '@budgy/shared';
 import { PrismaService } from '../../prisma/prisma.service';
 import { FxService } from '../fx/fx.service';
+import { BudgetsService } from '../budgets/budgets.service';
+import type { BudgetSpendChange } from '../budgets/budgets.types';
 import type { ListTransactionsQuery, UpdateTransactionInput } from './dto/transactions.schemas';
 import type {
   CreateTransactionParams,
+  CreateTransactionResult,
   TransactionListResult,
   TransactionView,
 } from './transactions.types';
@@ -24,9 +27,10 @@ export class TransactionsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly fx: FxService,
+    private readonly budgets: BudgetsService,
   ) {}
 
-  async create(params: CreateTransactionParams): Promise<TransactionView> {
+  async create(params: CreateTransactionParams): Promise<CreateTransactionResult> {
     const status = params.status ?? 'CONFIRMED';
     const dateOnly = params.transactionDate.slice(0, 10);
 
@@ -61,7 +65,8 @@ export class TransactionsService {
         )
       : null;
 
-    const created = await this.prisma.$transaction(async (txc) => {
+    const txDate = new Date(dateOnly);
+    const { created, budgetChange } = await this.prisma.$transaction(async (txc) => {
       const transaction = await txc.transaction.create({
         data: {
           workspaceId: params.workspaceId,
@@ -79,7 +84,7 @@ export class TransactionsService {
           toAccountId: params.toAccountId ?? null,
           merchant: params.merchant ?? null,
           description: params.description ?? null,
-          transactionDate: new Date(dateOnly),
+          transactionDate: txDate,
           tags: params.tags ?? [],
           aiConfidence: params.aiConfidence ?? null,
           sourceMessageId: params.sourceMessageId ?? null,
@@ -87,6 +92,7 @@ export class TransactionsService {
         include: VIEW_INCLUDE,
       });
 
+      let change: BudgetSpendChange | null = null;
       if (status === 'CONFIRMED') {
         await this.applyBalances(
           txc,
@@ -97,12 +103,21 @@ export class TransactionsService {
           toDelta,
           1,
         );
+        if (params.type === 'EXPENSE' && params.categoryId) {
+          change = await this.budgets.applyTransactionSpend(txc, {
+            workspaceId: params.workspaceId,
+            categoryId: params.categoryId,
+            transactionDate: txDate,
+            amountBase: conversion.amountBase,
+            sign: 1,
+          });
+        }
       }
 
-      return transaction;
+      return { created: transaction, budgetChange: change };
     });
 
-    return this.toView(created);
+    return { transaction: this.toView(created), budgetChange };
   }
 
   async list(
@@ -225,6 +240,15 @@ export class TransactionsService {
           toDelta,
           -1,
         );
+        if (existing.type === 'EXPENSE' && existing.categoryId) {
+          await this.budgets.applyTransactionSpend(txc, {
+            workspaceId,
+            categoryId: existing.categoryId,
+            transactionDate: existing.transactionDate,
+            amountBase: existing.amountBase.toString(),
+            sign: -1,
+          });
+        }
       }
     });
 

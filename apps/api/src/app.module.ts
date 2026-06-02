@@ -5,6 +5,7 @@ import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { ConfigModule } from './config/config.module';
 import { AccountsModule } from './modules/accounts/accounts.module';
 import { AuthModule } from './modules/auth/auth.module';
+import { BudgetsModule } from './modules/budgets/budgets.module';
 import { CategoriesModule } from './modules/categories/categories.module';
 import { ChatModule } from './modules/chat/chat.module';
 import { JwtAuthGuard } from './modules/auth/guards/jwt-auth.guard';
@@ -23,6 +24,7 @@ import { RedisModule } from './redis/redis.module';
     AccountsModule,
     CategoriesModule,
     TransactionsModule,
+    BudgetsModule,
     ChatModule,
   ],
   controllers: [AppController],

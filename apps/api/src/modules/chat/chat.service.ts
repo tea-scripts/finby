@@ -7,6 +7,7 @@ import { CategoriesService } from '../categories/categories.service';
 import { FxService } from '../fx/fx.service';
 import { LlmService } from '../llm/llm.service';
 import { TransactionsService } from '../transactions/transactions.service';
+import { BudgetsService } from '../budgets/budgets.service';
 import type { LlmMessage, LlmResponse, LlmToolCall } from '../llm/llm.types';
 import type { WorkspaceContext } from '../../common/context';
 import { ConversationsService } from './conversations.service';
@@ -44,6 +45,7 @@ export class ChatService {
     private readonly fx: FxService,
     private readonly categories: CategoriesService,
     private readonly accounts: AccountsService,
+    private readonly budgets: BudgetsService,
   ) {}
 
   async handleMessage(
@@ -186,6 +188,8 @@ export class ChatService {
         return this.execLog(workspace, userId, 'INCOME', call.input);
       case 'log_transfer':
         return this.execTransfer(workspace, userId, call.input);
+      case 'set_budget':
+        return this.execSetBudget(workspace, call.input);
       case 'get_fx_rate':
         return this.execFxRate(call.input);
       default:
@@ -239,7 +243,7 @@ export class ChatService {
     const account = accountName ? await this.accounts.findByName(workspace.id, accountName) : null;
 
     try {
-      const tx = await this.transactions.create({
+      const { transaction: tx, budgetChange } = await this.transactions.create({
         workspaceId: workspace.id,
         loggedByUserId: userId,
         baseCurrency: workspace.baseCurrency,
@@ -274,6 +278,16 @@ export class ChatService {
           currencyBase: tx.currencyBase,
           category: tx.category?.name ?? null,
           account: tx.account?.name ?? null,
+          ...(budgetChange
+            ? {
+                budget: {
+                  category: budgetChange.categoryName,
+                  spent: budgetChange.newSpent,
+                  limit: budgetChange.amountLimit,
+                  utilizationPercent: budgetChange.newPercent,
+                },
+              }
+            : {}),
         }),
         action,
       };
@@ -320,7 +334,7 @@ export class ChatService {
     }
 
     try {
-      const tx = await this.transactions.create({
+      const { transaction: tx } = await this.transactions.create({
         workspaceId: workspace.id,
         loggedByUserId: userId,
         baseCurrency: workspace.baseCurrency,
@@ -348,6 +362,54 @@ export class ChatService {
           to: to.name,
         }),
         action,
+      };
+    } catch (error) {
+      return { toolResult: JSON.stringify({ error: this.errorMessage(error) }) };
+    }
+  }
+
+  private async execSetBudget(
+    workspace: WorkspaceContext,
+    input: Record<string, unknown>,
+  ): Promise<ToolExecResult> {
+    const categoryName = asString(input.categoryName);
+    const amountLimit = asString(input.amountLimit);
+    if (!categoryName || !amountLimit) {
+      return { toolResult: JSON.stringify({ error: 'Missing category or amount.' }) };
+    }
+
+    const category = await this.categories.findByName(workspace.id, categoryName);
+    if (!category) {
+      return {
+        toolResult: JSON.stringify({
+          error: `No category named "${categoryName}". Ask the user to pick an existing category or create it first.`,
+        }),
+      };
+    }
+
+    const periodRaw = asString(input.period)?.toUpperCase();
+    const period =
+      periodRaw === 'WEEKLY' || periodRaw === 'QUARTERLY' || periodRaw === 'ANNUAL'
+        ? periodRaw
+        : 'MONTHLY';
+
+    try {
+      const budget = await this.budgets.createOrUpdate(workspace.id, workspace.baseCurrency, {
+        categoryId: category.id,
+        amountLimit,
+        period,
+        periodStart: asString(input.periodStart),
+      });
+      return {
+        toolResult: JSON.stringify({
+          status: 'budget_set',
+          category: budget.category.name,
+          amountLimit: budget.amountLimit,
+          currency: budget.currency,
+          period: budget.period,
+          alreadySpent: budget.amountSpent,
+          utilizationPercent: budget.utilizationPercent,
+        }),
       };
     } catch (error) {
       return { toolResult: JSON.stringify({ error: this.errorMessage(error) }) };
@@ -419,6 +481,7 @@ export class ChatService {
   ): Promise<string> {
     const accounts = await this.accounts.list(workspace.id);
     const categories = await this.categories.list(workspace.id);
+    const budgets = await this.budgets.list(workspace.id, {});
     return this.llm.buildSystemPrompt({
       user: {
         displayName: user?.displayName ?? 'there',
@@ -429,6 +492,14 @@ export class ChatService {
         .filter((a) => !a.isArchived)
         .map((a) => ({ name: a.name, currency: a.currency })),
       categories: categories.filter((c) => !c.isArchived).map((c) => c.name),
+      budgets: budgets
+        .filter((b) => b.isActive)
+        .map((b) => ({
+          category: b.category.name,
+          spent: b.amountSpent,
+          limit: b.amountLimit,
+          utilizationPercent: b.utilizationPercent,
+        })),
       today: today(),
     });
   }

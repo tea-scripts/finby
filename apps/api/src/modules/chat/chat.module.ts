@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { AccountsModule } from '../accounts/accounts.module';
+import { BudgetsModule } from '../budgets/budgets.module';
 import { CategoriesModule } from '../categories/categories.module';
 import { FxModule } from '../fx/fx.module';
 import { LlmModule } from '../llm/llm.module';
@@ -9,7 +10,7 @@ import { ConversationsController } from './conversations.controller';
 import { ConversationsService } from './conversations.service';
 
 @Module({
-  imports: [LlmModule, TransactionsModule, FxModule, CategoriesModule, AccountsModule],
+  imports: [LlmModule, TransactionsModule, FxModule, CategoriesModule, AccountsModule, BudgetsModule],
   controllers: [ConversationsController],
   providers: [ConversationsService, ChatService],
 })
