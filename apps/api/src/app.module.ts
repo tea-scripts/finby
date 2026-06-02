@@ -6,6 +6,7 @@ import { ConfigModule } from './config/config.module';
 import { AccountsModule } from './modules/accounts/accounts.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { CategoriesModule } from './modules/categories/categories.module';
+import { ChatModule } from './modules/chat/chat.module';
 import { JwtAuthGuard } from './modules/auth/guards/jwt-auth.guard';
 import { FxModule } from './modules/fx/fx.module';
 import { TransactionsModule } from './modules/transactions/transactions.module';
@@ -22,6 +23,7 @@ import { RedisModule } from './redis/redis.module';
     AccountsModule,
     CategoriesModule,
     TransactionsModule,
+    ChatModule,
   ],
   controllers: [AppController],
   providers: [
