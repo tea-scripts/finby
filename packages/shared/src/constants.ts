@@ -43,6 +43,23 @@ export interface TierLimits {
   proactiveCoaching: boolean;
 }
 
+/**
+ * Paid-tier pricing for checkout. Amounts are in the smallest currency unit
+ * (USD cents), billed monthly. FREE has no price. Transcribed from the PRD
+ * (~$4.99 / ~$9.99 / ~$14.99).
+ */
+export interface TierPrice {
+  amountMinor: number;
+  currency: string;
+  interval: 'month';
+}
+
+export const TIER_PRICING: Record<Exclude<SubscriptionTier, 'FREE'>, TierPrice> = {
+  PRO: { amountMinor: 499, currency: 'USD', interval: 'month' },
+  PREMIUM: { amountMinor: 999, currency: 'USD', interval: 'month' },
+  FAMILY: { amountMinor: 1499, currency: 'USD', interval: 'month' },
+};
+
 export const TIER_LIMITS: Record<SubscriptionTier, TierLimits> = {
   FREE: {
     chatMessagesPerDay: 20,

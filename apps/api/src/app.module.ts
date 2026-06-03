@@ -7,6 +7,7 @@ import { AccountsModule } from './modules/accounts/accounts.module';
 import { AlertsModule } from './modules/alerts/alerts.module';
 import { AnalyticsModule } from './modules/analytics/analytics.module';
 import { AuthModule } from './modules/auth/auth.module';
+import { BillingModule } from './modules/billing/billing.module';
 import { BudgetsModule } from './modules/budgets/budgets.module';
 import { CategoriesModule } from './modules/categories/categories.module';
 import { ChatModule } from './modules/chat/chat.module';
@@ -33,6 +34,7 @@ import { RedisModule } from './redis/redis.module';
     AlertsModule,
     AnalyticsModule,
     PortfolioModule,
+    BillingModule,
     ChatModule,
   ],
   controllers: [AppController],
