@@ -34,3 +34,7 @@ BUDGY_API_CONTRACT.md
 BUDGY_SCHEMA_DECISIONS.md
 *.docx
 *.pdf
+
+# Session handover artifacts
+HANDOVER.md
+HANDOVER-*.md
