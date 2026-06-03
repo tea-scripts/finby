@@ -1,6 +1,7 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import type { InvestmentEvent, PortfolioHolding } from '@prisma/client';
+import { TIER_LIMITS } from '@finby/shared';
 import { PrismaService } from '../../prisma/prisma.service';
 import { FxService } from '../fx/fx.service';
 import { MarketDataService } from '../market/market.service';
@@ -47,6 +48,21 @@ export class PortfolioService {
         },
       },
     });
+
+    if (!existing) {
+      const cap = TIER_LIMITS[params.tier].portfolioHoldings;
+      if (cap !== null) {
+        const count = await this.prisma.portfolioHolding.count({
+          where: { workspaceId: params.workspaceId, isActive: true },
+        });
+        if (count >= cap) {
+          throw new ForbiddenException({
+            error: 'TIER_LIMIT',
+            message: `The ${params.tier} plan supports up to ${cap} holdings. Upgrade to Premium for unlimited.`,
+          });
+        }
+      }
+    }
 
     const holding =
       existing ??

@@ -5,7 +5,7 @@ import { MarketDataService } from '../market/market.service';
 import { PortfolioService } from './portfolio.service';
 
 function buildPrisma() {
-  const holding = { findUnique: jest.fn(), create: jest.fn(), update: jest.fn(), findMany: jest.fn(), findFirst: jest.fn() };
+  const holding = { findUnique: jest.fn(), create: jest.fn(), update: jest.fn(), findMany: jest.fn(), findFirst: jest.fn(), count: jest.fn().mockResolvedValue(0) };
   const investmentEvent = { create: jest.fn(), findMany: jest.fn() };
   const client = { portfolioHolding: holding, investmentEvent, $transaction: jest.fn() };
   client.$transaction.mockImplementation((arg: unknown) =>
@@ -47,6 +47,7 @@ const baseParams = {
   workspaceId: 'w1',
   ownedByUserId: 'u1',
   baseCurrency: 'USD',
+  tier: 'PRO' as const,
   ticker: 'AAPL',
   currency: 'USD',
   eventDate: '2026-05-28',
@@ -126,6 +127,21 @@ describe('PortfolioService.logEvent — cost basis', () => {
     expect(updateArg.data.quantity).toBe('0');
     expect(updateArg.data.avgCostBasis).toBe('182'); // unchanged
     expect(updateArg.data.isActive).toBe(false);
+  });
+
+  it('blocks a new holding when the tier holdings cap is reached', async () => {
+    const prisma = buildPrisma();
+    prisma.portfolioHolding.findUnique.mockResolvedValue(null);
+    prisma.portfolioHolding.count.mockResolvedValue(10); // PRO cap = 10
+    const service = new PortfolioService(
+      prisma as unknown as PrismaService,
+      buildFx() as unknown as FxService,
+      buildMarket() as unknown as MarketDataService,
+    );
+    await expect(
+      service.logEvent({ ...baseParams, ticker: 'NEWCO', action: 'BUY', quantity: '1', pricePerUnit: '10' }),
+    ).rejects.toMatchObject({ response: { error: 'TIER_LIMIT' } });
+    expect(prisma.portfolioHolding.create).not.toHaveBeenCalled();
   });
 
   it('creates the holding with costCurrency from the first event', async () => {

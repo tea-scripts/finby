@@ -36,6 +36,7 @@ export class PortfolioController {
       workspaceId: workspace.id,
       ownedByUserId: user.userId,
       baseCurrency: workspace.baseCurrency,
+      tier: workspace.tier,
       ticker: body.ticker,
       action: body.action,
       quantity: body.quantity,

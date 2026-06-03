@@ -1,4 +1,10 @@
-import { HttpException, Injectable, Logger, ServiceUnavailableException } from '@nestjs/common';
+import {
+  HttpException,
+  HttpStatus,
+  Injectable,
+  Logger,
+  ServiceUnavailableException,
+} from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
 import { TIER_LIMITS, type SubscriptionTier } from '@finby/shared';
 import { PrismaService } from '../../prisma/prisma.service';
@@ -66,6 +72,9 @@ export class ChatService {
       userId,
       conversationId,
     );
+
+    await this.enforceDailyMessageLimit(workspace.tier, workspace.id, userId);
+
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
       select: { displayName: true, timezone: true },
@@ -546,6 +555,7 @@ export class ChatService {
         workspaceId: workspace.id,
         ownedByUserId: userId,
         baseCurrency: workspace.baseCurrency,
+        tier: workspace.tier,
         ticker,
         action: action as InvestmentActionP4,
         quantity,
@@ -656,6 +666,35 @@ export class ChatService {
       where: { id: conversationId },
       data: { messageCount, title: existingTitle ?? userContent.slice(0, 50), updatedAt: new Date() },
     });
+  }
+
+  private async enforceDailyMessageLimit(
+    tier: SubscriptionTier,
+    workspaceId: string,
+    userId: string,
+  ): Promise<void> {
+    const limit = TIER_LIMITS[tier].chatMessagesPerDay;
+    if (limit === null) {
+      return;
+    }
+    const startOfDay = new Date();
+    startOfDay.setUTCHours(0, 0, 0, 0);
+    const used = await this.prisma.conversationMessage.count({
+      where: {
+        role: 'USER',
+        createdAt: { gte: startOfDay },
+        conversation: { workspaceId, userId },
+      },
+    });
+    if (used >= limit) {
+      throw new HttpException(
+        {
+          error: 'RATE_LIMITED',
+          message: `You've reached the ${tier} plan's daily limit of ${limit} messages. Upgrade for unlimited chat.`,
+        },
+        HttpStatus.TOO_MANY_REQUESTS,
+      );
+    }
   }
 
   private async buildSystemPrompt(

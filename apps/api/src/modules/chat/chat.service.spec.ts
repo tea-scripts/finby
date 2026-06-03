@@ -178,14 +178,14 @@ describe('ChatService.executeTool', () => {
 });
 
 describe('ChatService.handleMessage — LLM provider failure', () => {
-  function buildForHandle(createMessage: jest.Mock) {
+  function buildForHandle(createMessage: jest.Mock, dailyCount = 2) {
     const create = jest.fn().mockResolvedValue({ id: 'm', createdAt: new Date('2026-06-02T00:00:00Z') });
     const prisma = {
       user: { findUnique: jest.fn().mockResolvedValue({ displayName: 'Aisha', timezone: 'UTC' }) },
       conversationMessage: {
         create,
         findMany: jest.fn().mockResolvedValue([]),
-        count: jest.fn().mockResolvedValue(2),
+        count: jest.fn().mockResolvedValue(dailyCount),
         updateMany: jest.fn(),
       },
       conversation: { update: jest.fn() },
@@ -217,6 +217,15 @@ describe('ChatService.handleMessage — LLM provider failure', () => {
     );
     return { service, create };
   }
+
+  it('blocks a FREE workspace that hit the daily message limit (429) before calling the LLM', async () => {
+    const createMessage = jest.fn();
+    const { service } = buildForHandle(createMessage, 20); // FREE cap = 20
+    await expect(service.handleMessage(workspace, 'u1', 'c1', 'hi')).rejects.toMatchObject({
+      response: { error: 'RATE_LIMITED' },
+    });
+    expect(createMessage).not.toHaveBeenCalled();
+  });
 
   it('throws 503 and persists a fallback assistant message when the LLM call fails', async () => {
     const createMessage = jest.fn().mockRejectedValue(new Error('credit balance too low'));

@@ -1,9 +1,12 @@
+import type { SubscriptionTier } from '@finby/shared';
+
 export type InvestmentActionP4 = 'BUY' | 'SELL' | 'DIVIDEND' | 'SPLIT' | 'ADD';
 
 export interface LogEventParams {
   workspaceId: string;
   ownedByUserId: string;
   baseCurrency: string;
+  tier: SubscriptionTier;
   ticker: string;
   action: InvestmentActionP4;
   quantity: string;

@@ -11,6 +11,7 @@ import { BillingModule } from './modules/billing/billing.module';
 import { BudgetsModule } from './modules/budgets/budgets.module';
 import { CategoriesModule } from './modules/categories/categories.module';
 import { ChatModule } from './modules/chat/chat.module';
+import { ExportModule } from './modules/export/export.module';
 import { JwtAuthGuard } from './modules/auth/guards/jwt-auth.guard';
 import { FxModule } from './modules/fx/fx.module';
 import { MarketModule } from './modules/market/market.module';
@@ -35,6 +36,7 @@ import { RedisModule } from './redis/redis.module';
     AnalyticsModule,
     PortfolioModule,
     BillingModule,
+    ExportModule,
     ChatModule,
   ],
   controllers: [AppController],

@@ -35,6 +35,7 @@ export interface TierLimits {
   currencies: number | null;
   analyticsTrendMonths: number | null;
   portfolio: boolean;
+  portfolioHoldings: number | null;
   netWorth: boolean;
   marketData: boolean;
   memberInvites: boolean;
@@ -68,6 +69,7 @@ export const TIER_LIMITS: Record<SubscriptionTier, TierLimits> = {
     currencies: 1,
     analyticsTrendMonths: 3,
     portfolio: false,
+    portfolioHoldings: 0,
     netWorth: false,
     marketData: false,
     memberInvites: false,
@@ -82,6 +84,7 @@ export const TIER_LIMITS: Record<SubscriptionTier, TierLimits> = {
     currencies: null,
     analyticsTrendMonths: null,
     portfolio: true,
+    portfolioHoldings: 10,
     netWorth: true,
     marketData: true,
     memberInvites: false,
@@ -96,6 +99,7 @@ export const TIER_LIMITS: Record<SubscriptionTier, TierLimits> = {
     currencies: null,
     analyticsTrendMonths: null,
     portfolio: true,
+    portfolioHoldings: null,
     netWorth: true,
     marketData: true,
     memberInvites: false,
@@ -110,6 +114,7 @@ export const TIER_LIMITS: Record<SubscriptionTier, TierLimits> = {
     currencies: null,
     analyticsTrendMonths: null,
     portfolio: true,
+    portfolioHoldings: null,
     netWorth: true,
     marketData: true,
     memberInvites: true,
