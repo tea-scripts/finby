@@ -77,6 +77,18 @@ export interface ConversationSummary {
   updatedAt: string;
 }
 
+/** GET /workspaces/:id/conversations */
+export interface ConversationListResult {
+  conversations: ConversationSummary[];
+}
+
+/** POST /workspaces/:id/conversations */
+export interface CreatedConversation {
+  id: string;
+  title: string | null;
+  createdAt: string;
+}
+
 export interface MessagesResult {
   messages: ChatMessageView[];
   nextCursor: string | null;

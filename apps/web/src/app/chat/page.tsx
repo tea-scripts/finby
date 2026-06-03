@@ -1,0 +1,221 @@
+'use client';
+
+import { useRouter } from 'next/navigation';
+import { useEffect, useRef, useState } from 'react';
+import { ActionCard } from '@/components/chat/action-card';
+import { Composer } from '@/components/chat/composer';
+import { ConfirmationCard } from '@/components/chat/confirmation-card';
+import { MessageBubble } from '@/components/chat/message-bubble';
+import { TypingDots } from '@/components/chat/typing-dots';
+import { Logo } from '@/components/logo';
+import { ApiError } from '@/lib/api-client';
+import {
+  createConversation,
+  listConversations,
+  listMessages,
+  sendMessage,
+} from '@/lib/chat-api';
+import { useAuth } from '@/lib/store';
+import type { ChatAction, PendingConfirmation } from '@/lib/types';
+
+interface UiMessage {
+  id: string;
+  role: string;
+  content: string;
+  actions?: ChatAction[];
+  confirmations?: PendingConfirmation[];
+}
+
+type Notice = { kind: 'limit' | 'down' | 'error'; message: string } | null;
+
+function genId(): string {
+  try {
+    return crypto.randomUUID();
+  } catch {
+    return `tmp-${Math.random().toString(36).slice(2)}`;
+  }
+}
+
+export default function ChatPage() {
+  const router = useRouter();
+  const status = useAuth((s) => s.status);
+  const workspace = useAuth((s) => s.workspace);
+  const user = useAuth((s) => s.user);
+  const logout = useAuth((s) => s.logout);
+
+  const [hydrated, setHydrated] = useState(false);
+  const [conversationId, setConversationId] = useState<string | null>(null);
+  const [messages, setMessages] = useState<UiMessage[]>([]);
+  const [loadingHistory, setLoadingHistory] = useState(true);
+  const [sending, setSending] = useState(false);
+  const [notice, setNotice] = useState<Notice>(null);
+
+  const initialized = useRef(false);
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  // Wait for the persisted auth store to rehydrate before guarding.
+  useEffect(() => {
+    setHydrated(useAuth.persist.hasHydrated());
+    return useAuth.persist.onFinishHydration(() => setHydrated(true));
+  }, []);
+
+  // Auth guard + one-time conversation bootstrap.
+  useEffect(() => {
+    if (!hydrated) return;
+    if (status !== 'authed' || !workspace) {
+      router.replace('/login');
+      return;
+    }
+    if (initialized.current) return;
+    initialized.current = true;
+
+    const wsId = workspace.id;
+    (async () => {
+      setLoadingHistory(true);
+      try {
+        const convs = await listConversations(wsId);
+        const convId = convs[0]?.id ?? (await createConversation(wsId)).id;
+        setConversationId(convId);
+        const { messages: rows } = await listMessages(wsId, convId);
+        // API returns newest-first; reverse for chronological display.
+        setMessages(
+          [...rows].reverse().map((m) => ({ id: m.id, role: m.role, content: m.content })),
+        );
+      } catch (err) {
+        handleError(err);
+      } finally {
+        setLoadingHistory(false);
+      }
+    })();
+  }, [hydrated, status, workspace, router]);
+
+  // Keep the view pinned to the latest message.
+  useEffect(() => {
+    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
+  }, [messages, sending]);
+
+  function handleError(err: unknown) {
+    if (err instanceof ApiError) {
+      if (err.status === 429) setNotice({ kind: 'limit', message: err.message });
+      else if (err.status === 503) setNotice({ kind: 'down', message: err.message });
+      else if (err.status === 401)
+        setNotice({ kind: 'error', message: 'Your session expired. Please sign in again.' });
+      else setNotice({ kind: 'error', message: err.message });
+    } else {
+      setNotice({ kind: 'error', message: 'Something went wrong. Please try again.' });
+    }
+  }
+
+  async function handleSend(content: string) {
+    if (!workspace || !conversationId || sending) return;
+    setNotice(null);
+    setMessages((m) => [...m, { id: genId(), role: 'USER', content }]);
+    setSending(true);
+    try {
+      const result = await sendMessage(workspace.id, conversationId, content);
+      setMessages((m) => [
+        ...m,
+        {
+          id: result.message.id,
+          role: result.message.role,
+          content: result.message.content,
+          actions: result.actions,
+          confirmations: result.pendingConfirmations,
+        },
+      ]);
+    } catch (err) {
+      handleError(err);
+    } finally {
+      setSending(false);
+    }
+  }
+
+  async function onSignOut() {
+    await logout();
+    router.replace('/login');
+  }
+
+  if (!hydrated || (status === 'authed' && loadingHistory)) {
+    return (
+      <main className="flex min-h-screen items-center justify-center">
+        <TypingDots />
+      </main>
+    );
+  }
+
+  const noticeStyles: Record<NonNullable<Notice>['kind'], string> = {
+    limit: 'border-warn/40 bg-warn/10 text-warn',
+    down: 'border-warn/40 bg-warn/10 text-warn',
+    error: 'border-danger/40 bg-danger/10 text-danger',
+  };
+
+  return (
+    <div className="flex h-screen flex-col">
+      <header className="sticky top-0 z-10 border-b border-line bg-canvas/80 backdrop-blur">
+        <div className="mx-auto flex w-full max-w-2xl items-center justify-between px-4 py-3">
+          <Logo />
+          <div className="flex items-center gap-3">
+            {user && <span className="hidden text-sm text-muted sm:inline">{user.displayName}</span>}
+            <button
+              onClick={onSignOut}
+              className="rounded-lg border border-line bg-surface px-3 py-1.5 text-xs text-muted transition hover:border-accent/50 hover:text-ink"
+            >
+              Sign out
+            </button>
+          </div>
+        </div>
+      </header>
+
+      <div ref={scrollRef} className="flex-1 overflow-y-auto">
+        <div className="mx-auto flex w-full max-w-2xl flex-col gap-4 px-4 py-6">
+          {messages.length === 0 && (
+            <div className="mt-16 text-center animate-fade-up">
+              <h1 className="font-display text-2xl font-bold text-ink">
+                Hey{user ? `, ${user.displayName}` : ''} 👋
+              </h1>
+              <p className="mt-2 text-balance text-sm text-muted">
+                Tell me what you spent or earned and I’ll log it. Try{' '}
+                <span className="text-ink">“spent 12 on lunch”</span>.
+              </p>
+            </div>
+          )}
+
+          {messages.map((m) => (
+            <MessageBubble key={m.id} role={m.role} content={m.content}>
+              {m.actions?.map((a) => (
+                <ActionCard key={a.transactionId} action={a} />
+              ))}
+              {m.confirmations?.map((c) => (
+                <ConfirmationCard
+                  key={c.confirmationId}
+                  confirmation={c}
+                  disabled={sending}
+                  onRespond={handleSend}
+                />
+              ))}
+            </MessageBubble>
+          ))}
+
+          {sending && (
+            <div className="flex justify-start">
+              <div className="rounded-2xl rounded-bl-md border border-line bg-surface px-4 py-2.5">
+                <TypingDots />
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div className="border-t border-line bg-canvas/80 backdrop-blur">
+        <div className="mx-auto w-full max-w-2xl px-4 py-3">
+          {notice && (
+            <div className={`mb-2 rounded-xl border px-3.5 py-2.5 text-sm ${noticeStyles[notice.kind]}`}>
+              {notice.message}
+            </div>
+          )}
+          <Composer disabled={sending} onSend={handleSend} />
+        </div>
+      </div>
+    </div>
+  );
+}
