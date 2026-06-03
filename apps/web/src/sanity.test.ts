@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { DEFAULT_CATEGORIES } from '@budgy/shared';
+import { DEFAULT_CATEGORIES } from '@finby/shared';
 
 describe('workspace wiring', () => {
   it('resolves the shared package', () => {

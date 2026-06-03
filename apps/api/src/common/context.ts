@@ -1,4 +1,4 @@
-import type { SubscriptionTier, WorkspaceMemberRole } from '@budgy/shared';
+import type { SubscriptionTier, WorkspaceMemberRole } from '@finby/shared';
 import type { AuthUser } from '../modules/auth/auth.types';
 
 /** Workspace context attached to the request by WorkspaceMemberGuard. */

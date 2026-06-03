@@ -1,5 +1,5 @@
 {
-  "name": "@budgy/web",
+  "name": "finby-web",
   "version": "0.0.0",
   "private": true,
   "scripts": {
@@ -10,7 +10,7 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@budgy/shared": "workspace:*",
+    "@finby/shared": "workspace:*",
     "next": "^15.1.3",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",

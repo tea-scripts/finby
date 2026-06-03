@@ -1,7 +1,7 @@
 import { validateEnv } from './env.schema';
 
 const base = {
-  DATABASE_URL: 'postgresql://budgy:budgy@localhost:5434/budgy',
+  DATABASE_URL: 'postgresql://user:pass@localhost:5434/app',
   REDIS_URL: 'redis://localhost:6380',
   JWT_ACCESS_SECRET: 'a'.repeat(32),
   JWT_REFRESH_SECRET: 'b'.repeat(32),

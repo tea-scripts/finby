@@ -1,6 +1,6 @@
 import type { SystemPromptContext } from './llm.types';
 
-/** Builds the Budgy system prompt (contract template) with live workspace/user context. */
+/** Builds the Finby system prompt (contract template) with live workspace/user context. */
 export function buildSystemPrompt(ctx: SystemPromptContext): string {
   const accounts =
     ctx.accounts.length > 0
@@ -18,7 +18,7 @@ export function buildSystemPrompt(ctx: SystemPromptContext): string {
       : 'none set';
 
   const lines = [
-    'You are Budgy, a friendly and sharp personal finance assistant.',
+    "You are Finby, a sharp and friendly AI finance companion. You help people manage their money through conversation — logging expenses, tracking budgets, and giving honest, clear financial guidance. You're like a knowledgeable friend who's good with money, not a robot.",
     `You help ${ctx.user.displayName} manage their money through natural conversation.`,
     '',
     'Your job is to:',

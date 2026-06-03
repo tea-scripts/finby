@@ -1,8 +1,8 @@
 {
-  "name": "budgy",
+  "name": "finby",
   "version": "0.0.0",
   "private": true,
-  "description": "Budgy — conversational personal finance app",
+  "description": "Finby — conversational personal finance app",
   "packageManager": "pnpm@10.28.1",
   "engines": {
     "node": ">=20"
@@ -19,10 +19,10 @@
     "db:up": "docker compose up -d",
     "db:down": "docker compose down",
     "db:logs": "docker compose logs -f",
-    "db:migrate": "pnpm --filter @budgy/api prisma:migrate",
-    "db:seed": "pnpm --filter @budgy/api prisma:seed",
-    "db:generate": "pnpm --filter @budgy/api prisma:generate",
-    "db:studio": "pnpm --filter @budgy/api prisma:studio"
+    "db:migrate": "pnpm --filter finby-api prisma:migrate",
+    "db:seed": "pnpm --filter finby-api prisma:seed",
+    "db:generate": "pnpm --filter finby-api prisma:generate",
+    "db:studio": "pnpm --filter finby-api prisma:studio"
   },
   "devDependencies": {
     "@eslint/js": "^9.17.0",

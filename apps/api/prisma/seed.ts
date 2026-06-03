@@ -1,9 +1,9 @@
 import { PrismaClient } from '@prisma/client';
-import { DEFAULT_CATEGORIES } from '@budgy/shared';
+import { DEFAULT_CATEGORIES } from '@finby/shared';
 
 const prisma = new PrismaClient();
 
-const DEMO_WORKSPACE_SLUG = 'budgy-demo';
+const DEMO_WORKSPACE_SLUG = 'finby-demo';
 
 /**
  * Local-dev seed only. Creates one idempotent demo workspace so the
@@ -18,7 +18,7 @@ async function main(): Promise<void> {
     where: { slug: DEMO_WORKSPACE_SLUG },
     update: {},
     create: {
-      name: 'Budgy Demo',
+      name: 'Finby Demo',
       slug: DEMO_WORKSPACE_SLUG,
       baseCurrency: 'USD',
     },

@@ -3,7 +3,7 @@ import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import * as bcrypt from 'bcrypt';
-import { DEFAULT_CATEGORIES } from '@budgy/shared';
+import { DEFAULT_CATEGORIES } from '@finby/shared';
 import { PrismaService } from '../../prisma/prisma.service';
 import type { Env } from '../../config/env.schema';
 import type { LoginInput, RegisterInput } from './dto/auth.schemas';

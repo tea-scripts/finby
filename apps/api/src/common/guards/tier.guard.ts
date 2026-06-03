@@ -1,6 +1,6 @@
 import { CanActivate, ExecutionContext, ForbiddenException, Injectable } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import type { SubscriptionTier } from '@budgy/shared';
+import type { SubscriptionTier } from '@finby/shared';
 import { REQUIRED_TIER_KEY } from '../decorators/require-tier.decorator';
 import { AuthenticatedRequest, TIER_RANK } from '../context';
 

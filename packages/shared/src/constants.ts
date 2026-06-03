@@ -2,7 +2,7 @@ import type { SubscriptionTier } from './types';
 
 /**
  * Default spending categories seeded into every workspace on creation.
- * Order is intentional (most-common first). See BUDGY build order STEP 2.
+ * Order is intentional (most-common first). See FINBY build order STEP 2.
  */
 export interface DefaultCategorySeed {
   name: string;

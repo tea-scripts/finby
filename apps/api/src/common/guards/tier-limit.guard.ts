@@ -1,6 +1,6 @@
 import { CanActivate, ExecutionContext, ForbiddenException, Injectable } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import { TIER_LIMITS } from '@budgy/shared';
+import { TIER_LIMITS } from '@finby/shared';
 import { PrismaService } from '../../prisma/prisma.service';
 import { TIER_LIMIT_KEY, type TierLimitMeta } from '../decorators/tier-limit.decorator';
 import type { AuthenticatedRequest } from '../context';

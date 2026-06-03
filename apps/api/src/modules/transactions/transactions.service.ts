@@ -1,6 +1,6 @@
 import { Injectable, Logger, NotFoundException, UnprocessableEntityException } from '@nestjs/common';
 import type { Account, Prisma } from '@prisma/client';
-import type { SubscriptionTier } from '@budgy/shared';
+import type { SubscriptionTier } from '@finby/shared';
 import { PrismaService } from '../../prisma/prisma.service';
 import { FxService } from '../fx/fx.service';
 import { BudgetsService } from '../budgets/budgets.service';

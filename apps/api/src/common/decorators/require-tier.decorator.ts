@@ -1,5 +1,5 @@
 import { SetMetadata } from '@nestjs/common';
-import type { SubscriptionTier } from '@budgy/shared';
+import type { SubscriptionTier } from '@finby/shared';
 
 export const REQUIRED_TIER_KEY = 'requiredTier';
 

@@ -1,5 +1,5 @@
 import { SetMetadata } from '@nestjs/common';
-import type { WorkspaceMemberRole } from '@budgy/shared';
+import type { WorkspaceMemberRole } from '@finby/shared';
 
 export const ROLES_KEY = 'roles';
 

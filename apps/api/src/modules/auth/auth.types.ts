@@ -1,4 +1,4 @@
-import type { SubscriptionTier } from '@budgy/shared';
+import type { SubscriptionTier } from '@finby/shared';
 
 /** Shape attached to req.user by JwtStrategy. */
 export interface AuthUser {
