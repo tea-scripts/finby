@@ -18,7 +18,7 @@ import { AnalyticsService } from '../analytics/analytics.service';
 import { MarketDataService } from '../market/market.service';
 import { PortfolioService } from '../portfolio/portfolio.service';
 import type { InvestmentActionP4 } from '../portfolio/portfolio.types';
-import type { LlmMessage, LlmResponse, LlmToolCall } from '../llm/llm.types';
+import type { LlmContentBlock, LlmMessage, LlmResponse, LlmToolCall } from '../llm/llm.types';
 import type { WorkspaceContext } from '../../common/context';
 import { ConversationsService } from './conversations.service';
 import type {
@@ -30,6 +30,8 @@ import type {
 
 const CONFIDENCE_THRESHOLD = 0.7;
 const FREE_ACTIVE_WINDOW = 20;
+/** Safety cap on the agentic tool loop (one user turn). */
+const MAX_TOOL_ROUNDS = 5;
 const LLM_UNAVAILABLE_MESSAGE =
   "I'm having trouble reaching my assistant right now — please try again in a moment.";
 
@@ -108,11 +110,18 @@ export class ChatService {
 
     const actions: ChatAction[] = [];
     const pendingConfirmations: PendingConfirmation[] = [];
+
+    // Agentic tool loop: keep executing tools and re-prompting until the model
+    // returns final text (or we hit the cap). A single round was the original
+    // bug — multi-step sequences (e.g. get_fx_rate then log_expense) dropped the
+    // second tool, producing an empty message and logging nothing.
+    const convo: LlmMessage[] = [...messages];
+    let response = first;
     let finalText = first.textOutput;
 
-    if (first.toolCalls.length > 0) {
-      const toolResultBlocks = [];
-      for (const call of first.toolCalls) {
+    for (let round = 0; round < MAX_TOOL_ROUNDS && response.toolCalls.length > 0; round += 1) {
+      const toolResultBlocks: LlmContentBlock[] = [];
+      for (const call of response.toolCalls) {
         await this.prisma.conversationMessage.create({
           data: {
             conversationId,
@@ -137,29 +146,32 @@ export class ChatService {
         if (exec.action) actions.push(exec.action);
         if (exec.pending) pendingConfirmations.push(exec.pending);
         toolResultBlocks.push({
-          type: 'tool_result' as const,
+          type: 'tool_result',
           toolUseId: call.id,
           content: exec.toolResult,
         });
       }
 
+      convo.push({ role: 'assistant', content: response.content });
+      convo.push({ role: 'user', content: toolResultBlocks });
+
       try {
-        const followup = await this.llm.createMessage({
-          system,
-          messages: [
-            ...messages,
-            { role: 'assistant', content: first.content },
-            { role: 'user', content: toolResultBlocks },
-          ],
-          tools,
-        });
-        finalText = followup.textOutput || finalText;
+        response = await this.llm.createMessage({ system, messages: convo, tools });
       } catch (error) {
         // Tools already executed (e.g. a transaction was created) — don't lose
-        // the action by failing. Synthesize a minimal confirmation instead.
+        // the action by failing. Synthesize a minimal summary instead.
         this.logger.error(`LLM follow-up failed after tool execution: ${this.describe(error)}`);
-        finalText = finalText || this.fallbackSummary(actions);
+        finalText = this.fallbackSummary(actions);
+        response = { stopReason: 'error', content: [], textOutput: '', toolCalls: [] };
+        break;
       }
+      finalText = response.textOutput || finalText;
+    }
+
+    // Never surface an empty bubble — synthesize from actions if the model
+    // returned no text (or we exhausted the tool-round cap).
+    if (!finalText.trim()) {
+      finalText = this.fallbackSummary(actions);
     }
 
     const assistant = await this.prisma.conversationMessage.create({

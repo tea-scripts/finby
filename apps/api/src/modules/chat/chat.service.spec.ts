@@ -240,3 +240,114 @@ describe('ChatService.handleMessage — LLM provider failure', () => {
     expect(roles).toContain('ASSISTANT');
   });
 });
+
+describe('ChatService.handleMessage — multi-step tool loop', () => {
+  function toolUse(name: string, input: Record<string, unknown>, id = 't1') {
+    return {
+      stopReason: 'tool_use',
+      textOutput: '',
+      content: [{ type: 'tool_use' as const, id, name, input }],
+      toolCalls: [{ id, name, input }],
+    };
+  }
+  function finalText(text: string) {
+    return {
+      stopReason: 'end_turn',
+      textOutput: text,
+      content: [{ type: 'text' as const, text }],
+      toolCalls: [],
+    };
+  }
+
+  function buildForLoop(createMessage: jest.Mock) {
+    const create = jest.fn().mockResolvedValue({ id: 'm', createdAt: new Date('2026-06-02T00:00:00Z') });
+    const prisma = {
+      user: { findUnique: jest.fn().mockResolvedValue({ displayName: 'Timi', timezone: 'UTC' }) },
+      conversationMessage: {
+        create,
+        findMany: jest.fn().mockResolvedValue([]),
+        count: jest.fn().mockResolvedValue(2),
+        updateMany: jest.fn(),
+      },
+      conversation: { update: jest.fn() },
+    };
+    const conversations = {
+      requireConversation: jest.fn().mockResolvedValue({ id: 'c1', title: null }),
+    };
+    const llm = {
+      getTools: jest.fn().mockReturnValue([]),
+      buildSystemPrompt: jest.fn().mockReturnValue('sys'),
+      createMessage,
+    };
+    const transactions = {
+      create: jest.fn().mockResolvedValue({
+        transaction: { ...txView, amountOriginal: '0.21', category: { id: 'c1', name: 'Dining' } },
+        budgetChange: null,
+      }),
+    };
+    const fx = { getRate: jest.fn().mockResolvedValue({ from: 'PHP', to: 'USD', rate: '0.0175' }) };
+    const categories = {
+      findByName: jest.fn().mockResolvedValue({ id: 'c1', name: 'Dining' }),
+      list: jest.fn().mockResolvedValue([]),
+    };
+    const accounts = { findByName: jest.fn().mockResolvedValue(null), list: jest.fn().mockResolvedValue([]) };
+    const budgets = { list: jest.fn().mockResolvedValue([]) };
+    const service = new ChatService(
+      prisma as unknown as PrismaService,
+      conversations as unknown as ConversationsService,
+      llm as unknown as LlmService,
+      transactions as unknown as TransactionsService,
+      fx as unknown as FxService,
+      categories as unknown as CategoriesService,
+      accounts as unknown as AccountsService,
+      budgets as unknown as BudgetsService,
+      {} as unknown as AnalyticsService,
+      {} as unknown as MarketDataService,
+      {} as unknown as PortfolioService,
+    );
+    return { service, transactions, fx };
+  }
+
+  it('runs a second tool call (get_fx_rate then log_expense) and returns the action + final text', async () => {
+    const createMessage = jest
+      .fn()
+      .mockResolvedValueOnce(toolUse('get_fx_rate', { from: 'PHP', to: 'USD' }, 't1'))
+      .mockResolvedValueOnce(
+        toolUse(
+          'log_expense',
+          { amountOriginal: '0.21', currencyOriginal: 'USD', categoryName: 'Dining', confidence: 0.95 },
+          't2',
+        ),
+      )
+      .mockResolvedValueOnce(finalText('Logged $0.21 for lunch.'));
+    const { service, transactions, fx } = buildForLoop(createMessage);
+
+    const result = await service.handleMessage(workspace, 'u1', 'c1', 'log that as USD');
+
+    expect(fx.getRate).toHaveBeenCalled();
+    expect(transactions.create).toHaveBeenCalledTimes(1);
+    expect(result.actions).toHaveLength(1);
+    expect(result.actions[0]?.type).toBe('TRANSACTION_CREATED');
+    expect(result.message.content).toBe('Logged $0.21 for lunch.');
+    expect(createMessage).toHaveBeenCalledTimes(3);
+  });
+
+  it('never returns an empty assistant message even if the model ends with empty text', async () => {
+    const createMessage = jest
+      .fn()
+      .mockResolvedValueOnce(
+        toolUse(
+          'log_expense',
+          { amountOriginal: '50', currencyOriginal: 'USD', categoryName: 'Dining', confidence: 0.95 },
+          't1',
+        ),
+      )
+      .mockResolvedValueOnce(finalText(''));
+    const { service } = buildForLoop(createMessage);
+
+    const result = await service.handleMessage(workspace, 'u1', 'c1', 'spent 50 on dinner');
+
+    expect(result.actions).toHaveLength(1);
+    expect(result.message.content.length).toBeGreaterThan(0);
+  });
+});
