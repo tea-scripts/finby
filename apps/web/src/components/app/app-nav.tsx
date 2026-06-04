@@ -2,41 +2,15 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import type { ComponentType } from 'react';
+import { ChatCircleDots, type Icon, Receipt, SquaresFour } from '@phosphor-icons/react';
 
-function ChatIcon() {
-  return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <path d="M21 12a8 8 0 0 1-11.5 7.2L4 21l1.8-5.5A8 8 0 1 1 21 12Z" stroke="currentColor" strokeWidth="1.7" strokeLinejoin="round" />
-    </svg>
-  );
-}
-function GridIcon() {
-  return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <rect x="3" y="3" width="7" height="7" rx="1.5" stroke="currentColor" strokeWidth="1.7" />
-      <rect x="14" y="3" width="7" height="7" rx="1.5" stroke="currentColor" strokeWidth="1.7" />
-      <rect x="3" y="14" width="7" height="7" rx="1.5" stroke="currentColor" strokeWidth="1.7" />
-      <rect x="14" y="14" width="7" height="7" rx="1.5" stroke="currentColor" strokeWidth="1.7" />
-    </svg>
-  );
-}
-function ListIcon() {
-  return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <path d="M8 6h13M8 12h13M8 18h13" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
-      <circle cx="3.5" cy="6" r="1.3" fill="currentColor" />
-      <circle cx="3.5" cy="12" r="1.3" fill="currentColor" />
-      <circle cx="3.5" cy="18" r="1.3" fill="currentColor" />
-    </svg>
-  );
-}
-
-const ITEMS: Array<{ href: string; label: string; Icon: ComponentType }> = [
-  { href: '/chat', label: 'Chat', Icon: ChatIcon },
-  { href: '/dashboard', label: 'Dashboard', Icon: GridIcon },
-  { href: '/transactions', label: 'Transactions', Icon: ListIcon },
+const ITEMS: Array<{ href: string; label: string; Icon: Icon }> = [
+  { href: '/chat', label: 'Chat', Icon: ChatCircleDots },
+  { href: '/dashboard', label: 'Dashboard', Icon: SquaresFour },
+  { href: '/transactions', label: 'Transactions', Icon: Receipt },
 ];
+
+const ACTIVE_GLOW = 'drop-shadow-[0_0_6px_rgba(29,110,245,0.55)]';
 
 export function AppNav({ variant }: { variant: 'sidebar' | 'bar' }) {
   const pathname = usePathname();
@@ -58,7 +32,11 @@ export function AppNav({ variant }: { variant: 'sidebar' | 'bar' }) {
                   : 'text-muted hover:bg-surface-2 hover:text-ink'
               }`}
             >
-              <Icon />
+              <Icon
+                size={20}
+                weight={active ? 'fill' : 'regular'}
+                className={active ? ACTIVE_GLOW : ''}
+              />
               {label}
             </Link>
           );
@@ -80,7 +58,11 @@ export function AppNav({ variant }: { variant: 'sidebar' | 'bar' }) {
               active ? 'text-accent' : 'text-muted'
             }`}
           >
-            <Icon />
+            <Icon
+              size={22}
+              weight={active ? 'fill' : 'regular'}
+              className={active ? ACTIVE_GLOW : ''}
+            />
             {label}
           </Link>
         );
