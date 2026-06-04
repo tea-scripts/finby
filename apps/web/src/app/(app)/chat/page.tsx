@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { Fragment, useEffect, useRef, useState } from 'react';
 import { ActionCard } from '@/components/chat/action-card';
 import { Composer } from '@/components/chat/composer';
 import { ConfirmationCard } from '@/components/chat/confirmation-card';
@@ -8,6 +8,7 @@ import { MessageBubble } from '@/components/chat/message-bubble';
 import { TypingDots } from '@/components/chat/typing-dots';
 import { Lottie } from '@/components/ui/lottie';
 import { ApiError } from '@/lib/api-client';
+import { dayKey, dayLabel } from '@/lib/format';
 import {
   createConversation,
   listConversations,
@@ -21,6 +22,7 @@ interface UiMessage {
   id: string;
   role: string;
   content: string;
+  createdAt: string;
   actions?: ChatAction[];
   confirmations?: PendingConfirmation[];
 }
@@ -63,7 +65,9 @@ export default function ChatPage() {
         const { messages: rows } = await listMessages(wsId, convId);
         // API returns newest-first; reverse for chronological display.
         setMessages(
-          [...rows].reverse().map((m) => ({ id: m.id, role: m.role, content: m.content })),
+          [...rows]
+            .reverse()
+            .map((m) => ({ id: m.id, role: m.role, content: m.content, createdAt: m.createdAt })),
         );
       } catch (err) {
         handleError(err);
@@ -93,7 +97,10 @@ export default function ChatPage() {
   async function handleSend(content: string) {
     if (!workspace || !conversationId || sending) return;
     setNotice(null);
-    setMessages((m) => [...m, { id: genId(), role: 'USER', content }]);
+    setMessages((m) => [
+      ...m,
+      { id: genId(), role: 'USER', content, createdAt: new Date().toISOString() },
+    ]);
     setSending(true);
     try {
       const result = await sendMessage(workspace.id, conversationId, content);
@@ -103,6 +110,7 @@ export default function ChatPage() {
           id: result.message.id,
           role: result.message.role,
           content: result.message.content,
+          createdAt: result.message.createdAt,
           actions: result.actions,
           confirmations: result.pendingConfirmations,
         },
@@ -145,21 +153,33 @@ export default function ChatPage() {
             </div>
           )}
 
-          {messages.map((m) => (
-            <MessageBubble key={m.id} role={m.role} content={m.content}>
-              {m.actions?.map((a) => (
-                <ActionCard key={a.transactionId} action={a} />
-              ))}
-              {m.confirmations?.map((c) => (
-                <ConfirmationCard
-                  key={c.confirmationId}
-                  confirmation={c}
-                  disabled={sending}
-                  onRespond={handleSend}
-                />
-              ))}
-            </MessageBubble>
-          ))}
+          {messages.map((m, i) => {
+            const showDay = i === 0 || dayKey(m.createdAt) !== dayKey(messages[i - 1]!.createdAt);
+            return (
+              <Fragment key={m.id}>
+                {showDay && (
+                  <div className="flex justify-center py-1">
+                    <span className="rounded-full border border-line bg-surface/70 px-3 py-1 text-[11px] font-medium text-muted">
+                      {dayLabel(m.createdAt)}
+                    </span>
+                  </div>
+                )}
+                <MessageBubble role={m.role} content={m.content} createdAt={m.createdAt}>
+                  {m.actions?.map((a) => (
+                    <ActionCard key={a.transactionId} action={a} />
+                  ))}
+                  {m.confirmations?.map((c) => (
+                    <ConfirmationCard
+                      key={c.confirmationId}
+                      confirmation={c}
+                      disabled={sending}
+                      onRespond={handleSend}
+                    />
+                  ))}
+                </MessageBubble>
+              </Fragment>
+            );
+          })}
 
           {sending && (
             <div className="flex justify-start">
