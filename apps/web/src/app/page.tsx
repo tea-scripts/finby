@@ -1,10 +1,12 @@
 import Link from 'next/link';
 import { Logo } from '@/components/logo';
+import { OnboardingRedirect } from '@/components/onboarding/onboarding-redirect';
 import { Lottie } from '@/components/ui/lottie';
 
 export default function HomePage() {
   return (
     <main className="relative flex min-h-screen items-center justify-center px-4">
+      <OnboardingRedirect />
       <div className="bg-grid pointer-events-none absolute inset-0 opacity-50" />
       <div className="relative flex max-w-xl flex-col items-center text-center animate-fade-up">
         <Logo />
