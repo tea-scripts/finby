@@ -1,14 +1,11 @@
 'use client';
 
-import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 import { ActionCard } from '@/components/chat/action-card';
 import { Composer } from '@/components/chat/composer';
 import { ConfirmationCard } from '@/components/chat/confirmation-card';
 import { MessageBubble } from '@/components/chat/message-bubble';
-import { NotifToggle } from '@/components/chat/notif-toggle';
 import { TypingDots } from '@/components/chat/typing-dots';
-import { Logo } from '@/components/logo';
 import { ApiError } from '@/lib/api-client';
 import {
   createConversation,
@@ -38,13 +35,9 @@ function genId(): string {
 }
 
 export default function ChatPage() {
-  const router = useRouter();
-  const status = useAuth((s) => s.status);
   const workspace = useAuth((s) => s.workspace);
   const user = useAuth((s) => s.user);
-  const logout = useAuth((s) => s.logout);
 
-  const [hydrated, setHydrated] = useState(false);
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [messages, setMessages] = useState<UiMessage[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(true);
@@ -54,20 +47,9 @@ export default function ChatPage() {
   const initialized = useRef(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  // Wait for the persisted auth store to rehydrate before guarding.
+  // One-time conversation bootstrap (the shell guarantees an authed workspace).
   useEffect(() => {
-    setHydrated(useAuth.persist.hasHydrated());
-    return useAuth.persist.onFinishHydration(() => setHydrated(true));
-  }, []);
-
-  // Auth guard + one-time conversation bootstrap.
-  useEffect(() => {
-    if (!hydrated) return;
-    if (status !== 'authed' || !workspace) {
-      router.replace('/login');
-      return;
-    }
-    if (initialized.current) return;
+    if (!workspace || initialized.current) return;
     initialized.current = true;
 
     const wsId = workspace.id;
@@ -88,7 +70,7 @@ export default function ChatPage() {
         setLoadingHistory(false);
       }
     })();
-  }, [hydrated, status, workspace, router]);
+  }, [workspace]);
 
   // Keep the view pinned to the latest message.
   useEffect(() => {
@@ -131,16 +113,11 @@ export default function ChatPage() {
     }
   }
 
-  async function onSignOut() {
-    await logout();
-    router.replace('/login');
-  }
-
-  if (!hydrated || (status === 'authed' && loadingHistory)) {
+  if (loadingHistory) {
     return (
-      <main className="flex min-h-screen items-center justify-center">
+      <div className="flex h-full items-center justify-center">
         <TypingDots />
-      </main>
+      </div>
     );
   }
 
@@ -151,23 +128,7 @@ export default function ChatPage() {
   };
 
   return (
-    <div className="flex h-screen flex-col">
-      <header className="sticky top-0 z-10 border-b border-line bg-canvas/80 backdrop-blur">
-        <div className="mx-auto flex w-full max-w-2xl items-center justify-between px-4 py-3">
-          <Logo />
-          <div className="flex items-center gap-3">
-            {user && <span className="hidden text-sm text-muted sm:inline">{user.displayName}</span>}
-            <NotifToggle />
-            <button
-              onClick={onSignOut}
-              className="rounded-lg border border-line bg-surface px-3 py-1.5 text-xs text-muted transition hover:border-accent/50 hover:text-ink"
-            >
-              Sign out
-            </button>
-          </div>
-        </div>
-      </header>
-
+    <div className="flex h-full flex-col">
       <div ref={scrollRef} className="flex-1 overflow-y-auto">
         <div className="mx-auto flex w-full max-w-2xl flex-col gap-4 px-4 py-6">
           {messages.length === 0 && (
