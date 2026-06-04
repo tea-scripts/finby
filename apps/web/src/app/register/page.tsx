@@ -5,13 +5,16 @@ import { useRouter } from 'next/navigation';
 import { useState, type FormEvent } from 'react';
 import { AuthShell } from '@/components/auth/auth-shell';
 import { Button } from '@/components/ui/button';
+import { Dropdown } from '@/components/ui/dropdown';
 import { Field } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
-import { Select } from '@/components/ui/select';
+import { PasswordInput } from '@/components/ui/password-input';
 import { ApiError } from '@/lib/api-client';
 import { useAuth } from '@/lib/store';
 
-const CURRENCIES = ['USD', 'EUR', 'GBP', 'NGN', 'KES', 'GHS', 'ZAR', 'CAD', 'AUD', 'INR', 'JPY'];
+const CURRENCIES = ['USD', 'EUR', 'GBP', 'NGN', 'KES', 'GHS', 'ZAR', 'CAD', 'AUD', 'INR', 'JPY'].map(
+  (code) => ({ value: code, label: code }),
+);
 
 function detectTimezone(): string {
   try {
@@ -109,9 +112,8 @@ export default function RegisterPage() {
         </Field>
 
         <Field label="Password" htmlFor="password" hint="At least 8 characters.">
-          <Input
+          <PasswordInput
             id="password"
-            type="password"
             autoComplete="new-password"
             placeholder="••••••••"
             value={password}
@@ -120,17 +122,13 @@ export default function RegisterPage() {
         </Field>
 
         <Field label="Base currency" htmlFor="baseCurrency" hint={`Timezone detected: ${timezone}`}>
-          <Select
+          <Dropdown
             id="baseCurrency"
+            aria-label="Base currency"
             value={baseCurrency}
-            onChange={(e) => setBaseCurrency(e.target.value)}
-          >
-            {CURRENCIES.map((code) => (
-              <option key={code} value={code}>
-                {code}
-              </option>
-            ))}
-          </Select>
+            onChange={setBaseCurrency}
+            options={CURRENCIES}
+          />
         </Field>
 
         <Button type="submit" loading={loading} className="w-full">
