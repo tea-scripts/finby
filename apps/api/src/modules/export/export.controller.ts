@@ -1,4 +1,4 @@
-import { Controller, Get, Query, Res, UseGuards } from '@nestjs/common';
+import { Controller, Get, Query, Res, StreamableFile, UseGuards } from '@nestjs/common';
 import type { Response } from 'express';
 import { RequireTier } from '../../common/decorators/require-tier.decorator';
 import { Workspace } from '../../common/decorators/workspace.decorator';
@@ -20,11 +20,16 @@ export class ExportController {
     @Workspace() workspace: WorkspaceContext,
     @Query(new ZodValidationPipe(exportQuerySchema)) query: ExportQuery,
     @Res({ passthrough: true }) res: Response,
-  ): Promise<string | Record<string, unknown>> {
+  ): Promise<string | Record<string, unknown> | StreamableFile> {
     if (query.format === 'json') {
       res.setHeader('Content-Type', 'application/json');
       res.setHeader('Content-Disposition', 'attachment; filename="finby-export.json"');
       return this.exportService.exportJson(workspace.id);
+    }
+    if (query.format === 'pdf') {
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', 'attachment; filename="finby-statement.pdf"');
+      return new StreamableFile(await this.exportService.exportPdf(workspace.id));
     }
     res.setHeader('Content-Type', 'text/csv');
     res.setHeader('Content-Disposition', 'attachment; filename="finby-transactions.csv"');
