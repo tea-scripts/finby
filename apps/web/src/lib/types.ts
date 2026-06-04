@@ -94,3 +94,97 @@ export interface MessagesResult {
   nextCursor: string | null;
   hasMore: boolean;
 }
+
+// ── Dashboard / Transactions ─────────────────────────────────────────────
+
+/** GET analytics/summary */
+export interface SummaryResult {
+  period: { from: string; to: string };
+  totalIncome: string;
+  totalExpenses: string;
+  netSavings: string;
+  savingsRate: number;
+  currency: string;
+  transactionCount: number;
+}
+
+/** GET budgets → { budgets: BudgetView[] } */
+export interface BudgetView {
+  id: string;
+  category: { id: string; name: string };
+  amountLimit: string;
+  amountSpent: string;
+  currency: string;
+  utilizationPercent: number;
+  period: string;
+  periodStart: string;
+  periodEnd: string;
+  isActive: boolean;
+}
+
+/** GET accounts → AccountView[] */
+export interface AccountView {
+  id: string;
+  name: string;
+  currency: string;
+  accountType: string;
+  balance: string;
+  color: string | null;
+  icon: string | null;
+  isArchived: boolean;
+}
+
+/** A category as needed by filter/edit pickers (GET categories → { categories }). */
+export interface Category {
+  id: string;
+  name: string;
+  isArchived: boolean;
+}
+
+/** GET/PATCH transactions item */
+export interface Transaction {
+  id: string;
+  type: string;
+  status: string;
+  amountOriginal: string;
+  currencyOriginal: string;
+  amountBase: string;
+  currencyBase: string;
+  fxRateUsed: string;
+  merchant: string | null;
+  description: string | null;
+  category: { id: string; name: string } | null;
+  account: { id: string; name: string } | null;
+  transactionDate: string;
+  tags: string[];
+  aiConfidence: number | null;
+  loggedByUserId: string;
+  createdAt: string;
+}
+
+/** GET transactions */
+export interface TransactionListResult {
+  transactions: Transaction[];
+  nextCursor: string | null;
+  hasMore: boolean;
+}
+
+/** Fields editable via PATCH transactions/:id. */
+export interface TransactionPatch {
+  categoryId?: string | null;
+  merchant?: string | null;
+  description?: string | null;
+  transactionDate?: string;
+  tags?: string[];
+}
+
+/** Query params for GET transactions. */
+export interface TransactionQuery {
+  cursor?: string;
+  limit?: number;
+  type?: 'EXPENSE' | 'INCOME' | 'TRANSFER';
+  categoryId?: string;
+  fromDate?: string;
+  toDate?: string;
+  currency?: string;
+}
