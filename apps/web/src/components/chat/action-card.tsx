@@ -1,3 +1,4 @@
+import { Lottie } from '@/components/ui/lottie';
 import type { ChatAction } from '@/lib/types';
 
 /** Renders a committed action (currently only TRANSACTION_CREATED) as a
@@ -7,7 +8,8 @@ export function ActionCard({ action }: { action: ChatAction }) {
   return (
     <div className="mt-2 rounded-xl border border-line bg-surface-2/70 p-3.5 shadow-card">
       <div className="flex items-center justify-between gap-3">
-        <span className="text-[11px] font-medium uppercase tracking-wide text-success">
+        <span className="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wide text-success">
+          <Lottie src="/lottie/success.json" loop={false} className="h-5 w-5" />
           Logged
         </span>
         <span className="font-mono text-base font-semibold text-ink">

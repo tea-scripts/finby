@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { Logo } from '@/components/logo';
+import { Lottie } from '@/components/ui/lottie';
 
 export default function HomePage() {
   return (
@@ -7,7 +8,8 @@ export default function HomePage() {
       <div className="bg-grid pointer-events-none absolute inset-0 opacity-50" />
       <div className="relative flex max-w-xl flex-col items-center text-center animate-fade-up">
         <Logo />
-        <h1 className="mt-8 text-balance font-display text-4xl font-bold leading-tight text-ink sm:text-5xl">
+        <Lottie src="/lottie/hero.json" loop={false} className="mt-6 h-36 w-full max-w-xs" />
+        <h1 className="mt-2 text-balance font-display text-4xl font-bold leading-tight text-ink sm:text-5xl">
           Your money, your buddy.
         </h1>
         <p className="mt-4 text-balance text-base text-muted sm:text-lg">

@@ -6,6 +6,7 @@ import { Composer } from '@/components/chat/composer';
 import { ConfirmationCard } from '@/components/chat/confirmation-card';
 import { MessageBubble } from '@/components/chat/message-bubble';
 import { TypingDots } from '@/components/chat/typing-dots';
+import { Lottie } from '@/components/ui/lottie';
 import { ApiError } from '@/lib/api-client';
 import {
   createConversation,
@@ -133,6 +134,7 @@ export default function ChatPage() {
         <div className="mx-auto flex w-full max-w-2xl flex-col gap-4 px-4 py-6">
           {messages.length === 0 && (
             <div className="mt-16 text-center animate-fade-up">
+              <Lottie src="/lottie/empty.json" className="mx-auto mb-2 h-24 w-24" />
               <h1 className="font-display text-2xl font-bold text-ink">
                 Hey{user ? `, ${user.displayName}` : ''} 👋
               </h1>
@@ -161,8 +163,8 @@ export default function ChatPage() {
 
           {sending && (
             <div className="flex justify-start">
-              <div className="rounded-2xl rounded-bl-md border border-line bg-surface px-4 py-2.5">
-                <TypingDots />
+              <div className="rounded-2xl rounded-bl-md border border-line bg-surface px-3 py-1.5">
+                <Lottie src="/lottie/typing.json" className="h-6 w-14" />
               </div>
             </div>
           )}

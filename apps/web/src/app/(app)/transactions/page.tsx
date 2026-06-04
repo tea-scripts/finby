@@ -5,6 +5,7 @@ import { EditTransactionModal } from '@/components/transactions/edit-transaction
 import { TransactionFilters } from '@/components/transactions/transaction-filters';
 import { TransactionRow } from '@/components/transactions/transaction-row';
 import { Button } from '@/components/ui/button';
+import { Lottie } from '@/components/ui/lottie';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ApiError } from '@/lib/api-client';
 import { listCategories, listTransactions } from '@/lib/transactions-api';
@@ -92,7 +93,10 @@ export default function TransactionsPage() {
           ) : error ? (
             <p className="p-5 text-sm text-danger">{error}</p>
           ) : items.length === 0 ? (
-            <p className="p-5 text-sm text-faint">No transactions match these filters.</p>
+            <div className="flex flex-col items-center gap-2 p-10 text-center">
+              <Lottie src="/lottie/empty.json" className="h-20 w-20" />
+              <p className="text-sm text-faint">No transactions match these filters.</p>
+            </div>
           ) : (
             <div className="divide-y divide-line">
               {items.map((tx) => (
