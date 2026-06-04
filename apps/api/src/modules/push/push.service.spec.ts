@@ -1,0 +1,80 @@
+import * as webpush from 'web-push';
+import { ConfigService } from '@nestjs/config';
+import { PrismaService } from '../../prisma/prisma.service';
+import type { Env } from '../../config/env.schema';
+import { PushService } from './push.service';
+
+jest.mock('web-push', () => ({
+  setVapidDetails: jest.fn(),
+  sendNotification: jest.fn(),
+}));
+
+const sendNotification = webpush.sendNotification as jest.Mock;
+
+function makeConfig(values: Record<string, string | undefined>): ConfigService<Env, true> {
+  return {
+    get: (key: string) => values[key],
+  } as unknown as ConfigService<Env, true>;
+}
+
+const CONFIGURED = {
+  VAPID_PUBLIC_KEY: 'pub',
+  VAPID_PRIVATE_KEY: 'priv',
+  VAPID_SUBJECT: 'mailto:test@finby.app',
+};
+
+beforeEach(() => jest.clearAllMocks());
+
+describe('PushService (unconfigured)', () => {
+  it('reports no public key and skips sending', async () => {
+    const findMany = jest.fn();
+    const prisma = { pushSubscription: { findMany } };
+    const service = new PushService(prisma as unknown as PrismaService, makeConfig({}));
+
+    expect(service.getPublicKey()).toBeNull();
+    await service.sendToUser('w1', 'u1', { title: 'x', body: 'y' });
+    expect(findMany).not.toHaveBeenCalled();
+    expect(sendNotification).not.toHaveBeenCalled();
+  });
+});
+
+describe('PushService (configured)', () => {
+  it('exposes the public key and upserts a subscription by endpoint', async () => {
+    const upsert = jest.fn().mockResolvedValue({});
+    const prisma = { pushSubscription: { upsert } };
+    const service = new PushService(prisma as unknown as PrismaService, makeConfig(CONFIGURED));
+
+    expect(service.getPublicKey()).toBe('pub');
+    await service.subscribe('w1', 'u1', {
+      endpoint: 'https://push.example/abc',
+      keys: { p256dh: 'k1', auth: 'k2' },
+    });
+
+    expect(upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { endpoint: 'https://push.example/abc' },
+        create: expect.objectContaining({ workspaceId: 'w1', userId: 'u1', p256dh: 'k1', auth: 'k2' }),
+      }),
+    );
+  });
+
+  it('sends to every device and prunes a 410-gone subscription', async () => {
+    const subs = [
+      { endpoint: 'https://push.example/live', p256dh: 'a', auth: 'b' },
+      { endpoint: 'https://push.example/dead', p256dh: 'c', auth: 'd' },
+    ];
+    const findMany = jest.fn().mockResolvedValue(subs);
+    const del = jest.fn().mockResolvedValue({});
+    const prisma = { pushSubscription: { findMany, delete: del } };
+
+    sendNotification
+      .mockResolvedValueOnce(undefined)
+      .mockRejectedValueOnce(Object.assign(new Error('gone'), { statusCode: 410 }));
+
+    const service = new PushService(prisma as unknown as PrismaService, makeConfig(CONFIGURED));
+    await service.sendToUser('w1', 'u1', { title: 'Budget', body: 'over', url: '/chat' });
+
+    expect(sendNotification).toHaveBeenCalledTimes(2);
+    expect(del).toHaveBeenCalledWith({ where: { endpoint: 'https://push.example/dead' } });
+  });
+});

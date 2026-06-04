@@ -6,6 +6,7 @@ import { ActionCard } from '@/components/chat/action-card';
 import { Composer } from '@/components/chat/composer';
 import { ConfirmationCard } from '@/components/chat/confirmation-card';
 import { MessageBubble } from '@/components/chat/message-bubble';
+import { NotifToggle } from '@/components/chat/notif-toggle';
 import { TypingDots } from '@/components/chat/typing-dots';
 import { Logo } from '@/components/logo';
 import { ApiError } from '@/lib/api-client';
@@ -156,6 +157,7 @@ export default function ChatPage() {
           <Logo />
           <div className="flex items-center gap-3">
             {user && <span className="hidden text-sm text-muted sm:inline">{user.displayName}</span>}
+            <NotifToggle />
             <button
               onClick={onSignOut}
               className="rounded-lg border border-line bg-surface px-3 py-1.5 text-xs text-muted transition hover:border-accent/50 hover:text-ink"

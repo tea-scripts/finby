@@ -199,6 +199,7 @@ model Workspace {
   conversations     Conversation[]
   alerts            Alert[]
   fxRateSnapshots   FxRateSnapshot[]
+  pushSubscriptions PushSubscription[]
 
   @@index([slug])
   @@map("workspaces")
@@ -673,4 +674,26 @@ model Alert {
   @@index([workspaceId, userId, status])
   @@index([workspaceId, createdAt])
   @@map("alerts")
+}
+
+// ============================================================
+// PUSH SUBSCRIPTIONS
+// Web Push (VAPID) device subscriptions used to deliver alerts
+// as browser/PWA push notifications. One row per device endpoint.
+// ============================================================
+
+model PushSubscription {
+  id          String    @id @default(cuid())
+  workspaceId String
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  userId      String // Which member this device belongs to
+
+  endpoint    String    @unique // Push service endpoint URL
+  p256dh      String // Client public key (base64url)
+  auth        String // Client auth secret (base64url)
+
+  createdAt   DateTime  @default(now())
+
+  @@index([workspaceId, userId])
+  @@map("push_subscriptions")
 }

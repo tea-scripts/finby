@@ -16,6 +16,7 @@ import { JwtAuthGuard } from './modules/auth/guards/jwt-auth.guard';
 import { FxModule } from './modules/fx/fx.module';
 import { MarketModule } from './modules/market/market.module';
 import { PortfolioModule } from './modules/portfolio/portfolio.module';
+import { PushModule } from './modules/push/push.module';
 import { TransactionsModule } from './modules/transactions/transactions.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { RedisModule } from './redis/redis.module';
@@ -37,6 +38,7 @@ import { RedisModule } from './redis/redis.module';
     PortfolioModule,
     BillingModule,
     ExportModule,
+    PushModule,
     ChatModule,
   ],
   controllers: [AppController],

@@ -2,6 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import type { Alert } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import type { BudgetSpendChange } from '../budgets/budgets.types';
+import { PushService } from '../push/push.service';
 import type { ListAlertsQuery, UpdateAlertInput } from './dto/alerts.schemas';
 import type { AlertListResult, AlertView, BudgetAlertType } from './alerts.types';
 
@@ -53,7 +54,11 @@ function toView(alert: Alert): AlertView {
 
 @Injectable()
 export class AlertsService {
-  constructor(private readonly prisma: PrismaService) {}
+  // push is optional so unit tests can construct the service with just prisma.
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly push?: PushService,
+  ) {}
 
   async generateBudgetAlert(params: {
     workspaceId: string;
@@ -85,6 +90,12 @@ export class AlertsService {
         }),
       },
     });
+
+    // Fire-and-forget push delivery; never let it block or fail alert creation.
+    void this.push
+      ?.sendToUser(params.workspaceId, params.userId, { title, body, url: '/chat' })
+      ?.catch(() => undefined);
+
     return toView(alert);
   }
 
