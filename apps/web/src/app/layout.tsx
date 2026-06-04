@@ -1,4 +1,4 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import type { ReactNode } from 'react';
 import { Bricolage_Grotesque } from 'next/font/google';
 import { GeistSans } from 'geist/font/sans';
@@ -15,6 +15,17 @@ const display = Bricolage_Grotesque({
 export const metadata: Metadata = {
   title: 'Finby — your money, your buddy',
   description: 'Conversational personal finance. Log expenses, track budgets, and get honest guidance — just by chatting.',
+  applicationName: 'Finby',
+  appleWebApp: { capable: true, statusBarStyle: 'black-translucent', title: 'Finby' },
+  icons: {
+    icon: '/icons/icon-192.png',
+    apple: '/icons/apple-touch-icon.png',
+  },
+};
+
+export const viewport: Viewport = {
+  themeColor: '#06101f',
+  colorScheme: 'dark',
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {
