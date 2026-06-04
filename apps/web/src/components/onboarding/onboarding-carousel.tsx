@@ -44,7 +44,7 @@ export function OnboardingCarousel() {
   );
 
   const next = useCallback(() => {
-    if (last) finish('/register');
+    if (last) finish('/login');
     else setIndex((i) => i + 1);
   }, [last, finish]);
 
@@ -65,7 +65,7 @@ export function OnboardingCarousel() {
 
       <div className="relative flex justify-end">
         <button
-          onClick={() => finish('/')}
+          onClick={() => finish('/login')}
           className="rounded-lg px-3 py-1.5 text-sm font-medium text-muted transition hover:text-ink"
         >
           Skip
