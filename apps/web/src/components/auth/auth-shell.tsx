@@ -11,7 +11,7 @@ interface AuthShellProps {
 
 export function AuthShell({ title, subtitle, children, footer }: AuthShellProps) {
   return (
-    <main className="relative flex min-h-screen items-center justify-center px-4 py-12">
+    <main className="relative flex min-h-dvh items-center justify-center px-4 py-12">
       <div className="bg-grid pointer-events-none absolute inset-0 opacity-50" />
       <div className="relative w-full max-w-md animate-fade-up">
         <div className="mb-8 flex justify-center">

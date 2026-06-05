@@ -24,7 +24,7 @@ export async function apiFetch<T>(path: string, init: RequestInit = {}): Promise
       },
     });
   } catch {
-    throw new ApiError(0, 'NETWORK', 'Could not reach the server. Is it running?');
+    throw new ApiError(0, 'NETWORK', "We couldn't reach Finby. Please check your connection and try again.");
   }
 
   const text = await res.text();
@@ -32,7 +32,7 @@ export async function apiFetch<T>(path: string, init: RequestInit = {}): Promise
 
   if (!res.ok) {
     const body = (data ?? {}) as { error?: string; message?: string };
-    throw new ApiError(res.status, body.error ?? 'ERROR', body.message ?? 'Request failed');
+    throw new ApiError(res.status, body.error ?? 'ERROR', body.message ?? 'Something went wrong. Please try again.');
   }
   return data as T;
 }
