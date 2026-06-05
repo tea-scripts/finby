@@ -1,27 +1,39 @@
 'use client';
 
+import { useEffect } from 'react';
 import { Export, Plus } from '@phosphor-icons/react';
 
 /** iOS-only guided "Add to Home Screen" sheet. Apple exposes no programmatic
  *  install on Safari, so we walk the user through the two manual steps.
  *  Mobile-only; opened from InstallBanner on iOS. */
 export function InstallSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [open, onClose]);
+
   if (!open) return null;
 
   return (
     <div
-      role="dialog"
-      aria-modal="true"
-      aria-label="Install Finby"
       onClick={onClose}
       className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-sm md:hidden"
     >
       <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="install-sheet-title"
         onClick={(e) => e.stopPropagation()}
         className="w-full max-w-md animate-fade-up rounded-t-3xl border border-line bg-surface px-6 pt-6 shadow-card pb-[calc(env(safe-area-inset-bottom)+1.5rem)]"
       >
         <div className="mx-auto mb-5 h-1 w-10 rounded-full bg-line" />
-        <h2 className="text-center font-display text-xl font-bold text-ink">Install Finby</h2>
+        <h2 id="install-sheet-title" className="text-center font-display text-xl font-bold text-ink">
+          Install Finby
+        </h2>
         <p className="mt-1.5 text-center text-sm text-muted">
           Add Finby to your Home Screen for a full-screen, app-like experience.
         </p>
@@ -47,6 +59,7 @@ export function InstallSheet({ open, onClose }: { open: boolean; onClose: () => 
         </ol>
 
         <button
+          autoFocus
           onClick={onClose}
           className="mt-7 w-full rounded-xl bg-accent py-3 text-sm font-semibold text-white transition hover:bg-accent-hover"
         >
