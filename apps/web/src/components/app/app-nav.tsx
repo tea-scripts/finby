@@ -46,7 +46,7 @@ export function AppNav({ variant }: { variant: 'sidebar' | 'bar' }) {
   }
 
   return (
-    <nav className="flex border-t border-line bg-surface/80 backdrop-blur md:hidden">
+    <nav className="flex border-t border-line bg-surface/80 backdrop-blur pb-safe md:hidden">
       {ITEMS.map(({ href, label, Icon }) => {
         const active = isActive(href);
         return (

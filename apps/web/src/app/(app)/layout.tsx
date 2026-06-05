@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useState, type ReactNode } from 'react';
 import { AppHeader } from '@/components/app/app-header';
 import { AppNav } from '@/components/app/app-nav';
+import { InstallBanner } from '@/components/app/install-banner';
 import { TypingDots } from '@/components/chat/typing-dots';
 import { useAuth } from '@/lib/store';
 
@@ -29,19 +30,20 @@ export default function AppLayout({ children }: { children: ReactNode }) {
 
   if (!hydrated || status !== 'authed' || !workspace) {
     return (
-      <main className="flex min-h-screen items-center justify-center">
+      <main className="flex min-h-dvh items-center justify-center">
         <TypingDots />
       </main>
     );
   }
 
   return (
-    <div className="flex h-screen w-full flex-col md:flex-row">
+    <div className="flex h-dvh w-full flex-col md:flex-row">
       <AppNav variant="sidebar" />
       <div className="flex min-h-0 flex-1 flex-col">
         <AppHeader />
         <main className="min-h-0 flex-1 overflow-hidden">{children}</main>
       </div>
+      <InstallBanner />
       <AppNav variant="bar" />
     </div>
   );

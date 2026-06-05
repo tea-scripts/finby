@@ -18,7 +18,7 @@ export function AppHeader() {
   }
 
   return (
-    <header className="sticky top-0 z-10 border-b border-line bg-canvas/80 backdrop-blur">
+    <header className="sticky top-0 z-10 border-b border-line bg-canvas/80 backdrop-blur pt-safe">
       <div className="flex w-full items-center justify-between px-4 py-3">
         <Logo />
         <div className="flex items-center gap-3">
