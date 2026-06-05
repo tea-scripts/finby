@@ -1,30 +1,32 @@
+name: finby
+
 services:
   postgres:
     image: postgres:16-alpine
-    container_name: budgy-postgres
+    container_name: finby-postgres
     restart: unless-stopped
     environment:
-      POSTGRES_USER: budgy
-      POSTGRES_PASSWORD: budgy
-      POSTGRES_DB: budgy
+      POSTGRES_USER: finby
+      POSTGRES_PASSWORD: finby
+      POSTGRES_DB: finby
     ports:
       - "5434:5432"
     volumes:
-      - budgy_pg_data:/var/lib/postgresql/data
+      - pg_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U budgy -d budgy"]
+      test: ["CMD-SHELL", "pg_isready -U finby -d finby"]
       interval: 5s
       timeout: 5s
       retries: 5
 
   redis:
     image: redis:7-alpine
-    container_name: budgy-redis
+    container_name: finby-redis
     restart: unless-stopped
     ports:
       - "6380:6379"
     volumes:
-      - budgy_redis_data:/data
+      - redis_data:/data
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
@@ -32,5 +34,5 @@ services:
       retries: 5
 
 volumes:
-  budgy_pg_data:
-  budgy_redis_data:
+  pg_data:
+  redis_data:

@@ -1,7 +1,7 @@
 // ============================================================
-// BUDGY — Prisma Schema
+// FINBY — Prisma Schema
 // Version: 1.0.0
-// Derived from: Budgy PRD v1.0 (LOCKED)
+// Derived from: Finby PRD v1.0 (LOCKED)
 // Architecture: Workspace-first multi-tenancy
 //               Every financial entity is workspace-scoped.
 //               Users belong to workspaces via WorkspaceMember.
@@ -337,7 +337,7 @@ model Category {
 
 // ============================================================
 // TRANSACTIONS
-// The core financial record. Every money movement in Budgy
+// The core financial record. Every money movement in Finby
 // is a Transaction.
 //
 // MULTI-CURRENCY DESIGN (non-negotiable):
