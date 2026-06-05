@@ -12,8 +12,14 @@
     height: 100%;
   }
 
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+
   body {
     @apply bg-canvas text-ink font-sans antialiased;
+    overscroll-behavior: none;
+    -webkit-tap-highlight-color: transparent;
     background-image:
       radial-gradient(1100px 560px at 82% -12%, rgba(29, 110, 245, 0.12), transparent 60%),
       radial-gradient(820px 480px at -12% 112%, rgba(29, 110, 245, 0.07), transparent 55%);
@@ -51,5 +57,11 @@
   }
   .text-balance {
     text-wrap: balance;
+  }
+  .pt-safe {
+    padding-top: max(env(safe-area-inset-top), 0px);
+  }
+  .pb-safe {
+    padding-bottom: max(env(safe-area-inset-bottom), 0px);
   }
 }
