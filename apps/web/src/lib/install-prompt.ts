@@ -18,8 +18,13 @@ export interface InstallState {
   visible: boolean;
 }
 
-/** iOS Safari (iPhone/iPad/iPod). Excludes in-app browsers (Facebook,
- *  Instagram, LINE) where "Add to Home Screen" is unavailable. */
+/** iOS Safari (iPhone/iPad/iPod), by user-agent only. Excludes in-app browsers
+ *  (Facebook, Instagram, LINE) where "Add to Home Screen" is unavailable.
+ *  Returns false for an empty string (safe during SSR / first render).
+ *  Known limitation: iPadOS 13+ reports a desktop (Mac) UA by default, so a
+ *  modern iPad is intentionally NOT detected here — a pure user-agent module
+ *  cannot distinguish it from macOS Safari. (A consumer could refine this via
+ *  navigator.maxTouchPoints if iPad coverage ever matters.) */
 export function detectIOS(userAgent: string): boolean {
   const ua = userAgent.toLowerCase();
   const isAppleMobile = /iphone|ipad|ipod/.test(ua);

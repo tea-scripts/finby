@@ -9,6 +9,8 @@ const DESKTOP =
   'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36';
 const IOS_INSTAGRAM =
   'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148 Instagram 300.0.0';
+const IPAD_IOS13 =
+  'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15';
 
 describe('detectIOS', () => {
   it('true for iPhone Safari', () => expect(detectIOS(IPHONE)).toBe(true));
@@ -16,6 +18,9 @@ describe('detectIOS', () => {
   it('false for desktop', () => expect(detectIOS(DESKTOP)).toBe(false));
   it('false inside an in-app browser (Instagram)', () =>
     expect(detectIOS(IOS_INSTAGRAM)).toBe(false));
+  it('false for empty string (SSR-safe)', () => expect(detectIOS('')).toBe(false));
+  it('false for modern iPad reporting a desktop UA (documented limitation)', () =>
+    expect(detectIOS(IPAD_IOS13)).toBe(false));
 });
 
 describe('computeInstallState', () => {
