@@ -43,7 +43,7 @@ export function Composer({
         onChange={(e) => setValue(e.target.value)}
         onKeyDown={onKeyDown}
         placeholder="Tell Finby what you spent…"
-        className="max-h-40 min-h-[40px] flex-1 resize-none bg-transparent px-2 py-2 text-sm text-ink outline-none placeholder:text-faint"
+        className="max-h-40 min-h-[40px] flex-1 resize-none bg-transparent px-2 py-2 text-base text-ink outline-none placeholder:text-faint md:text-sm"
       />
       <Button type="submit" loading={disabled} disabled={!value.trim()} className="shrink-0">
         Send
