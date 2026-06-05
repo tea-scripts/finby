@@ -12,7 +12,8 @@ async function bootstrap(): Promise<void> {
     origin: process.env.WEB_URL ?? 'http://localhost:3000',
     credentials: true,
   });
-  const port = process.env.API_PORT ?? 3001;
+  // Hosts (Render, Railway, Fly…) inject PORT; fall back to API_PORT then 3001.
+  const port = process.env.PORT ?? process.env.API_PORT ?? 3001;
   await app.listen(port);
 }
 
