@@ -42,6 +42,14 @@ export const envSchema = z.object({
   PAYSTACK_SECRET_KEY: z.string().optional(),
   PAYSTACK_WEBHOOK_SECRET: z.string().optional(),
 
+  // Lemon Squeezy (Merchant of Record). Optional — checkout/webhook no-op until set.
+  LEMONSQUEEZY_API_KEY: z.string().optional(),
+  LEMONSQUEEZY_STORE_ID: z.string().optional(),
+  LEMONSQUEEZY_WEBHOOK_SECRET: z.string().optional(),
+  LEMONSQUEEZY_VARIANT_PRO: z.string().optional(),
+  LEMONSQUEEZY_VARIANT_PREMIUM: z.string().optional(),
+  LEMONSQUEEZY_VARIANT_FAMILY: z.string().optional(),
+
   // Web Push / VAPID (Phase 5). Optional — push no-ops until configured.
   VAPID_PUBLIC_KEY: z.string().optional(),
   VAPID_PRIVATE_KEY: z.string().optional(),

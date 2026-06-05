@@ -43,4 +43,18 @@ export class WebhooksController {
     await this.subscriptions.applyWebhookEvent('PAYSTACK', event);
     return { received: true };
   }
+
+  @Public()
+  @Post('lemonsqueezy')
+  @HttpCode(HttpStatus.OK)
+  async lemonsqueezy(
+    @Req() req: RawBodyRequest<Request>,
+    @Headers('x-signature') signature: string,
+  ): Promise<{ received: boolean }> {
+    const event = await this.subscriptions
+      .getProvider('LEMONSQUEEZY')
+      .parseWebhook(req.rawBody ?? Buffer.from(''), signature ?? '');
+    await this.subscriptions.applyWebhookEvent('LEMONSQUEEZY', event);
+    return { received: true };
+  }
 }

@@ -1,6 +1,6 @@
 import type { SubscriptionTier } from '@finby/shared';
 
-export type BillingProviderName = 'STRIPE' | 'PAYSTACK';
+export type BillingProviderName = 'STRIPE' | 'PAYSTACK' | 'LEMONSQUEEZY';
 export type SubscriptionStatusP5 = 'ACTIVE' | 'TRIALING' | 'PAST_DUE' | 'CANCELED' | 'PAUSED';
 
 export interface CheckoutParams {

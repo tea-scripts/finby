@@ -3,7 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../prisma/prisma.service';
 import type { Env } from '../../config/env.schema';
 import type { SubscriptionTier } from '@finby/shared';
-import { PAYSTACK_PROVIDER, STRIPE_PROVIDER } from './billing.constants';
+import { LEMONSQUEEZY_PROVIDER, PAYSTACK_PROVIDER, STRIPE_PROVIDER } from './billing.constants';
 import type {
   BillingProvider,
   BillingProviderName,
@@ -22,6 +22,7 @@ export class SubscriptionService {
     private readonly config: ConfigService<Env, true>,
     @Inject(STRIPE_PROVIDER) private readonly stripe: BillingProvider,
     @Inject(PAYSTACK_PROVIDER) private readonly paystack: BillingProvider,
+    @Inject(LEMONSQUEEZY_PROVIDER) private readonly lemonsqueezy: BillingProvider,
   ) {}
 
   async getSubscription(workspaceId: string): Promise<SubscriptionView> {
@@ -63,12 +64,16 @@ export class SubscriptionService {
 
   async setCancelAtPeriodEnd(workspaceId: string, cancel: boolean): Promise<SubscriptionView> {
     const sub = await this.prisma.subscription.findUnique({ where: { workspaceId } });
-    if (!sub || (!sub.stripeSubscriptionId && !sub.paystackSubscriptionCode)) {
+    if (
+      !sub ||
+      (!sub.stripeSubscriptionId && !sub.paystackSubscriptionCode && !sub.lemonSqueezySubscriptionId)
+    ) {
       throw new BadRequestException('No active paid subscription to modify.');
     }
 
     const providerName = sub.billingProvider as BillingProviderName;
-    const providerSubId = sub.stripeSubscriptionId ?? sub.paystackSubscriptionCode;
+    const providerSubId =
+      sub.stripeSubscriptionId ?? sub.paystackSubscriptionCode ?? sub.lemonSqueezySubscriptionId;
     if (providerSubId) {
       await this.getProvider(providerName).cancelAtPeriodEnd(providerSubId, cancel);
     }
@@ -104,7 +109,12 @@ export class SubscriptionService {
     const ids =
       provider === 'STRIPE'
         ? { stripeCustomerId: event.providerCustomerId, stripeSubscriptionId: event.providerSubscriptionId }
-        : { paystackCustomerCode: event.providerCustomerId };
+        : provider === 'LEMONSQUEEZY'
+          ? {
+              lemonSqueezyCustomerId: event.providerCustomerId,
+              lemonSqueezySubscriptionId: event.providerSubscriptionId,
+            }
+          : { paystackCustomerCode: event.providerCustomerId };
 
     await this.prisma.$transaction(async (txc) => {
       await txc.subscription.upsert({
@@ -136,6 +146,8 @@ export class SubscriptionService {
   }
 
   getProvider(name: BillingProviderName): BillingProvider {
-    return name === 'STRIPE' ? this.stripe : this.paystack;
+    if (name === 'STRIPE') return this.stripe;
+    if (name === 'LEMONSQUEEZY') return this.lemonsqueezy;
+    return this.paystack;
   }
 }

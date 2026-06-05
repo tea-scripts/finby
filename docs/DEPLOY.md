@@ -92,10 +92,22 @@ copy the signing secret → set `STRIPE_WEBHOOK_SECRET` on Render.
   `pnpm.onlyBuiltDependencies`, so `pnpm install` compiles them on Render.
 - Render Key Value is private (`ipAllowList: []`) — only the API reaches it.
 
-## Payments (PH/Nigeria, global acceptance)
-Stripe direct isn't available for KYC in PH/Nigeria. Use a **Merchant of Record**
-(Lemon Squeezy or Paddle): they're the legal seller, accept cards globally, handle
-worldwide sales tax/VAT, and pay you out (PayPal/bank — PH path is cleanest). Add a
-`LemonSqueezyProvider` to the existing `BillingProvider` port when ready. Alternative
-for full Stripe later: Stripe Atlas (US LLC). Deployment is **not blocked** — the app
-FREE-synthesizes subscriptions and tier-gates until billing is wired.
+## Payments (PH/Nigeria, global acceptance) — Lemon Squeezy (Merchant of Record)
+Stripe direct isn't available for KYC in PH/Nigeria, so the app uses a **Merchant of
+Record**: Lemon Squeezy is the legal seller, accepts cards globally, remits worldwide
+sales tax/VAT, and pays you out (PayPal/bank — PH path is cleanest). The
+**`LemonSqueezyProvider` is implemented** on the `BillingProvider` port.
+
+To go live:
+1. Lemon Squeezy → create the store + a **subscription product variant per tier**
+   (Pro / Premium / Family).
+2. Set on Render: `LEMONSQUEEZY_API_KEY`, `LEMONSQUEEZY_STORE_ID`,
+   `LEMONSQUEEZY_WEBHOOK_SECRET`, and `LEMONSQUEEZY_VARIANT_PRO/PREMIUM/FAMILY`.
+3. LS → Webhooks → endpoint **`https://api.finby.app/api/v1/webhooks/lemonsqueezy`**
+   (subscribe to the `subscription_*` events) → put the signing secret in
+   `LEMONSQUEEZY_WEBHOOK_SECRET`.
+4. The web checkout calls `POST /workspaces/:id/subscription/checkout` with
+   `{ tier, provider: "LEMONSQUEEZY" }` (now the default).
+
+Deployment is **not blocked** by this — until the keys are set, the app
+FREE-synthesizes subscriptions and tier-gates. (Full Stripe later: Stripe Atlas / US LLC.)

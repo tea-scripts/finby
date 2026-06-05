@@ -98,6 +98,7 @@ enum MessageRole {
 enum BillingProvider {
   STRIPE
   PAYSTACK
+  LEMONSQUEEZY
 }
 
 // ============================================================
@@ -257,6 +258,9 @@ model Subscription {
   paystackCustomerCode  String?
   paystackSubscriptionCode String?
   paystackPlanCode      String?
+
+  lemonSqueezyCustomerId     String?
+  lemonSqueezySubscriptionId String?
 
   // Billing cycle
   currentPeriodStart    DateTime

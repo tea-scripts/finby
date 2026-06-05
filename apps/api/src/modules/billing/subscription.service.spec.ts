@@ -31,13 +31,15 @@ function stripeMock(): BillingProvider {
 
 function build(prisma = buildPrisma(), stripe = stripeMock()) {
   const paystack = { ...stripeMock(), name: 'PAYSTACK' as const };
+  const lemonsqueezy = { ...stripeMock(), name: 'LEMONSQUEEZY' as const };
   const service = new SubscriptionService(
     prisma as unknown as PrismaService,
     configMock,
     stripe,
     paystack,
+    lemonsqueezy,
   );
-  return { service, prisma, stripe, paystack };
+  return { service, prisma, stripe, paystack, lemonsqueezy };
 }
 
 const activeEvent: BillingWebhookEvent = {
