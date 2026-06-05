@@ -1,0 +1,81 @@
+# Render Blueprint — Finby API (NestJS) + Key Value (Redis).
+#
+# NOT here:
+#  - Postgres → the app uses Prisma Postgres; set DATABASE_URL in the dashboard.
+#  - Web (apps/web) → deploys on Vercel. See docs/DEPLOY.md.
+#
+# Deploy: Render Dashboard → New → Blueprint → pick this repo → it reads this file.
+# Then fill the `sync: false` secrets in the dashboard and add the DNS CNAME.
+
+services:
+  - name: finby-api
+    type: web
+    runtime: node
+    plan: starter # always-on $7/mo (free tier cold-starts — bad for an API)
+    region: oregon # ⚠️ change to match your Prisma Postgres DB region
+    branch: main
+    domains:
+      - api.finby.app
+    healthCheckPath: /api/v1/health
+    buildCommand: pnpm install --frozen-lockfile && pnpm --filter finby-api exec prisma generate && pnpm turbo run build --filter=finby-api
+    preDeployCommand: pnpm --filter finby-api exec prisma migrate deploy
+    startCommand: node apps/api/dist/main.js
+    envVars:
+      # --- non-secret config ---
+      - key: NODE_VERSION
+        value: "22"
+      - key: NODE_ENV
+        value: production
+      - key: WEB_URL
+        value: https://chat.finby.app
+      - key: ANTHROPIC_MODEL
+        value: claude-sonnet-4-6
+      - key: ALPHA_VANTAGE_API_URL
+        value: https://www.alphavantage.co
+      - key: FRANKFURTER_API_URL
+        value: https://api.frankfurter.app
+      - key: JWT_ACCESS_TTL
+        value: 15m
+      - key: JWT_REFRESH_TTL
+        value: 7d
+      - key: BCRYPT_ROUNDS
+        value: "12"
+      - key: VAPID_SUBJECT
+        value: mailto:support@finby.app
+      # --- generated once by Render ---
+      - key: JWT_ACCESS_SECRET
+        generateValue: true
+      - key: JWT_REFRESH_SECRET
+        generateValue: true
+      # --- wired from the Key Value instance below ---
+      - key: REDIS_URL
+        fromService:
+          name: finby-redis
+          type: keyvalue
+          property: connectionString
+      # --- secrets: paste in the Render dashboard (never committed) ---
+      - key: DATABASE_URL # Prisma Postgres DIRECT string + ?connection_limit=5
+        sync: false
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: ALPHA_VANTAGE_API_KEY
+        sync: false
+      - key: STRIPE_SECRET_KEY
+        sync: false
+      - key: STRIPE_WEBHOOK_SECRET
+        sync: false
+      - key: PAYSTACK_SECRET_KEY
+        sync: false
+      - key: PAYSTACK_WEBHOOK_SECRET
+        sync: false
+      - key: VAPID_PUBLIC_KEY
+        sync: false
+      - key: VAPID_PRIVATE_KEY
+        sync: false
+
+  - name: finby-redis
+    type: keyvalue
+    plan: free # 25 MB — ample for FX cache + rate-limit counters
+    region: oregon # keep identical to finby-api
+    ipAllowList: [] # empty = private; only reachable by services in this Blueprint
+    maxmemoryPolicy: allkeys-lru # evict least-used when full (safe for a cache)
