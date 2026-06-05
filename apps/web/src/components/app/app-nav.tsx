@@ -54,7 +54,7 @@ export function AppNav({ variant }: { variant: 'sidebar' | 'bar' }) {
             key={href}
             href={href}
             aria-current={active ? 'page' : undefined}
-            className={`flex flex-1 flex-col items-center gap-1 py-2.5 text-[11px] font-medium transition ${
+            className={`flex flex-1 flex-col items-center gap-0.5 py-2 text-[11px] font-medium transition ${
               active ? 'text-accent' : 'text-muted'
             }`}
           >

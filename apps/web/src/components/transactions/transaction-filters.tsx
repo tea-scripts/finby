@@ -63,11 +63,12 @@ export function TransactionFilters({
           options={CURRENCY_OPTIONS}
         />
       </Field>
-      <div className="grid grid-cols-2 gap-2">
+      <div className="grid grid-cols-2 gap-2 [&>*]:min-w-0">
         <Field label="From" htmlFor="f-from">
           <Input
             id="f-from"
             type="date"
+            className="min-w-0"
             value={filters.fromDate ?? ''}
             onChange={(e) => set({ fromDate: e.target.value || undefined })}
           />
@@ -76,6 +77,7 @@ export function TransactionFilters({
           <Input
             id="f-to"
             type="date"
+            className="min-w-0"
             value={filters.toDate ?? ''}
             onChange={(e) => set({ toDate: e.target.value || undefined })}
           />
