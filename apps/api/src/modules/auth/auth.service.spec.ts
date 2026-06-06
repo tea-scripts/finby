@@ -376,4 +376,23 @@ describe('AuthService', () => {
       expect(emailMock.sendPasswordReset).not.toHaveBeenCalled();
     });
   });
+
+  describe('getMe', () => {
+    it('returns the current user view', async () => {
+      const prisma = createPrismaMock();
+      const service = buildService(prisma);
+      prisma.user.findUnique.mockResolvedValueOnce({
+        id: 'u1', displayName: 'Tea', email: 'a@b.com', emailVerified: true, timezone: 'UTC',
+      });
+      await expect(service.getMe('u1')).resolves.toEqual({
+        id: 'u1', displayName: 'Tea', email: 'a@b.com', emailVerified: true, timezone: 'UTC',
+      });
+    });
+    it('throws UnauthorizedException when the user is missing', async () => {
+      const prisma = createPrismaMock();
+      const service = buildService(prisma);
+      prisma.user.findUnique.mockResolvedValueOnce(null);
+      await expect(service.getMe('missing')).rejects.toBeInstanceOf(UnauthorizedException);
+    });
+  });
 });

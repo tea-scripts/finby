@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { resendVerification } from '@/lib/auth-api';
 import { useAuth } from '@/lib/store';
 
@@ -11,6 +11,17 @@ export function VerifyEmailBanner() {
   const [dismissed, setDismissed] = useState(false);
   const [sent, setSent] = useState(false);
   const [sending, setSending] = useState(false);
+  const checked = useRef(false);
+
+  // The verify link opens in the browser, not the installed PWA — so the PWA's
+  // persisted emailVerified can be stale. Re-check with the server once on mount.
+  useEffect(() => {
+    if (checked.current) return;
+    checked.current = true;
+    const s = useAuth.getState();
+    if (s.user && !s.user.emailVerified) void s.refreshUser();
+  }, []);
+
   if (!user || user.emailVerified || dismissed) return null;
 
   async function resend() {

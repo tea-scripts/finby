@@ -1,10 +1,10 @@
-import { Body, Controller, HttpCode, HttpStatus, Post, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, HttpStatus, Post, Req, UseGuards } from '@nestjs/common';
 import type { Request } from 'express';
 import { Public } from '../../common/decorators/public.decorator';
 import { ZodValidationPipe } from '../../common/pipes/zod-validation.pipe';
 import { AuthService } from './auth.service';
 import { JwtRefreshGuard } from './guards/jwt-refresh.guard';
-import type { AuthResult, AuthUser, RefreshUser, TokenPair } from './auth.types';
+import type { AuthResult, AuthUser, AuthUserView, RefreshUser, TokenPair } from './auth.types';
 import {
   forgotPasswordSchema,
   loginSchema,
@@ -90,5 +90,10 @@ export class AuthController {
   async resendVerification(@Req() req: Request & { user: AuthUser }): Promise<{ message: string }> {
     await this.auth.resendVerification(req.user.userId);
     return { message: 'Verification email sent.' };
+  }
+
+  @Get('me')
+  async me(@Req() req: Request & { user: AuthUser }): Promise<{ user: AuthUserView }> {
+    return { user: await this.auth.getMe(req.user.userId) };
   }
 }

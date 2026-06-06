@@ -28,6 +28,7 @@ interface AuthState {
   tryRefresh: () => Promise<boolean>;
   authed: <T>(path: string, init?: RequestInit) => Promise<T>;
   markVerified: () => void;
+  refreshUser: () => Promise<void>;
 }
 
 const CLEARED = {
@@ -111,6 +112,15 @@ export const useAuth = create<AuthState>()(
       markVerified: () => {
         const u = get().user;
         if (u) set({ user: { ...u, emailVerified: true } });
+      },
+
+      refreshUser: async () => {
+        try {
+          const { user } = await get().authed<{ user: ApiUser }>('/auth/me');
+          set({ user });
+        } catch {
+          /* ignore — keep the current user */
+        }
       },
 
       authed: async <T>(path: string, init: RequestInit = {}): Promise<T> => {

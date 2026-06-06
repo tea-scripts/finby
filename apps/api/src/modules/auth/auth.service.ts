@@ -262,6 +262,19 @@ export class AuthService {
     }
   }
 
+  /** The current authenticated user's profile, with a live emailVerified flag
+   *  (used by the client to correct a stale, cross-context persisted value). */
+  async getMe(userId: string): Promise<AuthUserView> {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { id: true, displayName: true, email: true, emailVerified: true, timezone: true },
+    });
+    if (!user) {
+      throw new UnauthorizedException('User not found.');
+    }
+    return user;
+  }
+
   private rounds(): number {
     return this.config.get('BCRYPT_ROUNDS', { infer: true });
   }
