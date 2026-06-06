@@ -249,11 +249,11 @@ export class AuthService {
   async resendVerification(userId: string): Promise<void> {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user || user.emailVerified) return;
+    const verifyUrl = await this.issueVerification(user.id);
     try {
-      const verifyUrl = await this.issueVerification(user.id);
       await this.email.sendVerification(user.email, user.displayName, verifyUrl);
     } catch (err) {
-      this.logger.warn(`Resend verification failed for ${user.email}: ${String(err)}`);
+      this.logger.warn(`Resend verification email failed for ${user.email}: ${String(err)}`);
     }
   }
 

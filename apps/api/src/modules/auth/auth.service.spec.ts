@@ -302,14 +302,14 @@ describe('AuthService', () => {
       prisma.user.findUnique.mockResolvedValueOnce({
         id: 'u1', email: 'a@b.com', displayName: 'Tea', emailVerifyExpiry: new Date(Date.now() - 1000),
       });
-      await expect(service.verifyEmail('raw1')).rejects.toThrow();
+      await expect(service.verifyEmail('raw1')).rejects.toThrow(UnauthorizedException);
     });
 
     it('throws on unknown token', async () => {
       const prisma = createPrismaMock();
       const service = buildService(prisma);
       prisma.user.findUnique.mockResolvedValueOnce(null);
-      await expect(service.verifyEmail('nope')).rejects.toThrow();
+      await expect(service.verifyEmail('nope')).rejects.toThrow(UnauthorizedException);
     });
   });
 });
