@@ -34,6 +34,8 @@ export interface BillingProvider {
   createCheckout(params: CheckoutParams): Promise<CheckoutResult>;
   parseWebhook(rawBody: Buffer | string, signature: string): Promise<BillingWebhookEvent>;
   cancelAtPeriodEnd(providerSubscriptionId: string, cancel: boolean): Promise<void>;
+  /** Optional: providers that support a hosted billing-management portal implement this. */
+  createPortalSession?(params: { providerCustomerId: string; returnUrl: string }): Promise<{ url: string }>;
 }
 
 export interface SubscriptionView {

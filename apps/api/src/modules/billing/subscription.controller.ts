@@ -47,4 +47,12 @@ export class SubscriptionController {
   resume(@Workspace() workspace: WorkspaceContext): Promise<SubscriptionView> {
     return this.subscriptions.setCancelAtPeriodEnd(workspace.id, false);
   }
+
+  @Post('portal')
+  @HttpCode(HttpStatus.OK)
+  @Roles('OWNER')
+  @UseGuards(RolesGuard)
+  portal(@Workspace() workspace: WorkspaceContext): Promise<{ url: string }> {
+    return this.subscriptions.createPortalSession(workspace.id);
+  }
 }

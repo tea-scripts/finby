@@ -182,6 +182,19 @@ export class SubscriptionService {
     }
   }
 
+  async createPortalSession(workspaceId: string): Promise<{ url: string }> {
+    const sub = await this.prisma.subscription.findUnique({ where: { workspaceId } });
+    if (!sub || sub.billingProvider !== 'STRIPE' || !sub.stripeCustomerId) {
+      throw new BadRequestException('No Stripe billing to manage for this workspace.');
+    }
+    const provider = this.getProvider('STRIPE');
+    if (!provider.createPortalSession) {
+      throw new BadRequestException('Billing portal is not available.');
+    }
+    const returnUrl = `${this.config.get('WEB_URL', { infer: true })}/settings`;
+    return provider.createPortalSession({ providerCustomerId: sub.stripeCustomerId, returnUrl });
+  }
+
   getProvider(name: BillingProviderName): BillingProvider {
     if (name === 'STRIPE') return this.stripe;
     if (name === 'LEMONSQUEEZY') return this.lemonsqueezy;

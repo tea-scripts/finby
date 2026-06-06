@@ -242,3 +242,76 @@ describe('SubscriptionService.createCheckout', () => {
     expect(result.url).toContain('checkout.stripe');
   });
 });
+
+describe('SubscriptionService.createPortalSession', () => {
+  const configWithWebUrl = {
+    get: jest.fn((k: string) => (k === 'WEB_URL' ? 'https://app.finby.io' : 'http://localhost:3000')),
+  } as unknown as ConfigService<Env, true>;
+
+  function buildWithConfig(prisma = buildPrisma(), stripe: BillingProvider) {
+    const paystack = { ...stripeMock(), name: 'PAYSTACK' as const };
+    const lemonsqueezy = { ...stripeMock(), name: 'LEMONSQUEEZY' as const };
+    const service = new SubscriptionService(
+      prisma as unknown as PrismaService,
+      configWithWebUrl,
+      stripe,
+      paystack,
+      lemonsqueezy,
+    );
+    return { service, prisma, stripe };
+  }
+
+  it('calls stripe provider createPortalSession with correct params and returns url', async () => {
+    const prisma = buildPrisma();
+    prisma.subscription.findUnique.mockResolvedValue({
+      workspaceId: 'w1',
+      billingProvider: 'STRIPE',
+      stripeCustomerId: 'cus_abc',
+    });
+    const stripeWithPortal: BillingProvider = {
+      ...stripeMock(),
+      createPortalSession: jest.fn().mockResolvedValue({ url: 'https://portal' }),
+    };
+    const { service } = buildWithConfig(prisma, stripeWithPortal);
+
+    const result = await service.createPortalSession('w1');
+
+    expect(stripeWithPortal.createPortalSession).toHaveBeenCalledWith({
+      providerCustomerId: 'cus_abc',
+      returnUrl: 'https://app.finby.io/settings',
+    });
+    expect(result).toEqual({ url: 'https://portal' });
+  });
+
+  it('throws BadRequestException when no subscription row exists', async () => {
+    const prisma = buildPrisma();
+    prisma.subscription.findUnique.mockResolvedValue(null);
+    const { service } = buildWithConfig(prisma, stripeMock());
+
+    await expect(service.createPortalSession('w1')).rejects.toMatchObject({ status: 400 });
+  });
+
+  it('throws BadRequestException when billingProvider is not STRIPE', async () => {
+    const prisma = buildPrisma();
+    prisma.subscription.findUnique.mockResolvedValue({
+      workspaceId: 'w1',
+      billingProvider: 'PAYSTACK',
+      stripeCustomerId: null,
+    });
+    const { service } = buildWithConfig(prisma, stripeMock());
+
+    await expect(service.createPortalSession('w1')).rejects.toMatchObject({ status: 400 });
+  });
+
+  it('throws BadRequestException when stripeCustomerId is null', async () => {
+    const prisma = buildPrisma();
+    prisma.subscription.findUnique.mockResolvedValue({
+      workspaceId: 'w1',
+      billingProvider: 'STRIPE',
+      stripeCustomerId: null,
+    });
+    const { service } = buildWithConfig(prisma, stripeMock());
+
+    await expect(service.createPortalSession('w1')).rejects.toMatchObject({ status: 400 });
+  });
+});

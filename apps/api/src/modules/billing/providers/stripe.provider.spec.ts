@@ -24,6 +24,46 @@ function stubConstructEvent(
   return mock;
 }
 
+/** Reach into the private stripe instance to stub billingPortal.sessions.create. */
+function stubBillingPortalCreate(
+  provider: StripeProvider,
+  returnValue: unknown,
+): jest.Mock {
+  const privateProvider = provider as unknown as {
+    stripe: { billingPortal: { sessions: { create: jest.Mock } } };
+  };
+  const mock = jest.fn().mockResolvedValue(returnValue);
+  privateProvider.stripe.billingPortal = { sessions: { create: mock } };
+  return mock;
+}
+
+describe('StripeProvider.createPortalSession', () => {
+  it('calls billingPortal.sessions.create with correct params and returns url', async () => {
+    const provider = new StripeProvider(makeConfig());
+    const createMock = stubBillingPortalCreate(provider, { url: 'https://billing.stripe.com/session/abc' });
+
+    const result = await provider.createPortalSession({
+      providerCustomerId: 'cus_test',
+      returnUrl: 'https://app.finby.io/settings',
+    });
+
+    expect(createMock).toHaveBeenCalledWith({
+      customer: 'cus_test',
+      return_url: 'https://app.finby.io/settings',
+    });
+    expect(result).toEqual({ url: 'https://billing.stripe.com/session/abc' });
+  });
+
+  it('throws ServiceUnavailableException when session.url is missing', async () => {
+    const provider = new StripeProvider(makeConfig());
+    stubBillingPortalCreate(provider, { url: null });
+
+    await expect(
+      provider.createPortalSession({ providerCustomerId: 'cus_test', returnUrl: 'https://app.finby.io/settings' }),
+    ).rejects.toBeInstanceOf(ServiceUnavailableException);
+  });
+});
+
 describe('StripeProvider.parseWebhook — invoice events', () => {
   it('invoice.payment_failed → SUBSCRIPTION_UPDATED / PAST_DUE / tier:null', async () => {
     const provider = new StripeProvider(makeConfig());

@@ -173,6 +173,17 @@ export class StripeProvider implements BillingProvider {
     await this.stripe.subscriptions.update(providerSubscriptionId, { cancel_at_period_end: cancel });
   }
 
+  async createPortalSession(params: { providerCustomerId: string; returnUrl: string }): Promise<{ url: string }> {
+    const session = await this.stripe.billingPortal.sessions.create({
+      customer: params.providerCustomerId,
+      return_url: params.returnUrl,
+    });
+    if (!session.url) {
+      throw new ServiceUnavailableException('Stripe did not return a portal URL.');
+    }
+    return { url: session.url };
+  }
+
   private verify(rawBody: Buffer | string, signature: string) {
     try {
       return this.stripe.webhooks.constructEvent(rawBody, signature, this.webhookSecret);
