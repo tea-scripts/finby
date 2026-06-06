@@ -1,12 +1,24 @@
-const SHELL = (body: string): string => `<!doctype html><html><body style="margin:0;background:#f4f6fb;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#0b1626">
-<div style="max-width:480px;margin:0 auto;padding:32px 24px">
-  <div style="font-size:22px;font-weight:700;color:#1d6ef5;margin-bottom:20px">Finby</div>
-  <div style="background:#fff;border-radius:16px;padding:28px;box-shadow:0 1px 3px rgba(11,22,38,.08)">${body}</div>
-  <p style="color:#8da3c0;font-size:12px;margin-top:20px">You're receiving this because you have a Finby account.</p>
-</div></body></html>`;
+// Dark, on-brand transactional email templates (match the Finby app + marketing
+// look: navy canvas #06101f, faint blue grid, accent #1d6ef5). The grid is a
+// progressive enhancement via background-image gradients — clients that strip it
+// (e.g. Outlook) fall back to the solid dark background-color, so it always reads
+// as the dark brand.
+const SHELL = (body: string): string => `<!doctype html>
+<html>
+<body style="margin:0;padding:0;background-color:#06101f;">
+<div style="background-color:#06101f;background-image:linear-gradient(rgba(29,110,245,0.07) 1px,transparent 1px),linear-gradient(90deg,rgba(29,110,245,0.07) 1px,transparent 1px);background-size:44px 44px;padding:40px 20px;font-family:-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+  <div style="max-width:460px;margin:0 auto;">
+    <div style="font-size:24px;font-weight:700;color:#1d6ef5;margin-bottom:22px;">Finby</div>
+    <div style="background-color:#0b1626;border:1px solid #1c2c46;border-radius:16px;padding:30px;">${body}</div>
+    <p style="color:#5b6f8c;font-size:12px;line-height:1.5;margin:22px 0 0;">You're receiving this because you have a Finby account.</p>
+    <p style="color:#3f536e;font-size:12px;margin:6px 0 0;">Stop tracking. Start talking.</p>
+  </div>
+</div>
+</body>
+</html>`;
 
 const button = (href: string, label: string): string =>
-  `<a href="${href}" style="display:inline-block;background:#1d6ef5;color:#fff;text-decoration:none;padding:12px 20px;border-radius:10px;font-weight:600">${label}</a>`;
+  `<a href="${href}" style="display:inline-block;background-color:#1d6ef5;color:#ffffff;text-decoration:none;padding:12px 22px;border-radius:10px;font-weight:600">${label}</a>`;
 
 /** Escape user-supplied text so a name with &, <, or > can't break the email HTML. */
 const esc = (s: string): string => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
@@ -14,28 +26,28 @@ const esc = (s: string): string => s.replace(/&/g, '&amp;').replace(/</g, '&lt;'
 export function verificationEmail(name: string, verifyUrl: string): { subject: string; html: string } {
   return {
     subject: 'Verify your email for Finby',
-    html: SHELL(`<h1 style="font-size:20px;margin:0 0 12px">Hey ${esc(name)} 👋</h1>
-      <p style="margin:0 0 20px;line-height:1.5">Confirm your email address to secure your Finby account.</p>
+    html: SHELL(`<h1 style="font-size:20px;margin:0 0 12px;color:#e8eef7;">Hey ${esc(name)} 👋</h1>
+      <p style="margin:0 0 22px;line-height:1.5;color:#8da3c0;">Confirm your email address to secure your Finby account.</p>
       ${button(verifyUrl, 'Verify email')}
-      <p style="color:#8da3c0;font-size:13px;margin-top:20px">This link expires in 24 hours. If you didn't sign up, ignore this email.</p>`),
+      <p style="color:#5b6f8c;font-size:13px;line-height:1.5;margin:22px 0 0;">This link expires in 24 hours. If you didn't sign up, you can safely ignore this email.</p>`),
   };
 }
 
 export function welcomeEmail(name: string): { subject: string; html: string } {
   return {
     subject: 'Welcome to Finby 🎉',
-    html: SHELL(`<h1 style="font-size:20px;margin:0 0 12px">You're all set, ${esc(name)}!</h1>
-      <p style="margin:0 0 8px;line-height:1.5">Your email is verified. Just tell Finby what you spent or earned — no forms, no spreadsheets.</p>
-      <p style="margin:16px 0 0;line-height:1.5">Try: <em>"spent 12 on lunch"</em>.</p>`),
+    html: SHELL(`<h1 style="font-size:20px;margin:0 0 12px;color:#e8eef7;">You're all set, ${esc(name)}!</h1>
+      <p style="margin:0 0 10px;line-height:1.5;color:#8da3c0;">Your email is verified. Just tell Finby what you spent or earned — no forms, no spreadsheets.</p>
+      <p style="margin:14px 0 0;line-height:1.5;color:#8da3c0;">Try: <em style="color:#e8eef7;">"spent 12 on lunch"</em>.</p>`),
   };
 }
 
 export function passwordResetEmail(resetUrl: string): { subject: string; html: string } {
   return {
     subject: 'Reset your Finby password',
-    html: SHELL(`<h1 style="font-size:20px;margin:0 0 12px">Reset your password</h1>
-      <p style="margin:0 0 20px;line-height:1.5">Tap below to choose a new password.</p>
+    html: SHELL(`<h1 style="font-size:20px;margin:0 0 12px;color:#e8eef7;">Reset your password</h1>
+      <p style="margin:0 0 22px;line-height:1.5;color:#8da3c0;">Tap below to choose a new password.</p>
       ${button(resetUrl, 'Reset password')}
-      <p style="color:#8da3c0;font-size:13px;margin-top:20px">This link expires in 1 hour. If you didn't request this, ignore this email — your password is unchanged.</p>`),
+      <p style="color:#5b6f8c;font-size:13px;line-height:1.5;margin:22px 0 0;">This link expires in 1 hour. If you didn't request this, ignore this email — your password is unchanged.</p>`),
   };
 }
