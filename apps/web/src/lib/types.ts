@@ -188,3 +188,26 @@ export interface TransactionQuery {
   toDate?: string;
   currency?: string;
 }
+
+// ── Billing / Subscription ───────────────────────────────────────────────────
+
+export type SubscriptionStatus = 'ACTIVE' | 'TRIALING' | 'PAST_DUE' | 'CANCELED' | 'PAUSED';
+export type BillingProviderName = 'STRIPE' | 'PAYSTACK' | 'LEMONSQUEEZY';
+
+export interface SubscriptionView {
+  tier: SubscriptionTier;
+  status: SubscriptionStatus;
+  billingProvider: BillingProviderName | null;
+  currentPeriodEnd: string | null;
+  cancelAtPeriodEnd: boolean;
+}
+
+export interface BillingPlan {
+  tier: 'PRO' | 'PREMIUM' | 'FAMILY';
+  name: string;
+  priceDisplay: string;
+  amountMinor: number;
+  currency: string;
+  interval: string;
+  highlights: string[];
+}
