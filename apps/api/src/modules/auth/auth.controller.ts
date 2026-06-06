@@ -4,18 +4,20 @@ import { Public } from '../../common/decorators/public.decorator';
 import { ZodValidationPipe } from '../../common/pipes/zod-validation.pipe';
 import { AuthService } from './auth.service';
 import { JwtRefreshGuard } from './guards/jwt-refresh.guard';
-import type { AuthResult, RefreshUser, TokenPair } from './auth.types';
+import type { AuthResult, AuthUser, RefreshUser, TokenPair } from './auth.types';
 import {
   forgotPasswordSchema,
   loginSchema,
   refreshSchema,
   registerSchema,
   resetPasswordSchema,
+  verifyEmailSchema,
   type ForgotPasswordInput,
   type LoginInput,
   type RefreshInput,
   type RegisterInput,
   type ResetPasswordInput,
+  type VerifyEmailInput,
 } from './dto/auth.schemas';
 
 @Controller('auth')
@@ -71,5 +73,22 @@ export class AuthController {
   ): Promise<{ message: string }> {
     await this.auth.resetPassword(body.token, body.newPassword);
     return { message: 'Password updated successfully.' };
+  }
+
+  @Public()
+  @HttpCode(HttpStatus.OK)
+  @Post('verify-email')
+  async verifyEmail(
+    @Body(new ZodValidationPipe(verifyEmailSchema)) body: VerifyEmailInput,
+  ): Promise<{ message: string }> {
+    await this.auth.verifyEmail(body.token);
+    return { message: 'Email verified.' };
+  }
+
+  @HttpCode(HttpStatus.OK)
+  @Post('resend-verification')
+  async resendVerification(@Req() req: Request & { user: AuthUser }): Promise<{ message: string }> {
+    await this.auth.resendVerification(req.user.userId);
+    return { message: 'Verification email sent.' };
   }
 }
