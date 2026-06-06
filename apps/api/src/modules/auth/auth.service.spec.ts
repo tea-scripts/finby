@@ -313,6 +313,52 @@ describe('AuthService', () => {
     });
   });
 
+  describe('resendVerification', () => {
+    it('does nothing for an unknown user id', async () => {
+      const prisma = createPrismaMock();
+      prisma.user.findUnique.mockResolvedValueOnce(null);
+      const service = buildService(prisma);
+      await service.resendVerification('missing');
+      expect(prisma.user.update).not.toHaveBeenCalled();
+      expect(emailMock.sendVerification).not.toHaveBeenCalled();
+    });
+
+    it('does nothing when the user is already verified', async () => {
+      const prisma = createPrismaMock();
+      prisma.user.findUnique.mockResolvedValueOnce({
+        id: 'u1',
+        email: 'a@b.com',
+        displayName: 'Tea',
+        emailVerified: true,
+      });
+      const service = buildService(prisma);
+      await service.resendVerification('u1');
+      expect(prisma.user.update).not.toHaveBeenCalled();
+      expect(emailMock.sendVerification).not.toHaveBeenCalled();
+    });
+
+    it('issues a new token and sends a verification email for an unverified user', async () => {
+      const prisma = createPrismaMock();
+      prisma.user.findUnique.mockResolvedValueOnce({
+        id: 'u1',
+        email: 'a@b.com',
+        displayName: 'Tea',
+        emailVerified: false,
+      });
+      prisma.user.update.mockResolvedValueOnce({});
+      const service = buildService(prisma);
+      await service.resendVerification('u1');
+      expect(prisma.user.update).toHaveBeenCalledWith(
+        expect.objectContaining({ where: { id: 'u1' } }),
+      );
+      expect(emailMock.sendVerification).toHaveBeenCalledWith(
+        'a@b.com',
+        'Tea',
+        expect.stringContaining('/verify-email?token='),
+      );
+    });
+  });
+
   describe('forgotPassword email', () => {
     it('sends a reset email for an existing user', async () => {
       const prisma = createPrismaMock();
