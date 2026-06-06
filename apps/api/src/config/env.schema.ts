@@ -58,6 +58,11 @@ export const envSchema = z.object({
   // Email (Resend)
   RESEND_API_KEY: z.string().optional(),
   EMAIL_FROM: z.string().default('Finby <noreply@finby.app>'),
+
+  // Chat memory token budgets
+  FREE_ACTIVE_WINDOW_TOKEN_BUDGET: z.coerce.number().int().positive().default(4000),
+  PRO_COMPRESSION_THRESHOLD: z.coerce.number().int().positive().default(8000),
+  PREMIUM_COMPRESSION_THRESHOLD: z.coerce.number().int().positive().default(12000),
 });
 
 export type Env = z.infer<typeof envSchema>;
