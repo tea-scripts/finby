@@ -1,6 +1,12 @@
 import { defineConfig } from 'vitest/config';
+import path from 'path';
 
 export default defineConfig({
+  resolve: {
+    alias: {
+      '@': path.resolve(__dirname, './src'),
+    },
+  },
   esbuild: {
     // Use the automatic React 17+ JSX runtime so *.test.tsx files don't
     // need `import React from 'react'`. Matches Next.js / React 19 behaviour.
