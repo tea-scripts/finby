@@ -229,6 +229,34 @@ export class AuthService {
     ]);
   }
 
+  async verifyEmail(token: string): Promise<void> {
+    const emailVerifyToken = createHash('sha256').update(token).digest('hex');
+    const user = await this.prisma.user.findUnique({ where: { emailVerifyToken } });
+    if (!user || !user.emailVerifyExpiry || user.emailVerifyExpiry.getTime() < Date.now()) {
+      throw new UnauthorizedException('Invalid or expired verification link.');
+    }
+    await this.prisma.user.update({
+      where: { id: user.id },
+      data: { emailVerified: true, emailVerifyToken: null, emailVerifyExpiry: null },
+    });
+    try {
+      await this.email.sendWelcome(user.email, user.displayName);
+    } catch (err) {
+      this.logger.warn(`Welcome email failed for ${user.email}: ${String(err)}`);
+    }
+  }
+
+  async resendVerification(userId: string): Promise<void> {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user || user.emailVerified) return;
+    try {
+      const verifyUrl = await this.issueVerification(user.id);
+      await this.email.sendVerification(user.email, user.displayName, verifyUrl);
+    } catch (err) {
+      this.logger.warn(`Resend verification failed for ${user.email}: ${String(err)}`);
+    }
+  }
+
   private rounds(): number {
     return this.config.get('BCRYPT_ROUNDS', { infer: true });
   }

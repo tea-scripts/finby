@@ -2,6 +2,7 @@ import { ConflictException, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
+import { createHash } from 'node:crypto';
 import type { Env } from '../../config/env.schema';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AuthService } from './auth.service';
@@ -275,6 +276,40 @@ describe('AuthService', () => {
       const service = buildService(prisma);
       await expect(service.logout('not-a-jwt')).resolves.toBeUndefined();
       expect(prisma.refreshToken.updateMany).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('verifyEmail', () => {
+    it('marks verified, clears token, sends welcome on a valid token', async () => {
+      const prisma = createPrismaMock();
+      const service = buildService(prisma);
+      const hash = createHash('sha256').update('raw1').digest('hex');
+      prisma.user.findUnique.mockResolvedValueOnce({
+        id: 'u1', email: 'a@b.com', displayName: 'Tea', emailVerifyExpiry: new Date(Date.now() + 1000),
+      });
+      prisma.user.update.mockResolvedValueOnce({});
+      await service.verifyEmail('raw1');
+      expect(prisma.user.findUnique).toHaveBeenCalledWith({ where: { emailVerifyToken: hash } });
+      expect(prisma.user.update).toHaveBeenCalledWith(expect.objectContaining({
+        data: expect.objectContaining({ emailVerified: true, emailVerifyToken: null, emailVerifyExpiry: null }),
+      }));
+      expect(emailMock.sendWelcome).toHaveBeenCalledWith('a@b.com', 'Tea');
+    });
+
+    it('throws on expired token', async () => {
+      const prisma = createPrismaMock();
+      const service = buildService(prisma);
+      prisma.user.findUnique.mockResolvedValueOnce({
+        id: 'u1', email: 'a@b.com', displayName: 'Tea', emailVerifyExpiry: new Date(Date.now() - 1000),
+      });
+      await expect(service.verifyEmail('raw1')).rejects.toThrow();
+    });
+
+    it('throws on unknown token', async () => {
+      const prisma = createPrismaMock();
+      const service = buildService(prisma);
+      prisma.user.findUnique.mockResolvedValueOnce(null);
+      await expect(service.verifyEmail('nope')).rejects.toThrow();
     });
   });
 });
