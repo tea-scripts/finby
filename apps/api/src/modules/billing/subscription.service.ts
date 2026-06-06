@@ -1,5 +1,6 @@
-import { BadRequestException, Inject, Injectable } from '@nestjs/common';
+import { BadRequestException, Inject, Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import type { Env } from '../../config/env.schema';
 import type { SubscriptionTier } from '@finby/shared';
@@ -17,6 +18,8 @@ const MONTH_MS = 30 * 24 * 60 * 60 * 1000;
 
 @Injectable()
 export class SubscriptionService {
+  private readonly logger = new Logger(SubscriptionService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly config: ConfigService<Env, true>,
@@ -90,6 +93,13 @@ export class SubscriptionService {
       return;
     }
 
+    if (event.eventId) {
+      const seen = await this.prisma.processedWebhookEvent.findUnique({
+        where: { provider_eventId: { provider, eventId: event.eventId } },
+      });
+      if (seen) return; // already processed — idempotent no-op
+    }
+
     const workspaceId = event.workspaceId;
 
     if (event.type === 'SUBSCRIPTION_CANCELED') {
@@ -100,6 +110,7 @@ export class SubscriptionService {
         });
         await txc.workspace.update({ where: { id: workspaceId }, data: { tier: 'FREE', maxMembers: 1 } });
       });
+      await this.markProcessed(provider, event.eventId);
       return;
     }
 
@@ -111,6 +122,7 @@ export class SubscriptionService {
           where: { workspaceId },
           data: { status: event.status },
         });
+        await this.markProcessed(provider, event.eventId);
       }
       return;
     }
@@ -155,6 +167,19 @@ export class SubscriptionService {
         data: { tier, maxMembers: tier === 'FAMILY' ? 5 : 1 },
       });
     });
+    await this.markProcessed(provider, event.eventId);
+  }
+
+  /** Record a processed webhook event so re-delivery is a no-op. Swallows the
+   *  unique-violation race (event already recorded); logs anything else. */
+  private async markProcessed(provider: BillingProviderName, eventId: string | null): Promise<void> {
+    if (!eventId) return;
+    try {
+      await this.prisma.processedWebhookEvent.create({ data: { provider, eventId } });
+    } catch (err) {
+      if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') return; // already recorded (race)
+      this.logger.warn(`Failed to record processed webhook event ${eventId}: ${String(err)}`);
+    }
   }
 
   getProvider(name: BillingProviderName): BillingProvider {

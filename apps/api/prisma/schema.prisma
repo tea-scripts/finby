@@ -681,6 +681,22 @@ model Alert {
 }
 
 // ============================================================
+// PROCESSED WEBHOOK EVENTS
+// Idempotency guard: records every billing webhook event that
+// has been successfully applied. Re-delivered events are
+// detected here and short-circuited as no-ops.
+// ============================================================
+
+model ProcessedWebhookEvent {
+  id        String   @id @default(cuid())
+  provider  String
+  eventId   String
+  createdAt DateTime @default(now())
+
+  @@unique([provider, eventId])
+}
+
+// ============================================================
 // PUSH SUBSCRIPTIONS
 // Web Push (VAPID) device subscriptions used to deliver alerts
 // as browser/PWA push notifications. One row per device endpoint.

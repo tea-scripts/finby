@@ -12,6 +12,7 @@ function buildPrisma() {
   const client = {
     subscription: { findUnique: jest.fn(), upsert: jest.fn(), update: jest.fn() },
     workspace: { findUnique: jest.fn(), update: jest.fn() },
+    processedWebhookEvent: { findUnique: jest.fn().mockResolvedValue(null), create: jest.fn().mockResolvedValue({}) },
     $transaction: jest.fn(),
   };
   client.$transaction.mockImplementation((arg: unknown) =>
@@ -44,6 +45,7 @@ function build(prisma = buildPrisma(), stripe = stripeMock()) {
 
 const activeEvent: BillingWebhookEvent = {
   type: 'SUBSCRIPTION_ACTIVE',
+  eventId: 'evt_stripe_1',
   workspaceId: 'w1',
   tier: 'PRO',
   status: 'ACTIVE',
@@ -131,6 +133,7 @@ describe('SubscriptionService.applyWebhookEvent', () => {
   describe('status-only updates (invoice events — tier must never change)', () => {
     const pastDueEvent: BillingWebhookEvent = {
       type: 'SUBSCRIPTION_UPDATED',
+      eventId: 'evt_stripe_2',
       workspaceId: 'w1',
       tier: null,
       status: 'PAST_DUE',
@@ -180,7 +183,52 @@ describe('SubscriptionService.applyWebhookEvent', () => {
       expect(prisma.subscription.update).not.toHaveBeenCalled();
       expect(prisma.workspace.update).not.toHaveBeenCalled();
       expect(prisma.subscription.upsert).not.toHaveBeenCalled();
+      expect(prisma.processedWebhookEvent.create).not.toHaveBeenCalled();
     });
+  });
+});
+
+describe('SubscriptionService.applyWebhookEvent — idempotency', () => {
+  it('first delivery (findUnique → null): applies the event and records processedWebhookEvent', async () => {
+    const prisma = buildPrisma();
+    prisma.processedWebhookEvent.findUnique.mockResolvedValue(null);
+    prisma.subscription.upsert.mockResolvedValue({});
+    prisma.workspace.update.mockResolvedValue({});
+    const { service } = build(prisma);
+
+    await service.applyWebhookEvent('STRIPE', activeEvent);
+
+    expect(prisma.subscription.upsert).toHaveBeenCalled();
+    expect(prisma.workspace.update).toHaveBeenCalled();
+    expect(prisma.processedWebhookEvent.create).toHaveBeenCalledWith({
+      data: { provider: 'STRIPE', eventId: 'evt_stripe_1' },
+    });
+  });
+
+  it('duplicate delivery (findUnique → existing row): returns early with no writes', async () => {
+    const prisma = buildPrisma();
+    prisma.processedWebhookEvent.findUnique.mockResolvedValue({ id: 'pwe_1', provider: 'STRIPE', eventId: 'evt_stripe_1', createdAt: new Date() });
+    const { service } = build(prisma);
+
+    await service.applyWebhookEvent('STRIPE', activeEvent);
+
+    expect(prisma.subscription.upsert).not.toHaveBeenCalled();
+    expect(prisma.workspace.update).not.toHaveBeenCalled();
+    expect(prisma.processedWebhookEvent.create).not.toHaveBeenCalled();
+  });
+
+  it('eventId: null (fallback provider): applies normally without touching processedWebhookEvent', async () => {
+    const prisma = buildPrisma();
+    prisma.subscription.upsert.mockResolvedValue({});
+    prisma.workspace.update.mockResolvedValue({});
+    const { service } = build(prisma);
+
+    await service.applyWebhookEvent('PAYSTACK', { ...activeEvent, eventId: null });
+
+    expect(prisma.subscription.upsert).toHaveBeenCalled();
+    expect(prisma.workspace.update).toHaveBeenCalled();
+    expect(prisma.processedWebhookEvent.findUnique).not.toHaveBeenCalled();
+    expect(prisma.processedWebhookEvent.create).not.toHaveBeenCalled();
   });
 });
 

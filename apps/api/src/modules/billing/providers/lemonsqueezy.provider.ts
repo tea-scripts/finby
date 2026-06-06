@@ -149,6 +149,7 @@ export class LemonSqueezyProvider implements BillingProvider {
     if (eventName === 'subscription_expired' || attrs.status === 'expired' || attrs.status === 'unpaid') {
       return {
         type: 'SUBSCRIPTION_CANCELED',
+        eventId: null,
         workspaceId,
         tier: null,
         status: 'CANCELED',
@@ -174,6 +175,7 @@ export class LemonSqueezyProvider implements BillingProvider {
 
     return {
       type: 'SUBSCRIPTION_ACTIVE',
+      eventId: null,
       workspaceId,
       tier: (custom.tier as SubscriptionTier | undefined) ?? this.tierForVariant(attrs.variant_id),
       status,
@@ -208,6 +210,7 @@ export class LemonSqueezyProvider implements BillingProvider {
   private ignored(): BillingWebhookEvent {
     return {
       type: 'IGNORED',
+      eventId: null,
       workspaceId: null,
       tier: null,
       status: 'ACTIVE',

@@ -18,6 +18,7 @@ export interface CheckoutResult {
 /** Normalized webhook event — providers translate their native events to this. */
 export interface BillingWebhookEvent {
   type: 'SUBSCRIPTION_ACTIVE' | 'SUBSCRIPTION_CANCELED' | 'SUBSCRIPTION_UPDATED' | 'IGNORED';
+  eventId: string | null;
   workspaceId: string | null;
   tier: SubscriptionTier | null;
   status: SubscriptionStatusP5;

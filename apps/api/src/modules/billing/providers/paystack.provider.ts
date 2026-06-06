@@ -79,6 +79,7 @@ export class PaystackProvider implements BillingProvider {
       const workspaceId = metadata.workspaceId ?? null;
       return {
         type: workspaceId ? 'SUBSCRIPTION_ACTIVE' : 'IGNORED',
+        eventId: null,
         workspaceId,
         tier: (metadata.tier as SubscriptionTier | undefined) ?? null,
         status: 'ACTIVE',
@@ -91,6 +92,7 @@ export class PaystackProvider implements BillingProvider {
 
     return {
       type: 'IGNORED',
+      eventId: null,
       workspaceId: null,
       tier: null,
       status: 'ACTIVE',

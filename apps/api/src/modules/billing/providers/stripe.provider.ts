@@ -112,7 +112,7 @@ export class StripeProvider implements BillingProvider {
         subscriptionId: asId(session.subscription),
         periodStart: null,
         periodEnd: null,
-      });
+      }, event.id);
     }
 
     if (event.type === 'customer.subscription.updated') {
@@ -128,6 +128,7 @@ export class StripeProvider implements BillingProvider {
           periodStart: sub.current_period_start ? new Date(sub.current_period_start * 1000) : null,
           periodEnd: sub.current_period_end ? new Date(sub.current_period_end * 1000) : null,
         },
+        event.id,
       );
     }
 
@@ -138,7 +139,7 @@ export class StripeProvider implements BillingProvider {
         subscriptionId: sub.id,
         periodStart: null,
         periodEnd: null,
-      });
+      }, event.id);
     }
 
     if (event.type === 'invoice.payment_failed' || event.type === 'invoice.payment_succeeded') {
@@ -148,12 +149,13 @@ export class StripeProvider implements BillingProvider {
         inv.parent?.subscription_details?.metadata?.workspaceId ??
         null;
       if (!workspaceId) {
-        return this.ignored();
+        return this.ignored(event.id);
       }
       const status: SubscriptionStatusP5 =
         event.type === 'invoice.payment_failed' ? 'PAST_DUE' : 'ACTIVE';
       return {
         type: 'SUBSCRIPTION_UPDATED',
+        eventId: event.id,
         workspaceId,
         tier: null,
         status,
@@ -164,7 +166,7 @@ export class StripeProvider implements BillingProvider {
       };
     }
 
-    return this.ignored();
+    return this.ignored(event.id);
   }
 
   async cancelAtPeriodEnd(providerSubscriptionId: string, cancel: boolean): Promise<void> {
@@ -190,10 +192,12 @@ export class StripeProvider implements BillingProvider {
       periodStart: Date | null;
       periodEnd: Date | null;
     },
+    eventId: string,
   ): BillingWebhookEvent {
     const workspaceId = metadata?.workspaceId ?? null;
     return {
       type: workspaceId ? type : 'IGNORED',
+      eventId,
       workspaceId,
       tier: type === 'SUBSCRIPTION_CANCELED' ? 'FREE' : ((metadata?.tier as SubscriptionTier) ?? null),
       status,
@@ -204,9 +208,10 @@ export class StripeProvider implements BillingProvider {
     };
   }
 
-  private ignored(): BillingWebhookEvent {
+  private ignored(eventId: string): BillingWebhookEvent {
     return {
       type: 'IGNORED',
+      eventId,
       workspaceId: null,
       tier: null,
       status: 'ACTIVE',
