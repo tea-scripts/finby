@@ -91,7 +91,7 @@ describe('UpgradeModal', () => {
     await waitFor(() => expect(screen.getByText('$9/mo')).toBeInTheDocument());
 
     // Switch to Premium
-    fireEvent.click(screen.getByRole('button', { name: 'Premium' }));
+    fireEvent.click(screen.getByRole('tab', { name: 'Premium' }));
 
     expect(screen.getByText('$19/mo')).toBeInTheDocument();
     expect(screen.getByText('Everything in Pro')).toBeInTheDocument();
@@ -194,5 +194,31 @@ describe('UpgradeModal', () => {
 
     // Button should be enabled again after failure
     expect(btn).not.toBeDisabled();
+  });
+
+  it('uses the ARIA tab pattern with arrow-key navigation', async () => {
+    mockGetPlans.mockResolvedValue({ plans: PLANS });
+
+    render(<UpgradeModal open={true} onClose={vi.fn()} initialTier="PRO" />);
+
+    await waitFor(() => expect(screen.getByText('$9/mo')).toBeInTheDocument());
+
+    // Proper roles: a labelled tablist with three tabs and a tabpanel
+    expect(screen.getByRole('tablist', { name: /plan tiers/i })).toBeInTheDocument();
+    expect(screen.getAllByRole('tab')).toHaveLength(3);
+    expect(screen.getByRole('tabpanel')).toBeInTheDocument();
+
+    const proTab = screen.getByRole('tab', { name: 'Pro' });
+    expect(proTab).toHaveAttribute('aria-selected', 'true');
+
+    // ArrowRight → Premium becomes selected and its content shows
+    fireEvent.keyDown(proTab, { key: 'ArrowRight' });
+    expect(screen.getByRole('tab', { name: 'Premium' })).toHaveAttribute('aria-selected', 'true');
+    expect(screen.getByText('$19/mo')).toBeInTheDocument();
+
+    // ArrowLeft wraps from Pro back to Family
+    fireEvent.keyDown(screen.getByRole('tab', { name: 'Pro' }), { key: 'ArrowLeft' });
+    expect(screen.getByRole('tab', { name: 'Family' })).toHaveAttribute('aria-selected', 'true');
+    expect(screen.getByText('$29/mo')).toBeInTheDocument();
   });
 });

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { type KeyboardEvent, useEffect, useRef, useState } from 'react';
 import { Modal } from '@/components/ui/modal';
 import { Button } from '@/components/ui/button';
 import { getPlans, startCheckout } from '@/lib/billing-api';
@@ -34,6 +34,7 @@ export function UpgradeModal({ open, onClose, initialTier = 'PRO' }: UpgradeModa
   const [submitError, setSubmitError] = useState<string | null>(null);
 
   const mountedRef = useRef(true);
+  const tabRefs = useRef<(HTMLButtonElement | null)[]>([]);
 
   useEffect(() => {
     mountedRef.current = true;
@@ -100,53 +101,89 @@ export function UpgradeModal({ open, onClose, initialTier = 'PRO' }: UpgradeModa
     }
   }
 
+  function selectTier(tier: UpgradeTier) {
+    setSelectedTier(tier);
+    setSubmitError(null);
+  }
+
+  function onTabKeyDown(event: KeyboardEvent<HTMLButtonElement>, index: number) {
+    const last = TAB_LABELS.length - 1;
+    let next = index;
+    if (event.key === 'ArrowRight') next = index === last ? 0 : index + 1;
+    else if (event.key === 'ArrowLeft') next = index === 0 ? last : index - 1;
+    else if (event.key === 'Home') next = 0;
+    else if (event.key === 'End') next = last;
+    else return;
+    const target = TAB_LABELS[next];
+    if (!target) return;
+    event.preventDefault();
+    selectTier(target.tier);
+    tabRefs.current[next]?.focus();
+  }
+
   return (
     <Modal open={open} onClose={onClose} title="Upgrade your plan">
       {/* Tab row */}
-      <div className="mb-4 flex gap-1 overflow-x-auto rounded-xl border border-line bg-surface-2 p-1">
-        {TAB_LABELS.map(({ tier, label }) => (
-          <button
-            key={tier}
-            onClick={() => {
-              setSelectedTier(tier);
-              setSubmitError(null);
-            }}
-            className={[
-              'flex-1 rounded-lg px-3 py-1.5 text-sm font-medium transition focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/60',
-              selectedTier === tier
-                ? 'bg-accent text-white shadow-sm'
-                : 'text-muted hover:text-ink',
-            ].join(' ')}
-            aria-pressed={selectedTier === tier}
-          >
-            {label}
-          </button>
-        ))}
+      <div
+        role="tablist"
+        aria-label="Plan tiers"
+        className="mb-4 flex gap-1 overflow-x-auto rounded-xl border border-line bg-surface-2 p-1"
+      >
+        {TAB_LABELS.map(({ tier, label }, index) => {
+          const selected = selectedTier === tier;
+          return (
+            <button
+              key={tier}
+              ref={(el) => {
+                tabRefs.current[index] = el;
+              }}
+              role="tab"
+              id={`upgrade-tab-${tier}`}
+              aria-selected={selected}
+              aria-controls="upgrade-plan-panel"
+              tabIndex={selected ? 0 : -1}
+              onClick={() => selectTier(tier)}
+              onKeyDown={(e) => onTabKeyDown(e, index)}
+              className={[
+                'flex-1 rounded-lg px-3 py-1.5 text-sm font-medium transition focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/60',
+                selected ? 'bg-accent text-white shadow-sm' : 'text-muted hover:text-ink',
+              ].join(' ')}
+            >
+              {label}
+            </button>
+          );
+        })}
       </div>
 
-      {/* Body */}
-      {loading && (
-        <p className="py-8 text-center text-sm text-muted">Loading plans…</p>
-      )}
+      {/* Body (tab panel) */}
+      <div
+        role="tabpanel"
+        id="upgrade-plan-panel"
+        aria-labelledby={`upgrade-tab-${selectedTier}`}
+        tabIndex={0}
+        className="focus:outline-none"
+      >
+        {loading && <p className="py-8 text-center text-sm text-muted">Loading plans…</p>}
 
-      {!loading && error && (
-        <p className="py-8 text-center text-sm text-red-400">{error}</p>
-      )}
+        {!loading && error && (
+          <p className="py-8 text-center text-sm text-red-400">{error}</p>
+        )}
 
-      {!loading && !error && activePlan && (
-        <div className="space-y-4">
-          <p className="text-2xl font-semibold text-ink">{activePlan.priceDisplay}</p>
+        {!loading && !error && activePlan && (
+          <div className="space-y-4">
+            <p className="text-2xl font-semibold text-ink">{activePlan.priceDisplay}</p>
 
-          <ul className="space-y-2">
-            {activePlan.highlights.map((h) => (
-              <li key={h} className="flex items-start gap-2 text-sm text-muted">
-                <span className="mt-0.5 text-accent" aria-hidden="true">✓</span>
-                <span>{h}</span>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
+            <ul className="space-y-2">
+              {activePlan.highlights.map((h) => (
+                <li key={h} className="flex items-start gap-2 text-sm text-muted">
+                  <span className="mt-0.5 text-accent" aria-hidden="true">✓</span>
+                  <span>{h}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </div>
 
       {/* Submit area */}
       <div className="mt-6 space-y-2">
