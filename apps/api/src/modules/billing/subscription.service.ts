@@ -103,6 +103,18 @@ export class SubscriptionService {
       return;
     }
 
+    // Status-only update (e.g. invoice.payment_failed/succeeded) — never change tier.
+    if (event.type === 'SUBSCRIPTION_UPDATED' && event.tier === null) {
+      const existing = await this.prisma.subscription.findUnique({ where: { workspaceId } });
+      if (existing) {
+        await this.prisma.subscription.update({
+          where: { workspaceId },
+          data: { status: event.status },
+        });
+      }
+      return;
+    }
+
     const tier = (event.tier ?? 'PRO') as Exclude<SubscriptionTier, 'FREE'>;
     const periodStart = event.currentPeriodStart ?? new Date();
     const periodEnd = event.currentPeriodEnd ?? new Date(Date.now() + MONTH_MS);

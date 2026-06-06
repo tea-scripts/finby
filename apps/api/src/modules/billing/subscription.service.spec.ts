@@ -127,6 +127,61 @@ describe('SubscriptionService.applyWebhookEvent', () => {
     expect(prisma.workspace.update).not.toHaveBeenCalled();
     expect(prisma.subscription.upsert).not.toHaveBeenCalled();
   });
+
+  describe('status-only updates (invoice events — tier must never change)', () => {
+    const pastDueEvent: BillingWebhookEvent = {
+      type: 'SUBSCRIPTION_UPDATED',
+      workspaceId: 'w1',
+      tier: null,
+      status: 'PAST_DUE',
+      providerCustomerId: 'cus_1',
+      providerSubscriptionId: 'sub_1',
+      currentPeriodStart: null,
+      currentPeriodEnd: null,
+    };
+
+    it('PAST_DUE: updates only subscription.status and does NOT touch workspace.tier', async () => {
+      const prisma = buildPrisma();
+      prisma.subscription.findUnique.mockResolvedValue({ workspaceId: 'w1', tier: 'PRO', status: 'ACTIVE' });
+      prisma.subscription.update.mockResolvedValue({});
+      const { service } = build(prisma);
+
+      await service.applyWebhookEvent('STRIPE', pastDueEvent);
+
+      expect(prisma.subscription.update).toHaveBeenCalledWith(
+        expect.objectContaining({ where: { workspaceId: 'w1' }, data: { status: 'PAST_DUE' } }),
+      );
+      expect(prisma.workspace.update).not.toHaveBeenCalled();
+      expect(prisma.subscription.upsert).not.toHaveBeenCalled();
+    });
+
+    it('ACTIVE (invoice.payment_succeeded): updates only subscription.status and does NOT touch workspace.tier', async () => {
+      const prisma = buildPrisma();
+      prisma.subscription.findUnique.mockResolvedValue({ workspaceId: 'w1', tier: 'PRO', status: 'PAST_DUE' });
+      prisma.subscription.update.mockResolvedValue({});
+      const { service } = build(prisma);
+
+      await service.applyWebhookEvent('STRIPE', { ...pastDueEvent, status: 'ACTIVE' });
+
+      expect(prisma.subscription.update).toHaveBeenCalledWith(
+        expect.objectContaining({ where: { workspaceId: 'w1' }, data: { status: 'ACTIVE' } }),
+      );
+      expect(prisma.workspace.update).not.toHaveBeenCalled();
+      expect(prisma.subscription.upsert).not.toHaveBeenCalled();
+    });
+
+    it('no-op when no subscription row exists yet (status before checkout completes)', async () => {
+      const prisma = buildPrisma();
+      prisma.subscription.findUnique.mockResolvedValue(null);
+      const { service } = build(prisma);
+
+      await service.applyWebhookEvent('STRIPE', pastDueEvent);
+
+      expect(prisma.subscription.update).not.toHaveBeenCalled();
+      expect(prisma.workspace.update).not.toHaveBeenCalled();
+      expect(prisma.subscription.upsert).not.toHaveBeenCalled();
+    });
+  });
 });
 
 describe('SubscriptionService.createCheckout', () => {

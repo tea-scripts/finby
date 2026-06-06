@@ -30,6 +30,12 @@ interface StripeSubLike {
   current_period_start?: number;
   current_period_end?: number;
 }
+interface StripeInvoiceLike {
+  subscription_details?: { metadata?: StripeMeta | null } | null;
+  subscription?: string | { id: string } | null;
+  customer?: string | { id: string } | null;
+  parent?: { subscription_details?: { metadata?: StripeMeta | null } | null } | null;
+}
 
 function mapStatus(status: string): SubscriptionStatusP5 {
   switch (status) {
@@ -133,6 +139,29 @@ export class StripeProvider implements BillingProvider {
         periodStart: null,
         periodEnd: null,
       });
+    }
+
+    if (event.type === 'invoice.payment_failed' || event.type === 'invoice.payment_succeeded') {
+      const inv = event.data.object as unknown as StripeInvoiceLike;
+      const workspaceId =
+        inv.subscription_details?.metadata?.workspaceId ??
+        inv.parent?.subscription_details?.metadata?.workspaceId ??
+        null;
+      if (!workspaceId) {
+        return this.ignored();
+      }
+      const status: SubscriptionStatusP5 =
+        event.type === 'invoice.payment_failed' ? 'PAST_DUE' : 'ACTIVE';
+      return {
+        type: 'SUBSCRIPTION_UPDATED',
+        workspaceId,
+        tier: null,
+        status,
+        providerCustomerId: asId(inv.customer),
+        providerSubscriptionId: asId(inv.subscription),
+        currentPeriodStart: null,
+        currentPeriodEnd: null,
+      };
     }
 
     return this.ignored();
