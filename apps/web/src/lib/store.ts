@@ -29,6 +29,7 @@ interface AuthState {
   authed: <T>(path: string, init?: RequestInit) => Promise<T>;
   markVerified: () => void;
   refreshUser: () => Promise<void>;
+  setWorkspaceTier: (tier: import('./types').SubscriptionTier) => void;
 }
 
 const CLEARED = {
@@ -121,6 +122,11 @@ export const useAuth = create<AuthState>()(
         } catch {
           /* ignore — keep the current user */
         }
+      },
+
+      setWorkspaceTier: (tier) => {
+        const ws = get().workspace;
+        if (ws) set({ workspace: { ...ws, tier } });
       },
 
       authed: async <T>(path: string, init: RequestInit = {}): Promise<T> => {
