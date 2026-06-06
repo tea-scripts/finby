@@ -82,6 +82,12 @@ export default function LoginPage() {
           />
         </Field>
 
+          <div className="text-right">
+            <Link href="/forgot-password" className="text-sm font-medium text-accent hover:text-accent-hover">
+              Forgot password?
+            </Link>
+          </div>
+
         <Button type="submit" loading={loading} className="w-full">
           Sign in
         </Button>
