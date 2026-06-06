@@ -27,6 +27,7 @@ interface AuthState {
   logout: () => Promise<void>;
   tryRefresh: () => Promise<boolean>;
   authed: <T>(path: string, init?: RequestInit) => Promise<T>;
+  markVerified: () => void;
 }
 
 const CLEARED = {
@@ -105,6 +106,11 @@ export const useAuth = create<AuthState>()(
           set({ ...CLEARED });
           return false;
         }
+      },
+
+      markVerified: () => {
+        const u = get().user;
+        if (u) set({ user: { ...u, emailVerified: true } });
       },
 
       authed: async <T>(path: string, init: RequestInit = {}): Promise<T> => {
