@@ -5,6 +5,7 @@ import { useEffect, useState, type ReactNode } from 'react';
 import { AppHeader } from '@/components/app/app-header';
 import { AppNav } from '@/components/app/app-nav';
 import { InstallBanner } from '@/components/app/install-banner';
+import { VerifyEmailBanner } from '@/components/app/verify-email-banner';
 import { TypingDots } from '@/components/chat/typing-dots';
 import { useAuth } from '@/lib/store';
 
@@ -41,6 +42,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
       <AppNav variant="sidebar" />
       <div className="flex min-h-0 flex-1 flex-col">
         <AppHeader />
+        <VerifyEmailBanner />
         <main className="min-h-0 flex-1 overflow-hidden">{children}</main>
       </div>
       <InstallBanner />
