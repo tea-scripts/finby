@@ -6,6 +6,7 @@ import { AppHeader } from '@/components/app/app-header';
 import { AppNav } from '@/components/app/app-nav';
 import { InstallBanner } from '@/components/app/install-banner';
 import { VerifyEmailBanner } from '@/components/app/verify-email-banner';
+import { ViewportRecover } from '@/components/app/viewport-recover';
 import { TypingDots } from '@/components/chat/typing-dots';
 import { useAuth } from '@/lib/store';
 
@@ -29,24 +30,28 @@ export default function AppLayout({ children }: { children: ReactNode }) {
     }
   }, [hydrated, status, workspace, router]);
 
-  if (!hydrated || status !== 'authed' || !workspace) {
-    return (
+  const content =
+    !hydrated || status !== 'authed' || !workspace ? (
       <main className="flex min-h-app items-center justify-center">
         <TypingDots />
       </main>
+    ) : (
+      <div className="flex h-app w-full flex-col md:flex-row">
+        <AppNav variant="sidebar" />
+        <div className="flex min-h-0 flex-1 flex-col">
+          <AppHeader />
+          <VerifyEmailBanner />
+          <main className="min-h-0 flex-1 overflow-hidden">{children}</main>
+        </div>
+        <InstallBanner />
+        <AppNav variant="bar" />
+      </div>
     );
-  }
 
   return (
-    <div className="flex h-app w-full flex-col md:flex-row">
-      <AppNav variant="sidebar" />
-      <div className="flex min-h-0 flex-1 flex-col">
-        <AppHeader />
-        <VerifyEmailBanner />
-        <main className="min-h-0 flex-1 overflow-hidden">{children}</main>
-      </div>
-      <InstallBanner />
-      <AppNav variant="bar" />
-    </div>
+    <>
+      <ViewportRecover />
+      {content}
+    </>
   );
 }

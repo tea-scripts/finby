@@ -70,11 +70,15 @@
      within the safe area on standalone PWAs (the status-bar / home-indicator
      margins fill with theme_color #06101f, matching the canvas) and dvh resolves
      to the usable screen — no env() padding to misfire, no crop, no gap. */
+  /* Default: dynamic viewport (tracks the browser toolbar). In an installed
+     PWA, ViewportRecover sets --app-h to the live JS-measured height so the
+     shell self-heals when iOS leaves 100dvh stale after returning from an
+     external navigation (e.g. Stripe Checkout). Browser leaves --app-h unset. */
   .h-app {
-    height: 100dvh;
+    height: var(--app-h, 100dvh);
   }
   .min-h-app {
-    min-height: 100dvh;
+    min-height: var(--app-h, 100dvh);
   }
   /* A little breathing room above the home indicator — installed PWA only;
      the in-browser version is unaffected. */
