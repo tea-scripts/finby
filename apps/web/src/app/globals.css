@@ -10,6 +10,8 @@
   html,
   body {
     height: 100%;
+    overflow: hidden;
+    overscroll-behavior: none;
   }
 
   html {
@@ -18,7 +20,6 @@
 
   body {
     @apply bg-canvas text-ink font-sans antialiased;
-    overscroll-behavior: none;
     -webkit-tap-highlight-color: transparent;
     background-image:
       radial-gradient(1100px 560px at 82% -12%, rgba(29, 110, 245, 0.12), transparent 60%),
