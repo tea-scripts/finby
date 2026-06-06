@@ -54,6 +54,10 @@ export const envSchema = z.object({
   VAPID_PUBLIC_KEY: z.string().optional(),
   VAPID_PRIVATE_KEY: z.string().optional(),
   VAPID_SUBJECT: z.string().default('mailto:support@finby.app'),
+
+  // Email (Resend)
+  RESEND_API_KEY: z.string().optional(),
+  EMAIL_FROM: z.string().default('Finby <noreply@finby.app>'),
 });
 
 export type Env = z.infer<typeof envSchema>;
