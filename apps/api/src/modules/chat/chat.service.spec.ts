@@ -13,6 +13,8 @@ import type { WorkspaceContext } from '../../common/context';
 import type { LlmToolCall } from '../llm/llm.types';
 import { ChatService } from './chat.service';
 import { ConversationsService } from './conversations.service';
+import { MemoryCompressionService } from './memory/memory-compression.service';
+import { ContextAssemblerService } from './context/context-assembler.service';
 
 const workspace: WorkspaceContext = {
   id: 'w1',
@@ -36,6 +38,8 @@ function build(overrides?: {
   const analytics = { summary: jest.fn(), byCategory: jest.fn(), trend: jest.fn(), topMerchants: jest.fn() };
   const market = { getQuote: jest.fn(), getOverview: jest.fn() };
   const portfolio = { logEvent: jest.fn(), getPortfolio: jest.fn() };
+  const memory = { maintain: jest.fn().mockResolvedValue(undefined) };
+  const contextAssembler = { buildContext: jest.fn().mockResolvedValue({ system: 'sys', messages: [] }) };
   const service = new ChatService(
     {} as unknown as PrismaService,
     {} as unknown as ConversationsService,
@@ -48,6 +52,8 @@ function build(overrides?: {
     analytics as unknown as AnalyticsService,
     market as unknown as MarketDataService,
     portfolio as unknown as PortfolioService,
+    memory as unknown as MemoryCompressionService,
+    contextAssembler as unknown as ContextAssemblerService,
   );
   return { service, transactions, fx, categories, accounts, budgets, analytics, market, portfolio };
 }
@@ -202,6 +208,8 @@ describe('ChatService.handleMessage — LLM provider failure', () => {
     const categories = { list: jest.fn().mockResolvedValue([]) };
     const budgets = { list: jest.fn().mockResolvedValue([]) };
     const analytics = {};
+    const memory = { maintain: jest.fn().mockResolvedValue(undefined) };
+    const contextAssembler = { buildContext: jest.fn().mockResolvedValue({ system: 'sys', messages: [] }) };
     const service = new ChatService(
       prisma as unknown as PrismaService,
       conversations as unknown as ConversationsService,
@@ -214,8 +222,10 @@ describe('ChatService.handleMessage — LLM provider failure', () => {
       analytics as unknown as AnalyticsService,
       {} as unknown as MarketDataService,
       {} as unknown as PortfolioService,
+      memory as unknown as MemoryCompressionService,
+      contextAssembler as unknown as ContextAssemblerService,
     );
-    return { service, create };
+    return { service, create, memory, contextAssembler };
   }
 
   it('blocks a FREE workspace that hit the daily message limit (429) before calling the LLM', async () => {
@@ -238,6 +248,76 @@ describe('ChatService.handleMessage — LLM provider failure', () => {
     const roles = create.mock.calls.map((c) => (c[0] as { data: { role: string } }).data.role);
     expect(roles).toContain('USER');
     expect(roles).toContain('ASSISTANT');
+  });
+});
+
+describe('ChatService.handleMessage — memory.maintain tier branching', () => {
+  function buildForMaintain(createMessage: jest.Mock) {
+    const create = jest.fn().mockResolvedValue({ id: 'm', createdAt: new Date('2026-06-02T00:00:00Z') });
+    const prisma = {
+      user: { findUnique: jest.fn().mockResolvedValue({ displayName: 'Aisha', timezone: 'UTC' }) },
+      conversationMessage: {
+        create,
+        findMany: jest.fn().mockResolvedValue([]),
+        count: jest.fn().mockResolvedValue(2),
+        updateMany: jest.fn(),
+      },
+      conversation: { update: jest.fn() },
+    };
+    const conversations = {
+      requireConversation: jest.fn().mockResolvedValue({ id: 'c1', title: null }),
+    };
+    const llm = {
+      getTools: jest.fn().mockReturnValue([]),
+      buildSystemPrompt: jest.fn().mockReturnValue('sys'),
+      createMessage,
+    };
+    const accounts = { list: jest.fn().mockResolvedValue([]) };
+    const categories = { list: jest.fn().mockResolvedValue([]) };
+    const budgets = { list: jest.fn().mockResolvedValue([]) };
+    const memory = { maintain: jest.fn().mockResolvedValue(undefined) };
+    const contextAssembler = { buildContext: jest.fn().mockResolvedValue({ system: 'sys', messages: [] }) };
+    const service = new ChatService(
+      prisma as unknown as PrismaService,
+      conversations as unknown as ConversationsService,
+      llm as unknown as LlmService,
+      {} as unknown as TransactionsService,
+      {} as unknown as FxService,
+      categories as unknown as CategoriesService,
+      accounts as unknown as AccountsService,
+      budgets as unknown as BudgetsService,
+      {} as unknown as AnalyticsService,
+      {} as unknown as MarketDataService,
+      {} as unknown as PortfolioService,
+      memory as unknown as MemoryCompressionService,
+      contextAssembler as unknown as ContextAssemblerService,
+    );
+    return { service, memory };
+  }
+
+  const successResponse = {
+    stopReason: 'end_turn',
+    textOutput: 'Done.',
+    content: [{ type: 'text' as const, text: 'Done.' }],
+    toolCalls: [],
+  };
+
+  it('calls memory.maintain with (conversationId, "FREE") on a successful FREE-tier handleMessage', async () => {
+    const createMessage = jest.fn().mockResolvedValue(successResponse);
+    const { service, memory } = buildForMaintain(createMessage);
+
+    await service.handleMessage(workspace, 'u1', 'c1', 'hello');
+
+    expect(memory.maintain).toHaveBeenCalledWith('c1', 'FREE');
+  });
+
+  it('calls memory.maintain with (conversationId, "PRO") on a successful PRO-tier handleMessage', async () => {
+    const createMessage = jest.fn().mockResolvedValue(successResponse);
+    const { service, memory } = buildForMaintain(createMessage);
+
+    await service.handleMessage({ ...workspace, tier: 'PRO' }, 'u1', 'c1', 'hello');
+
+    expect(memory.maintain).toHaveBeenCalledWith('c1', 'PRO');
   });
 });
 
@@ -292,6 +372,8 @@ describe('ChatService.handleMessage — multi-step tool loop', () => {
     };
     const accounts = { findByName: jest.fn().mockResolvedValue(null), list: jest.fn().mockResolvedValue([]) };
     const budgets = { list: jest.fn().mockResolvedValue([]) };
+    const memory = { maintain: jest.fn().mockResolvedValue(undefined) };
+    const contextAssembler = { buildContext: jest.fn().mockResolvedValue({ system: 'sys', messages: [] }) };
     const service = new ChatService(
       prisma as unknown as PrismaService,
       conversations as unknown as ConversationsService,
@@ -304,8 +386,10 @@ describe('ChatService.handleMessage — multi-step tool loop', () => {
       {} as unknown as AnalyticsService,
       {} as unknown as MarketDataService,
       {} as unknown as PortfolioService,
+      memory as unknown as MemoryCompressionService,
+      contextAssembler as unknown as ContextAssemblerService,
     );
-    return { service, transactions, fx };
+    return { service, transactions, fx, memory, contextAssembler };
   }
 
   it('runs a second tool call (get_fx_rate then log_expense) and returns the action + final text', async () => {

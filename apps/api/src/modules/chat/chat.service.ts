@@ -27,9 +27,11 @@ import type {
   PendingConfirmation,
   ToolExecResult,
 } from './chat.types';
+import { estimateTokens } from './memory/token-counter.util';
+import { MemoryCompressionService } from './memory/memory-compression.service';
+import { ContextAssemblerService } from './context/context-assembler.service';
 
 const CONFIDENCE_THRESHOLD = 0.7;
-const FREE_ACTIVE_WINDOW = 20;
 /** Safety cap on the agentic tool loop (one user turn). */
 const MAX_TOOL_ROUNDS = 5;
 const LLM_UNAVAILABLE_MESSAGE =
@@ -61,6 +63,8 @@ export class ChatService {
     private readonly analytics: AnalyticsService,
     private readonly market: MarketDataService,
     private readonly portfolio: PortfolioService,
+    private readonly memory: MemoryCompressionService,
+    private readonly contextAssembler: ContextAssemblerService,
   ) {}
 
   async handleMessage(
@@ -83,19 +87,11 @@ export class ChatService {
     });
 
     await this.prisma.conversationMessage.create({
-      data: { conversationId, role: 'USER', content },
+      data: { conversationId, role: 'USER', content, tokenCount: estimateTokens(content) },
     });
 
-    const system = await this.buildSystemPrompt(workspace, user);
-    const history = await this.prisma.conversationMessage.findMany({
-      where: { conversationId, isInActiveWindow: true, role: { in: ['USER', 'ASSISTANT'] } },
-      orderBy: { createdAt: 'asc' },
-      take: FREE_ACTIVE_WINDOW,
-    });
-    const messages: LlmMessage[] = history.map((m) => ({
-      role: m.role === 'USER' ? 'user' : 'assistant',
-      content: m.content,
-    }));
+    const baseSystem = await this.buildSystemPrompt(workspace, user);
+    const { system, messages } = await this.contextAssembler.buildContext(conversationId, baseSystem);
 
     const tools = this.llm.getTools();
     let first: LlmResponse;
@@ -128,6 +124,7 @@ export class ChatService {
             role: 'TOOL_CALL',
             content: JSON.stringify(call.input),
             toolName: call.name,
+            tokenCount: estimateTokens(JSON.stringify(call.input)),
           },
         });
 
@@ -139,6 +136,7 @@ export class ChatService {
             role: 'TOOL_RESULT',
             content: exec.toolResult,
             toolResult: exec.toolResult,
+            tokenCount: estimateTokens(exec.toolResult),
             ...(exec.action ? { createdTransactionId: exec.action.transactionId } : {}),
           },
         });
@@ -175,7 +173,7 @@ export class ChatService {
     }
 
     const assistant = await this.prisma.conversationMessage.create({
-      data: { conversationId, role: 'ASSISTANT', content: finalText },
+      data: { conversationId, role: 'ASSISTANT', content: finalText, tokenCount: estimateTokens(finalText) },
     });
 
     const messageCount = await this.prisma.conversationMessage.count({ where: { conversationId } });
@@ -189,7 +187,12 @@ export class ChatService {
     });
 
     if (workspace.tier === 'FREE') {
-      await this.pruneActiveWindow(conversationId);
+      await this.memory.maintain(conversationId, workspace.tier); // sync eviction
+    } else {
+      // fire-and-forget compression — never let a background failure reject unhandled
+      void this.memory.maintain(conversationId, workspace.tier).catch((err) =>
+        this.logger.warn(`Background memory maintain failed: ${String(err)}`),
+      );
     }
 
     return {
@@ -671,7 +674,12 @@ export class ChatService {
     userContent: string,
   ): Promise<void> {
     await this.prisma.conversationMessage.create({
-      data: { conversationId, role: 'ASSISTANT', content: LLM_UNAVAILABLE_MESSAGE },
+      data: {
+        conversationId,
+        role: 'ASSISTANT',
+        content: LLM_UNAVAILABLE_MESSAGE,
+        tokenCount: estimateTokens(LLM_UNAVAILABLE_MESSAGE),
+      },
     });
     const messageCount = await this.prisma.conversationMessage.count({ where: { conversationId } });
     await this.prisma.conversation.update({
@@ -738,18 +746,4 @@ export class ChatService {
     });
   }
 
-  private async pruneActiveWindow(conversationId: string): Promise<void> {
-    const stale = await this.prisma.conversationMessage.findMany({
-      where: { conversationId, isInActiveWindow: true },
-      orderBy: { createdAt: 'desc' },
-      skip: FREE_ACTIVE_WINDOW,
-      select: { id: true },
-    });
-    if (stale.length > 0) {
-      await this.prisma.conversationMessage.updateMany({
-        where: { id: { in: stale.map((s) => s.id) } },
-        data: { isInActiveWindow: false },
-      });
-    }
-  }
 }
