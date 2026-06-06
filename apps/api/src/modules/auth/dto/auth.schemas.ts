@@ -32,3 +32,6 @@ export const resetPasswordSchema = z.object({
   newPassword: z.string().min(8).max(200),
 });
 export type ResetPasswordInput = z.infer<typeof resetPasswordSchema>;
+
+export const verifyEmailSchema = z.object({ token: z.string().min(1) });
+export type VerifyEmailInput = z.infer<typeof verifyEmailSchema>;
