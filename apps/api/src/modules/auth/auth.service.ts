@@ -204,7 +204,12 @@ export class AuthService {
       data: { resetToken, resetTokenExpiry },
     });
 
-    // TODO(Phase 2): email `rawToken` to the user via the mail service.
+    const resetUrl = `${this.config.get('WEB_URL', { infer: true })}/reset-password?token=${rawToken}`;
+    try {
+      await this.email.sendPasswordReset(user.email, resetUrl);
+    } catch (err) {
+      this.logger.warn(`Reset email failed for ${user.email}: ${String(err)}`);
+    }
   }
 
   async resetPassword(token: string, newPassword: string): Promise<void> {

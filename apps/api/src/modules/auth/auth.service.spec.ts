@@ -312,4 +312,22 @@ describe('AuthService', () => {
       await expect(service.verifyEmail('nope')).rejects.toThrow(UnauthorizedException);
     });
   });
+
+  describe('forgotPassword email', () => {
+    it('sends a reset email for an existing user', async () => {
+      const prisma = createPrismaMock();
+      const service = buildService(prisma);
+      prisma.user.findUnique.mockResolvedValueOnce({ id: 'u1', email: 'a@b.com' });
+      prisma.user.update.mockResolvedValueOnce({});
+      await service.forgotPassword('a@b.com');
+      expect(emailMock.sendPasswordReset).toHaveBeenCalledWith('a@b.com', expect.stringContaining('/reset-password?token='));
+    });
+    it('does not send for an unknown email', async () => {
+      const prisma = createPrismaMock();
+      const service = buildService(prisma);
+      prisma.user.findUnique.mockResolvedValueOnce(null);
+      await service.forgotPassword('nope@b.com');
+      expect(emailMock.sendPasswordReset).not.toHaveBeenCalled();
+    });
+  });
 });
