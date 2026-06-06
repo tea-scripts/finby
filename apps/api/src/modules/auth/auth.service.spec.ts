@@ -5,9 +5,16 @@ import * as bcrypt from 'bcrypt';
 import type { Env } from '../../config/env.schema';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AuthService } from './auth.service';
+import { EmailService } from '../email/email.service';
 
 const ACCESS_SECRET = 'access-secret-access-secret-0001';
 const REFRESH_SECRET = 'refresh-secret-refresh-secret-01';
+
+const emailMock = {
+  sendVerification: jest.fn().mockResolvedValue(undefined),
+  sendWelcome: jest.fn().mockResolvedValue(undefined),
+  sendPasswordReset: jest.fn().mockResolvedValue(undefined),
+};
 
 function createPrismaMock() {
   const model = () => ({
@@ -44,13 +51,19 @@ const configMock = {
       JWT_ACCESS_TTL: '15m',
       JWT_REFRESH_TTL: '7d',
       BCRYPT_ROUNDS: 4,
+      WEB_URL: 'https://app.finby.test',
     };
     return values[key];
   }),
 } as unknown as ConfigService<Env, true>;
 
 function buildService(prisma: PrismaMock): AuthService {
-  return new AuthService(prisma as unknown as PrismaService, new JwtService({}), configMock);
+  return new AuthService(
+    prisma as unknown as PrismaService,
+    new JwtService({}),
+    configMock,
+    emailMock as unknown as EmailService,
+  );
 }
 
 const registerInput = {
@@ -62,6 +75,10 @@ const registerInput = {
 };
 
 describe('AuthService', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
   describe('register', () => {
     it('hashes the password, creates user+workspace+categories in one transaction, returns tokens', async () => {
       const prisma = createPrismaMock();
@@ -109,6 +126,32 @@ describe('AuthService', () => {
       expect(result.refreshToken).toEqual(expect.any(String));
       expect(result.user.email).toBe('aisha@example.com');
       expect(result.workspace.tier).toBe('FREE');
+      expect(emailMock.sendVerification).toHaveBeenCalledTimes(1);
+    });
+
+    it('register still succeeds if the verification email throws', async () => {
+      emailMock.sendVerification.mockRejectedValueOnce(new Error('smtp down'));
+      const prisma = createPrismaMock();
+      prisma.user.create.mockResolvedValue({
+        id: 'u1',
+        displayName: 'Aisha Bello',
+        email: 'aisha@example.com',
+        emailVerified: false,
+        timezone: 'Asia/Manila',
+      });
+      prisma.workspace.create.mockResolvedValue({
+        id: 'w1',
+        name: "Aisha's Finances",
+        slug: 'aisha-finances-ab12',
+        tier: 'FREE',
+        baseCurrency: 'USD',
+      });
+      prisma.workspaceMember.create.mockResolvedValue({ id: 'm1' });
+      prisma.category.createMany.mockResolvedValue({ count: 10 });
+      prisma.refreshToken.create.mockResolvedValue({ id: 'rt1' });
+
+      const service = buildService(prisma);
+      await expect(service.register(registerInput)).resolves.toHaveProperty('accessToken');
     });
 
     it('throws ConflictException when the email is already taken', async () => {
@@ -215,6 +258,7 @@ describe('AuthService', () => {
         prisma as unknown as PrismaService,
         jwt,
         configMock,
+        emailMock as unknown as EmailService,
       );
       await service.logout(rawToken);
 

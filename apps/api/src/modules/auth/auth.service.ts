@@ -1,4 +1,4 @@
-import { ConflictException, Injectable, UnauthorizedException } from '@nestjs/common';
+import { ConflictException, Injectable, Logger, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
@@ -6,6 +6,7 @@ import * as bcrypt from 'bcrypt';
 import { DEFAULT_CATEGORIES } from '@finby/shared';
 import { PrismaService } from '../../prisma/prisma.service';
 import type { Env } from '../../config/env.schema';
+import { EmailService } from '../email/email.service';
 import type { LoginInput, RegisterInput } from './dto/auth.schemas';
 import type {
   AccessTokenPayload,
@@ -35,10 +36,13 @@ function isUniqueConstraintError(error: unknown): boolean {
 
 @Injectable()
 export class AuthService {
+  private readonly logger = new Logger(AuthService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly jwt: JwtService,
     private readonly config: ConfigService<Env, true>,
+    private readonly email: EmailService,
   ) {}
 
   async register(input: RegisterInput): Promise<AuthResult> {
@@ -87,6 +91,14 @@ export class AuthService {
       });
 
       const tokens = await this.issueTokenPair(user.id, user.email);
+
+      try {
+        const verifyUrl = await this.issueVerification(user.id);
+        await this.email.sendVerification(user.email, user.displayName, verifyUrl);
+      } catch (err) {
+        this.logger.warn(`Verification email failed for ${user.email}: ${String(err)}`);
+      }
+
       return { user, workspace, ...tokens };
     } catch (error) {
       if (isUniqueConstraintError(error)) {
@@ -219,6 +231,16 @@ export class AuthService {
 
   private rounds(): number {
     return this.config.get('BCRYPT_ROUNDS', { infer: true });
+  }
+
+  /** Generates a verification token, persists its hash (24h expiry), and returns
+   *  the verify URL (with the raw token) to email. */
+  private async issueVerification(userId: string): Promise<string> {
+    const raw = randomBytes(32).toString('hex');
+    const emailVerifyToken = createHash('sha256').update(raw).digest('hex');
+    const emailVerifyExpiry = new Date(Date.now() + 24 * 60 * 60 * 1000);
+    await this.prisma.user.update({ where: { id: userId }, data: { emailVerifyToken, emailVerifyExpiry } });
+    return `${this.config.get('WEB_URL', { infer: true })}/verify-email?token=${raw}`;
   }
 
   private async issueTokenPair(userId: string, email: string): Promise<TokenPair> {
