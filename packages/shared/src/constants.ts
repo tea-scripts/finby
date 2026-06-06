@@ -61,6 +61,19 @@ export const TIER_PRICING: Record<Exclude<SubscriptionTier, 'FREE'>, TierPrice> 
   FAMILY: { amountMinor: 1499, currency: 'USD', interval: 'month' },
 };
 
+/** Display price for a paid tier, e.g. 499 → "$4.99". */
+export function formatTierPrice(tier: Exclude<SubscriptionTier, 'FREE'>): string {
+  const p = TIER_PRICING[tier];
+  return `$${(p.amountMinor / 100).toFixed(2)}`;
+}
+
+/** Marketing highlights per paid tier (UI + plans endpoint). */
+export const TIER_HIGHLIGHTS: Record<Exclude<SubscriptionTier, 'FREE'>, string[]> = {
+  PRO: ['90-day memory', 'Unlimited currencies', 'Advanced analytics'],
+  PREMIUM: ['Permanent memory dossier', 'AI coaching & nudges', 'Priority support'],
+  FAMILY: ['Up to 5 members', 'Shared workspace', 'Everything in Premium'],
+};
+
 export const TIER_LIMITS: Record<SubscriptionTier, TierLimits> = {
   FREE: {
     chatMessagesPerDay: 20,
