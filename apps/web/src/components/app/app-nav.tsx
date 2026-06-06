@@ -2,12 +2,13 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { ChatCircleDots, type Icon, Receipt, SquaresFour } from '@phosphor-icons/react';
+import { ChatCircleDots, GearSix, type Icon, Receipt, SquaresFour } from '@phosphor-icons/react';
 
 const ITEMS: Array<{ href: string; label: string; Icon: Icon }> = [
   { href: '/chat', label: 'Chat', Icon: ChatCircleDots },
   { href: '/dashboard', label: 'Dashboard', Icon: SquaresFour },
   { href: '/transactions', label: 'Transactions', Icon: Receipt },
+  { href: '/settings', label: 'Settings', Icon: GearSix },
 ];
 
 const ACTIVE_GLOW = 'drop-shadow-[0_0_6px_rgba(29,110,245,0.55)]';
