@@ -76,4 +76,11 @@
   .min-h-app {
     min-height: 100dvh;
   }
+  /* A little breathing room above the home indicator — installed PWA only;
+     the in-browser version is unaffected. */
+  @media all and (display-mode: standalone) {
+    .pb-pwa {
+      padding-bottom: 0.5rem;
+    }
+  }
 }

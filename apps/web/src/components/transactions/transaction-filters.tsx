@@ -65,22 +65,36 @@ export function TransactionFilters({
       </Field>
       <div className="grid grid-cols-1 gap-2 [&>*]:min-w-0 lg:grid-cols-2">
         <Field label="From" htmlFor="f-from">
-          <Input
-            id="f-from"
-            type="date"
-            className="min-w-0 appearance-none"
-            value={filters.fromDate ?? ''}
-            onChange={(e) => set({ fromDate: e.target.value || undefined })}
-          />
+          <div className="relative">
+            <Input
+              id="f-from"
+              type="date"
+              className="min-w-0 appearance-none"
+              value={filters.fromDate ?? ''}
+              onChange={(e) => set({ fromDate: e.target.value || undefined })}
+            />
+            {!filters.fromDate && (
+              <span className="pointer-events-none absolute inset-y-0 left-3.5 flex items-center text-base text-faint md:text-sm">
+                Start date
+              </span>
+            )}
+          </div>
         </Field>
         <Field label="To" htmlFor="f-to">
-          <Input
-            id="f-to"
-            type="date"
-            className="min-w-0 appearance-none"
-            value={filters.toDate ?? ''}
-            onChange={(e) => set({ toDate: e.target.value || undefined })}
-          />
+          <div className="relative">
+            <Input
+              id="f-to"
+              type="date"
+              className="min-w-0 appearance-none"
+              value={filters.toDate ?? ''}
+              onChange={(e) => set({ toDate: e.target.value || undefined })}
+            />
+            {!filters.toDate && (
+              <span className="pointer-events-none absolute inset-y-0 left-3.5 flex items-center text-base text-faint md:text-sm">
+                End date
+              </span>
+            )}
+          </div>
         </Field>
       </div>
     </div>
