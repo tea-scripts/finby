@@ -30,14 +30,14 @@ export default function AppLayout({ children }: { children: ReactNode }) {
 
   if (!hydrated || status !== 'authed' || !workspace) {
     return (
-      <main className="flex min-h-dvh items-center justify-center">
+      <main className="flex min-h-app items-center justify-center">
         <TypingDots />
       </main>
     );
   }
 
   return (
-    <div className="flex h-dvh w-full flex-col md:flex-row">
+    <div className="flex h-app w-full flex-col md:flex-row">
       <AppNav variant="sidebar" />
       <div className="flex min-h-0 flex-1 flex-col">
         <AppHeader />

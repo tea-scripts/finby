@@ -65,4 +65,22 @@
   .pb-safe {
     padding-bottom: max(env(safe-area-inset-bottom), 0px);
   }
+  /* Full-app height. In-browser we use dvh (tracks the dynamic toolbar). When
+     installed as a PWA, iOS reports dvh SHORTER than the physical screen, which
+     left a gap under the fixed nav — so standalone falls back to 100vh (= the
+     full screen, since there is no browser chrome). */
+  .h-app {
+    height: 100dvh;
+  }
+  .min-h-app {
+    min-height: 100dvh;
+  }
+  @media all and (display-mode: standalone) {
+    .h-app {
+      height: 100vh;
+    }
+    .min-h-app {
+      min-height: 100vh;
+    }
+  }
 }

@@ -60,7 +60,7 @@ export function OnboardingCarousel() {
   }, [next, back]);
 
   return (
-    <main className="relative flex min-h-dvh flex-col px-5 py-6">
+    <main className="relative flex min-h-app flex-col px-5 py-6">
       <div className="bg-grid pointer-events-none absolute inset-0 opacity-50" />
 
       <div className="relative flex justify-end">

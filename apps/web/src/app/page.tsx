@@ -38,7 +38,7 @@ export default function HomeGate() {
   }, [hydrated, status, router]);
 
   return (
-    <main className="flex min-h-dvh items-center justify-center">
+    <main className="flex min-h-app items-center justify-center">
       <TypingDots />
     </main>
   );

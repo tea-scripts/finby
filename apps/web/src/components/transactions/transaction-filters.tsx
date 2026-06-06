@@ -63,7 +63,7 @@ export function TransactionFilters({
           options={CURRENCY_OPTIONS}
         />
       </Field>
-      <div className="grid grid-cols-2 gap-2 [&>*]:min-w-0">
+      <div className="grid grid-cols-1 gap-2 [&>*]:min-w-0 lg:grid-cols-2">
         <Field label="From" htmlFor="f-from">
           <Input
             id="f-from"
