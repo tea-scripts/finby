@@ -68,18 +68,24 @@ const FREE_LIMIT_ROWS: { label: string; value: string }[] = [
   },
 ];
 
-// ── Compare plans feature rows (static concise list) ─────────────────────────
+// ── Compare plans feature rows (derived from TIER_LIMITS — single source of truth) ──
 
-const COMPARE_ROWS: { feature: string; free: string; pro: string; premium: string; family: string }[] =
-  [
-    { feature: 'AI messages/day', free: '20', pro: 'Unlimited', premium: 'Unlimited', family: 'Unlimited' },
-    { feature: 'Currencies', free: '1', pro: 'Unlimited', premium: 'Unlimited', family: 'Unlimited' },
-    { feature: 'History', free: '90 days', pro: 'Unlimited', premium: 'Unlimited', family: 'Unlimited' },
-    { feature: 'Portfolio', free: '—', pro: '✓', premium: '✓', family: '✓' },
-    { feature: 'AI coaching', free: '—', pro: '—', premium: '✓', family: '✓' },
-    { feature: 'Members', free: '1', pro: '1', premium: '1', family: 'Up to 5' },
-    { feature: 'Data export', free: '—', pro: '✓', premium: '✓', family: '✓' },
-  ];
+type TierLimitsShape = typeof TIER_LIMITS.FREE;
+const COMPARE_TIERS: SubscriptionTier[] = ['FREE', 'PRO', 'PREMIUM', 'FAMILY'];
+
+const numOrUnlimited = (n: number | null, suffix = ''): string =>
+  n === null ? 'Unlimited' : `${n}${suffix}`;
+const yesNo = (b: boolean): string => (b ? '✓' : '—');
+
+const COMPARE_FEATURES: { feature: string; format: (l: TierLimitsShape) => string }[] = [
+  { feature: 'AI messages/day', format: (l) => numOrUnlimited(l.chatMessagesPerDay) },
+  { feature: 'Currencies', format: (l) => numOrUnlimited(l.currencies) },
+  { feature: 'History', format: (l) => numOrUnlimited(l.transactionHistoryDays, ' days') },
+  { feature: 'Portfolio', format: (l) => yesNo(l.portfolio) },
+  { feature: 'AI coaching', format: (l) => yesNo(l.proactiveCoaching) },
+  { feature: 'Members', format: (l) => (l.maxMembers === 1 ? '1' : `Up to ${l.maxMembers}`) },
+  { feature: 'Data export', format: (l) => yesNo(l.dataExport) },
+];
 
 // ── PlanCard ─────────────────────────────────────────────────────────────────
 
@@ -299,13 +305,14 @@ function CompareTable() {
           </tr>
         </thead>
         <tbody className="divide-y divide-line">
-          {COMPARE_ROWS.map((row) => (
-            <tr key={row.feature}>
-              <td className="py-1.5 text-muted">{row.feature}</td>
-              <td className="py-1.5 text-center text-ink">{row.free}</td>
-              <td className="py-1.5 text-center text-ink">{row.pro}</td>
-              <td className="py-1.5 text-center text-ink">{row.premium}</td>
-              <td className="py-1.5 text-center text-ink">{row.family}</td>
+          {COMPARE_FEATURES.map(({ feature, format }) => (
+            <tr key={feature}>
+              <td className="py-1.5 text-muted">{feature}</td>
+              {COMPARE_TIERS.map((tier) => (
+                <td key={tier} className="py-1.5 text-center text-ink">
+                  {format(TIER_LIMITS[tier])}
+                </td>
+              ))}
             </tr>
           ))}
         </tbody>

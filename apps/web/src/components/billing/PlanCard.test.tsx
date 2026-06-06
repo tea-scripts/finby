@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { TIER_LIMITS } from '@finby/shared';
 import { PlanCard } from './PlanCard';
 
 // ── Mocks ──────────────────────────────────────────────────────────────────
@@ -34,13 +35,15 @@ Object.defineProperty(window, 'location', {
   writable: true,
 });
 
+// Stable reference — mirrors zustand returning the same workspace object across
+// renders. A fresh object per call would make PlanCard's [workspace] effect refire.
+const STABLE_FREE_STATE = { workspace: { id: 'w1', tier: 'FREE' } };
+
 beforeEach(() => {
   vi.clearAllMocks();
   window.location.href = '';
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  mockUseAuth.mockImplementation((selector: any) =>
-    selector({ workspace: { id: 'w1', tier: 'FREE' } }),
-  );
+  mockUseAuth.mockImplementation((selector: any) => selector(STABLE_FREE_STATE));
 });
 
 // ── Tests ──────────────────────────────────────────────────────────────────
@@ -165,6 +168,33 @@ describe('PlanCard', () => {
     });
 
     expect(screen.queryByRole('button', { name: /manage billing/i })).not.toBeInTheDocument();
+  });
+
+  it('compare table derives feature values from TIER_LIMITS (no hardcoded drift)', async () => {
+    mockGetSubscription.mockResolvedValue({
+      tier: 'FREE',
+      status: 'ACTIVE',
+      billingProvider: null,
+      currentPeriodEnd: null,
+      cancelAtPeriodEnd: false,
+    });
+
+    render(<PlanCard />);
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /compare plans/i })).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: /compare plans/i }));
+
+    // Cells are computed from TIER_LIMITS — these assertions track the source of truth.
+    expect(
+      screen.getByText(`${TIER_LIMITS.FREE.transactionHistoryDays} days`),
+    ).toBeInTheDocument(); // FREE History
+    expect(
+      screen.getByText(String(TIER_LIMITS.FREE.chatMessagesPerDay)),
+    ).toBeInTheDocument(); // FREE AI messages/day
+    expect(screen.getByText(`Up to ${TIER_LIMITS.FAMILY.maxMembers}`)).toBeInTheDocument(); // FAMILY Members
   });
 
   it('paid tier with cancelAtPeriodEnd: shows cancellation warning', async () => {
