@@ -41,12 +41,17 @@ import { RedisModule } from './redis/redis.module';
           return id;
         },
         redact: {
+          // pino redact is case-sensitive and path-based; cover the sensitive
+          // camelCase domain field names. (The Sentry beforeSend scrubber is the
+          // recursive/case-insensitive backstop for anything that slips past.)
           paths: [
             'req.headers.authorization',
             'req.headers.cookie',
+            'req.body',
             'res.headers["set-cookie"]',
-            '*.amount', '*.amountBase', '*.balance', '*.merchant',
-            '*.accountNumber', '*.email', '*.password', '*.token', '*.refreshToken',
+            '*.amount', '*.amountBase', '*.amountLimit', '*.amountSpent',
+            '*.balance', '*.priceBase', '*.merchant', '*.accountNumber',
+            '*.email', '*.password', '*.token', '*.refreshToken', '*.secret',
           ],
           censor: '[redacted]',
         },
