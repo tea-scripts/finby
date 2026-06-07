@@ -1,4 +1,4 @@
-import type { SubscriptionTier } from '@finby/shared';
+import type { SubscriptionTier, UserPreferences } from '@finby/shared';
 
 /** Shape attached to req.user by JwtStrategy. */
 export interface AuthUser {
@@ -23,6 +23,8 @@ export interface AuthUserView {
   email: string;
   emailVerified: boolean;
   timezone: string;
+  accountNumber: string | null;
+  preferences: UserPreferences;
 }
 
 export interface AuthWorkspaceView {
@@ -31,6 +33,7 @@ export interface AuthWorkspaceView {
   slug: string;
   tier: SubscriptionTier;
   baseCurrency: string;
+  preferredCurrencies: string[];
 }
 
 export interface AuthResult extends TokenPair {

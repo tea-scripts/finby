@@ -4,7 +4,7 @@ import { ConfigService } from '@nestjs/config';
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import * as bcrypt from 'bcrypt';
 import { Prisma } from '@prisma/client';
-import { DEFAULT_CATEGORIES, DEFAULT_PREFERENCES } from '@finby/shared';
+import { DEFAULT_CATEGORIES, DEFAULT_PREFERENCES, type SubscriptionTier } from '@finby/shared';
 import { PrismaService } from '../../prisma/prisma.service';
 import type { Env } from '../../config/env.schema';
 import { EmailService } from '../email/email.service';
@@ -13,10 +13,12 @@ import type {
   AccessTokenPayload,
   AuthResult,
   AuthUserView,
+  AuthWorkspaceView,
   RefreshTokenPayload,
   TokenPair,
 } from './auth.types';
 import { uniqueAccountNumber } from './account-number.util';
+import { parsePreferences } from './preferences.util';
 
 function slugify(input: string): string {
   return input
@@ -66,12 +68,20 @@ export class AuthService {
             accountNumber,
             preferences: DEFAULT_PREFERENCES as unknown as Prisma.InputJsonValue,
           },
-          select: { id: true, displayName: true, email: true, emailVerified: true, timezone: true },
+          select: {
+            id: true,
+            displayName: true,
+            email: true,
+            emailVerified: true,
+            timezone: true,
+            accountNumber: true,
+            preferences: true,
+          },
         });
 
         const createdWorkspace = await tx.workspace.create({
           data: { name: workspaceName, slug, baseCurrency: input.baseCurrency, preferredCurrencies: [input.baseCurrency] },
-          select: { id: true, name: true, slug: true, tier: true, baseCurrency: true },
+          select: { id: true, name: true, slug: true, tier: true, baseCurrency: true, preferredCurrencies: true },
         });
 
         await tx.workspaceMember.create({
@@ -105,7 +115,7 @@ export class AuthService {
         this.logger.warn(`Verification email failed for ${user.email}: ${String(err)}`);
       }
 
-      return { user, workspace, ...tokens };
+      return { user: this.toUserView(user), workspace: this.toWorkspaceView(workspace), ...tokens };
     } catch (error) {
       if (isUniqueConstraintError(error)) {
         throw new ConflictException('An account with that email already exists.');
@@ -148,13 +158,7 @@ export class AuthService {
     const tokens = await this.issueTokenPair(user.id, user.email);
     return {
       user: this.toUserView(user),
-      workspace: {
-        id: membership.workspace.id,
-        name: membership.workspace.name,
-        slug: membership.workspace.slug,
-        tier: membership.workspace.tier,
-        baseCurrency: membership.workspace.baseCurrency,
-      },
+      workspace: this.toWorkspaceView(membership.workspace),
       ...tokens,
     };
   }
@@ -273,12 +277,20 @@ export class AuthService {
   async getMe(userId: string): Promise<AuthUserView> {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
-      select: { id: true, displayName: true, email: true, emailVerified: true, timezone: true },
+      select: {
+        id: true,
+        displayName: true,
+        email: true,
+        emailVerified: true,
+        timezone: true,
+        accountNumber: true,
+        preferences: true,
+      },
     });
     if (!user) {
       throw new UnauthorizedException('User not found.');
     }
-    return user;
+    return this.toUserView(user);
   }
 
   private rounds(): number {
@@ -327,6 +339,8 @@ export class AuthService {
     email: string;
     emailVerified: boolean;
     timezone: string;
+    accountNumber: string | null;
+    preferences: Prisma.JsonValue;
   }): AuthUserView {
     return {
       id: user.id,
@@ -334,6 +348,26 @@ export class AuthService {
       email: user.email,
       emailVerified: user.emailVerified,
       timezone: user.timezone,
+      accountNumber: user.accountNumber,
+      preferences: parsePreferences(user.preferences),
+    };
+  }
+
+  private toWorkspaceView(workspace: {
+    id: string;
+    name: string;
+    slug: string;
+    tier: SubscriptionTier;
+    baseCurrency: string;
+    preferredCurrencies: string[];
+  }): AuthWorkspaceView {
+    return {
+      id: workspace.id,
+      name: workspace.name,
+      slug: workspace.slug,
+      tier: workspace.tier,
+      baseCurrency: workspace.baseCurrency,
+      preferredCurrencies: workspace.preferredCurrencies,
     };
   }
 }

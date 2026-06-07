@@ -7,6 +7,7 @@ import type { Env } from '../../config/env.schema';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AuthService } from './auth.service';
 import { EmailService } from '../email/email.service';
+import { parsePreferences } from './preferences.util';
 
 const ACCESS_SECRET = 'access-secret-access-secret-0001';
 const REFRESH_SECRET = 'refresh-secret-refresh-secret-01';
@@ -89,6 +90,8 @@ describe('AuthService', () => {
         email: 'aisha@example.com',
         emailVerified: false,
         timezone: 'Asia/Manila',
+        accountNumber: '1234567890',
+        preferences: null,
       });
       prisma.workspace.create.mockResolvedValue({
         id: 'w1',
@@ -96,6 +99,7 @@ describe('AuthService', () => {
         slug: 'aisha-finances-ab12',
         tier: 'FREE',
         baseCurrency: 'USD',
+        preferredCurrencies: ['USD'],
       });
       prisma.workspaceMember.create.mockResolvedValue({ id: 'm1' });
       prisma.category.createMany.mockResolvedValue({ count: 10 });
@@ -126,7 +130,14 @@ describe('AuthService', () => {
       expect(result.accessToken).toEqual(expect.any(String));
       expect(result.refreshToken).toEqual(expect.any(String));
       expect(result.user.email).toBe('aisha@example.com');
+      expect(result.user.accountNumber).toBe('1234567890');
+      expect(result.user.preferences).toEqual({
+        dateFormat: 'MEDIUM',
+        numberFormat: 'GROUPED',
+        currencyDisplay: 'SYMBOL',
+      });
       expect(result.workspace.tier).toBe('FREE');
+      expect(result.workspace.preferredCurrencies).toEqual(['USD']);
       expect(emailMock.sendVerification).toHaveBeenCalledTimes(1);
     });
 
@@ -139,6 +150,8 @@ describe('AuthService', () => {
         email: 'aisha@example.com',
         emailVerified: false,
         timezone: 'Asia/Manila',
+        accountNumber: '1234567890',
+        preferences: null,
       });
       prisma.workspace.create.mockResolvedValue({
         id: 'w1',
@@ -146,6 +159,7 @@ describe('AuthService', () => {
         slug: 'aisha-finances-ab12',
         tier: 'FREE',
         baseCurrency: 'USD',
+        preferredCurrencies: ['USD'],
       });
       prisma.workspaceMember.create.mockResolvedValue({ id: 'm1' });
       prisma.category.createMany.mockResolvedValue({ count: 10 });
@@ -173,6 +187,8 @@ describe('AuthService', () => {
         displayName: 'Aisha Bello',
         emailVerified: true,
         timezone: 'Asia/Manila',
+        accountNumber: '1234567890',
+        preferences: { dateFormat: 'ISO', numberFormat: 'PLAIN', currencyDisplay: 'CODE' },
         passwordHash: await bcrypt.hash(password, 4),
         workspaceMemberships: [
           {
@@ -182,6 +198,7 @@ describe('AuthService', () => {
               slug: 'aisha-finances-ab12',
               tier: 'FREE',
               baseCurrency: 'USD',
+              preferredCurrencies: ['USD', 'EUR'],
             },
           },
         ],
@@ -200,6 +217,13 @@ describe('AuthService', () => {
       expect(result.accessToken).toEqual(expect.any(String));
       expect(result.refreshToken).toEqual(expect.any(String));
       expect(result.workspace.id).toBe('w1');
+      expect(result.workspace.preferredCurrencies).toEqual(['USD', 'EUR']);
+      expect(result.user.accountNumber).toBe('1234567890');
+      expect(result.user.preferences).toEqual({
+        dateFormat: 'ISO',
+        numberFormat: 'PLAIN',
+        currencyDisplay: 'CODE',
+      });
       expect(prisma.user.update).toHaveBeenCalledTimes(1);
     });
 
@@ -378,14 +402,31 @@ describe('AuthService', () => {
   });
 
   describe('getMe', () => {
-    it('returns the current user view', async () => {
+    it('returns the current user view with defaults when preferences is null', async () => {
       const prisma = createPrismaMock();
       const service = buildService(prisma);
       prisma.user.findUnique.mockResolvedValueOnce({
         id: 'u1', displayName: 'Tea', email: 'a@b.com', emailVerified: true, timezone: 'UTC',
+        accountNumber: '1234567890', preferences: null,
       });
       await expect(service.getMe('u1')).resolves.toEqual({
         id: 'u1', displayName: 'Tea', email: 'a@b.com', emailVerified: true, timezone: 'UTC',
+        accountNumber: '1234567890',
+        preferences: { dateFormat: 'MEDIUM', numberFormat: 'GROUPED', currencyDisplay: 'SYMBOL' },
+      });
+    });
+    it('returns the stored preferences when present', async () => {
+      const prisma = createPrismaMock();
+      const service = buildService(prisma);
+      prisma.user.findUnique.mockResolvedValueOnce({
+        id: 'u1', displayName: 'Tea', email: 'a@b.com', emailVerified: true, timezone: 'UTC',
+        accountNumber: '1234567890',
+        preferences: { dateFormat: 'ISO', numberFormat: 'PLAIN', currencyDisplay: 'CODE' },
+      });
+      await expect(service.getMe('u1')).resolves.toEqual({
+        id: 'u1', displayName: 'Tea', email: 'a@b.com', emailVerified: true, timezone: 'UTC',
+        accountNumber: '1234567890',
+        preferences: { dateFormat: 'ISO', numberFormat: 'PLAIN', currencyDisplay: 'CODE' },
       });
     });
     it('throws UnauthorizedException when the user is missing', async () => {
@@ -393,6 +434,34 @@ describe('AuthService', () => {
       const service = buildService(prisma);
       prisma.user.findUnique.mockResolvedValueOnce(null);
       await expect(service.getMe('missing')).rejects.toBeInstanceOf(UnauthorizedException);
+    });
+  });
+
+  describe('parsePreferences', () => {
+    const defaults = { dateFormat: 'MEDIUM', numberFormat: 'GROUPED', currencyDisplay: 'SYMBOL' };
+
+    it('returns defaults for null', () => {
+      expect(parsePreferences(null)).toEqual(defaults);
+    });
+
+    it('returns defaults for garbage', () => {
+      expect(parsePreferences('nonsense')).toEqual(defaults);
+      expect(parsePreferences({ dateFormat: 'BOGUS' })).toEqual(defaults);
+      expect(parsePreferences(42)).toEqual(defaults);
+    });
+
+    it('returns the provided values for a full valid object', () => {
+      expect(
+        parsePreferences({ dateFormat: 'ISO', numberFormat: 'PLAIN', currencyDisplay: 'CODE' }),
+      ).toEqual({ dateFormat: 'ISO', numberFormat: 'PLAIN', currencyDisplay: 'CODE' });
+    });
+
+    it('fills missing keys with defaults for a partial object', () => {
+      expect(parsePreferences({ dateFormat: 'SHORT' })).toEqual({
+        dateFormat: 'SHORT',
+        numberFormat: 'GROUPED',
+        currencyDisplay: 'SYMBOL',
+      });
     });
   });
 });
