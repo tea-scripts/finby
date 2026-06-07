@@ -46,6 +46,11 @@ function asNumber(value: unknown): number | undefined {
 function today(): string {
   return new Date().toISOString().slice(0, 10);
 }
+/** Signature-only amount normalization (NOT financial math): drop insignificant
+ *  trailing zeros so "12", "12.0", "12.00" compare equal in a dedup key. */
+function normalizeAmount(value: string): string {
+  return value.includes('.') ? value.replace(/0+$/, '').replace(/\.$/, '') : value;
+}
 
 @Injectable()
 export class ChatService {
@@ -86,9 +91,14 @@ export class ChatService {
       select: { displayName: true, timezone: true },
     });
 
-    await this.prisma.conversationMessage.create({
+    const userMessage = await this.prisma.conversationMessage.create({
       data: { conversationId, role: 'USER', content, tokenCount: estimateTokens(content) },
     });
+
+    // Signatures of events already logged in THIS conversation. The model sees the
+    // full active window each turn, so without this guard a past "spent $12" can be
+    // re-logged on later turns; we skip a log whose signature is already recorded.
+    const loggedSignatures = await this.loadLoggedSignatures(conversationId, workspace.id);
 
     const baseSystem = await this.buildSystemPrompt(workspace, user);
     const { system, messages } = await this.contextAssembler.buildContext(conversationId, baseSystem);
@@ -118,6 +128,8 @@ export class ChatService {
     for (let round = 0; round < MAX_TOOL_ROUNDS && response.toolCalls.length > 0; round += 1) {
       const toolResultBlocks: LlmContentBlock[] = [];
       for (const call of response.toolCalls) {
+        const signature = this.logSignature(call);
+
         await this.prisma.conversationMessage.create({
           data: {
             conversationId,
@@ -128,7 +140,29 @@ export class ChatService {
           },
         });
 
-        const exec = await this.executeTool(workspace, userId, call);
+        // Deterministic duplicate guard: if the model re-emits a log for an event
+        // already recorded in this conversation, skip it — never create a duplicate
+        // transaction (a prompt rule alone is not reliable enough for financial data).
+        if (signature && loggedSignatures.has(signature)) {
+          const dupResult = JSON.stringify({
+            status: 'duplicate_skipped',
+            message:
+              'That event was already logged earlier in this conversation — not logging it again.',
+          });
+          await this.prisma.conversationMessage.create({
+            data: {
+              conversationId,
+              role: 'TOOL_RESULT',
+              content: dupResult,
+              toolResult: dupResult,
+              tokenCount: estimateTokens(dupResult),
+            },
+          });
+          toolResultBlocks.push({ type: 'tool_result', toolUseId: call.id, content: dupResult });
+          continue;
+        }
+
+        const exec = await this.executeTool(workspace, userId, call, userMessage.id);
 
         await this.prisma.conversationMessage.create({
           data: {
@@ -141,7 +175,11 @@ export class ChatService {
           },
         });
 
-        if (exec.action) actions.push(exec.action);
+        if (exec.action) {
+          actions.push(exec.action);
+          // Only a committed transaction counts toward the dedup set (not pending/errors).
+          if (signature) loggedSignatures.add(signature);
+        }
         if (exec.pending) pendingConfirmations.push(exec.pending);
         toolResultBlocks.push({
           type: 'tool_result',
@@ -211,14 +249,15 @@ export class ChatService {
     workspace: WorkspaceContext,
     userId: string,
     call: LlmToolCall,
+    sourceMessageId?: string,
   ): Promise<ToolExecResult> {
     switch (call.name) {
       case 'log_expense':
-        return this.execLog(workspace, userId, 'EXPENSE', call.input);
+        return this.execLog(workspace, userId, 'EXPENSE', call.input, sourceMessageId);
       case 'log_income':
-        return this.execLog(workspace, userId, 'INCOME', call.input);
+        return this.execLog(workspace, userId, 'INCOME', call.input, sourceMessageId);
       case 'log_transfer':
-        return this.execTransfer(workspace, userId, call.input);
+        return this.execTransfer(workspace, userId, call.input, sourceMessageId);
       case 'set_budget':
         return this.execSetBudget(workspace, call.input);
       case 'query_analytics':
@@ -234,11 +273,57 @@ export class ChatService {
     }
   }
 
+  /** Canonical signature of a logging tool call (EXPENSE/INCOME/TRANSFER), or null
+   *  for non-logging tools / incomplete input. Used to detect re-logged history. */
+  private logSignature(call: LlmToolCall): string | null {
+    const type =
+      call.name === 'log_expense'
+        ? 'EXPENSE'
+        : call.name === 'log_income'
+          ? 'INCOME'
+          : call.name === 'log_transfer'
+            ? 'TRANSFER'
+            : null;
+    if (!type) return null;
+    const amount = asString(call.input.amountOriginal);
+    const currency = asString(call.input.currencyOriginal)?.toUpperCase();
+    if (!amount || !currency) return null;
+    const merchant = (asString(call.input.merchant) ?? '').toLowerCase();
+    return `${type}|${normalizeAmount(amount)}|${currency}|${merchant}`;
+  }
+
+  /** Signatures of non-void transactions already logged in this conversation
+   *  (matched via sourceMessageId), used to skip duplicate re-logs. */
+  private async loadLoggedSignatures(
+    conversationId: string,
+    workspaceId: string,
+  ): Promise<Set<string>> {
+    const messages = await this.prisma.conversationMessage.findMany({
+      where: { conversationId },
+      select: { id: true },
+    });
+    const ids = messages.map((m) => m.id);
+    if (ids.length === 0) return new Set();
+    const txs = await this.prisma.transaction.findMany({
+      where: { workspaceId, sourceMessageId: { in: ids }, status: { not: 'VOID' } },
+      select: { type: true, amountOriginal: true, currencyOriginal: true, merchant: true },
+    });
+    return new Set(
+      txs.map(
+        (t) =>
+          `${t.type}|${normalizeAmount(t.amountOriginal.toString())}|${t.currencyOriginal.toUpperCase()}|${(
+            t.merchant ?? ''
+          ).toLowerCase()}`,
+      ),
+    );
+  }
+
   private async execLog(
     workspace: WorkspaceContext,
     userId: string,
     type: 'EXPENSE' | 'INCOME',
     input: Record<string, unknown>,
+    sourceMessageId?: string,
   ): Promise<ToolExecResult> {
     const amountOriginal = asString(input.amountOriginal);
     const currencyOriginal = asString(input.currencyOriginal)?.toUpperCase();
@@ -293,6 +378,7 @@ export class ChatService {
         merchant: asString(input.merchant) ?? null,
         description: asString(input.description) ?? null,
         aiConfidence: confidence,
+        sourceMessageId: sourceMessageId ?? null,
       });
 
       const action: ChatAction = {
@@ -337,6 +423,7 @@ export class ChatService {
     workspace: WorkspaceContext,
     userId: string,
     input: Record<string, unknown>,
+    sourceMessageId?: string,
   ): Promise<ToolExecResult> {
     const amountOriginal = asString(input.amountOriginal);
     const currencyOriginal = asString(input.currencyOriginal)?.toUpperCase();
@@ -383,6 +470,7 @@ export class ChatService {
         toAccountId: to.id,
         description: asString(input.description) ?? null,
         aiConfidence: confidence,
+        sourceMessageId: sourceMessageId ?? null,
       });
       const action: ChatAction = {
         type: 'TRANSACTION_CREATED',

@@ -434,4 +434,79 @@ describe('ChatService.handleMessage — multi-step tool loop', () => {
     expect(result.actions).toHaveLength(1);
     expect(result.message.content.length).toBeGreaterThan(0);
   });
+
+  function buildForDedup(createMessage: jest.Mock) {
+    const create = jest.fn().mockResolvedValue({ id: 'm', createdAt: new Date('2026-06-02T00:00:00Z') });
+    const prisma = {
+      user: { findUnique: jest.fn().mockResolvedValue({ displayName: 'Timi', timezone: 'UTC' }) },
+      conversationMessage: {
+        create,
+        findMany: jest.fn().mockResolvedValue([{ id: 'm0' }]),
+        count: jest.fn().mockResolvedValue(2),
+        updateMany: jest.fn(),
+      },
+      transaction: {
+        findMany: jest
+          .fn()
+          .mockResolvedValue([
+            { type: 'EXPENSE', amountOriginal: '12', currencyOriginal: 'USD', merchant: 'Lunch' },
+          ]),
+      },
+      conversation: { update: jest.fn() },
+    };
+    const conversations = {
+      requireConversation: jest.fn().mockResolvedValue({ id: 'c1', title: null }),
+    };
+    const llm = {
+      getTools: jest.fn().mockReturnValue([]),
+      buildSystemPrompt: jest.fn().mockReturnValue('sys'),
+      createMessage,
+    };
+    const transactions = { create: jest.fn() };
+    const categories = {
+      findByName: jest.fn().mockResolvedValue({ id: 'c1', name: 'Dining' }),
+      list: jest.fn().mockResolvedValue([]),
+    };
+    const accounts = { findByName: jest.fn().mockResolvedValue(null), list: jest.fn().mockResolvedValue([]) };
+    const budgets = { list: jest.fn().mockResolvedValue([]) };
+    const memory = { maintain: jest.fn().mockResolvedValue(undefined) };
+    const contextAssembler = { buildContext: jest.fn().mockResolvedValue({ system: 'sys', messages: [] }) };
+    const service = new ChatService(
+      prisma as unknown as PrismaService,
+      conversations as unknown as ConversationsService,
+      llm as unknown as LlmService,
+      transactions as unknown as TransactionsService,
+      {} as unknown as FxService,
+      categories as unknown as CategoriesService,
+      accounts as unknown as AccountsService,
+      budgets as unknown as BudgetsService,
+      {} as unknown as AnalyticsService,
+      {} as unknown as MarketDataService,
+      {} as unknown as PortfolioService,
+      memory as unknown as MemoryCompressionService,
+      contextAssembler as unknown as ContextAssemblerService,
+    );
+    return { service, transactions };
+  }
+
+  it('skips a log the model re-emits for an event already logged in this conversation', async () => {
+    const createMessage = jest
+      .fn()
+      .mockResolvedValueOnce(
+        toolUse(
+          'log_expense',
+          { amountOriginal: '12', currencyOriginal: 'USD', merchant: 'Lunch', categoryName: 'Dining', confidence: 0.95 },
+          't1',
+        ),
+      )
+      .mockResolvedValueOnce(finalText('Your June budget is set.'));
+    const { service, transactions } = buildForDedup(createMessage);
+
+    const result = await service.handleMessage(workspace, 'u1', 'c1', 'set the same budget for June');
+
+    // The re-emitted $12 Lunch matches an existing transaction in the conversation → skipped.
+    expect(transactions.create).not.toHaveBeenCalled();
+    expect(result.actions).toHaveLength(0);
+    expect(result.message.content).toBe('Your June budget is set.');
+  });
 });

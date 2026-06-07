@@ -42,6 +42,21 @@ describe('LlmService', () => {
     expect(prompt).toContain('Groceries: 9800/15000');
   });
 
+  it('instructs the model to act only on the latest message and never re-log history', () => {
+    // Guards the duplicate-transaction bug: replayed history must not be re-logged.
+    const service = new LlmService(new FakeProvider());
+    const prompt = service.buildSystemPrompt({
+      user: { displayName: 'Aisha Bello', timezone: 'Asia/Manila' },
+      workspace: { baseCurrency: 'USD', tier: 'FREE' },
+      accounts: [],
+      categories: [],
+      budgets: [],
+      today: '2026-06-02',
+    });
+    expect(prompt).toContain("ACT ONLY ON THE USER'S MOST RECENT MESSAGE");
+    expect(prompt).toContain('NEVER log or re-log it again');
+  });
+
   it('delegates createMessage to the provider', async () => {
     const provider = new FakeProvider();
     const service = new LlmService(provider);
