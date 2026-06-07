@@ -17,8 +17,7 @@ export function ProfileSection() {
   const [error, setError] = useState(false);
   const [copied, setCopied] = useState(false);
 
-  const dirty =
-    displayName !== (user?.displayName ?? '') || timezone !== (user?.timezone ?? '');
+  const dirty = displayName !== (user?.displayName ?? '') || timezone !== (user?.timezone ?? '');
 
   async function handleSave() {
     setSaving(true);
@@ -46,6 +45,24 @@ export function ProfileSection() {
         Profile
       </h2>
       <div className="space-y-4 rounded-2xl border border-line bg-surface/60 p-5 shadow-card">
+        <div className="space-y-1.5">
+          <p className="block text-xs font-medium uppercase tracking-wide text-muted">
+            Account number
+          </p>
+          <div className="flex items-center gap-3">
+            <span className="font-mono text-sm text-ink">{user?.accountNumber ?? '—'}</span>
+            {user?.accountNumber ? (
+              <button
+                type="button"
+                onClick={handleCopy}
+                className="rounded-lg border border-line px-2 py-1 text-xs font-medium text-muted transition hover:border-accent/50 hover:text-ink"
+              >
+                {copied ? 'Copied' : 'Copy'}
+              </button>
+            ) : null}
+          </div>
+        </div>
+
         <Field label="Name" htmlFor="profile-name">
           <Input
             id="profile-name"
@@ -66,26 +83,6 @@ export function ProfileSection() {
         <Field label="Email" htmlFor="profile-email" hint="Email can't be changed.">
           <Input id="profile-email" value={user?.email ?? ''} disabled readOnly />
         </Field>
-
-        <div className="space-y-1.5">
-          <p className="block text-xs font-medium uppercase tracking-wide text-muted">
-            Account number
-          </p>
-          <div className="flex items-center gap-3">
-            <span className="font-mono text-sm text-ink">
-              {user?.accountNumber ?? '—'}
-            </span>
-            {user?.accountNumber ? (
-              <button
-                type="button"
-                onClick={handleCopy}
-                className="rounded-lg border border-line px-2 py-1 text-xs font-medium text-muted transition hover:border-accent/50 hover:text-ink"
-              >
-                {copied ? 'Copied' : 'Copy'}
-              </button>
-            ) : null}
-          </div>
-        </div>
 
         {error ? (
           <p className="text-xs text-danger">Couldn&apos;t save. Please try again.</p>
