@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { DEFAULT_PREFERENCES } from '@finby/shared';
 
 // Stub localStorage before importing the store (persist middleware reads it on init).
 const storage: Record<string, string> = {};
@@ -24,6 +25,8 @@ beforeEach(() => {
       email: 'alice@example.com',
       emailVerified: true,
       timezone: 'UTC',
+      accountNumber: 'ACC-001',
+      preferences: { ...DEFAULT_PREFERENCES },
     },
     workspace: {
       id: 'w1',
@@ -31,6 +34,7 @@ beforeEach(() => {
       slug: 'my-workspace',
       tier: 'FREE',
       baseCurrency: 'USD',
+      preferredCurrencies: ['USD'],
     },
     status: 'authed',
   });
@@ -64,5 +68,55 @@ describe('setWorkspaceTier', () => {
       useAuth.getState().setWorkspaceTier(tier);
       expect(useAuth.getState().workspace?.tier).toBe(tier);
     }
+  });
+});
+
+describe('setUser', () => {
+  it('merges a patch into user, preserving other fields', () => {
+    useAuth.getState().setUser({ displayName: 'X' });
+    const u = useAuth.getState().user;
+    expect(u?.displayName).toBe('X');
+    expect(u?.id).toBe('u1');
+    expect(u?.email).toBe('alice@example.com');
+    expect(u?.emailVerified).toBe(true);
+    expect(u?.timezone).toBe('UTC');
+    expect(u?.accountNumber).toBe('ACC-001');
+  });
+
+  it('updates preferences', () => {
+    useAuth
+      .getState()
+      .setUser({ preferences: { ...DEFAULT_PREFERENCES, dateFormat: 'SHORT' } });
+    const u = useAuth.getState().user;
+    expect(u?.preferences.dateFormat).toBe('SHORT');
+    expect(u?.preferences.numberFormat).toBe(DEFAULT_PREFERENCES.numberFormat);
+    expect(u?.preferences.currencyDisplay).toBe(
+      DEFAULT_PREFERENCES.currencyDisplay,
+    );
+  });
+
+  it('is a no-op when user is null', () => {
+    useAuth.setState({ user: null });
+    useAuth.getState().setUser({ displayName: 'X' });
+    expect(useAuth.getState().user).toBeNull();
+  });
+});
+
+describe('setPreferredCurrencies', () => {
+  it('updates workspace.preferredCurrencies, preserving other fields', () => {
+    useAuth.getState().setPreferredCurrencies(['USD', 'EUR']);
+    const ws = useAuth.getState().workspace;
+    expect(ws?.preferredCurrencies).toEqual(['USD', 'EUR']);
+    expect(ws?.id).toBe('w1');
+    expect(ws?.name).toBe('My Workspace');
+    expect(ws?.slug).toBe('my-workspace');
+    expect(ws?.tier).toBe('FREE');
+    expect(ws?.baseCurrency).toBe('USD');
+  });
+
+  it('is a no-op when workspace is null', () => {
+    useAuth.setState({ workspace: null });
+    useAuth.getState().setPreferredCurrencies(['USD', 'EUR']);
+    expect(useAuth.getState().workspace).toBeNull();
   });
 });

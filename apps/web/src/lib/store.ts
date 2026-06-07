@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
+import { DEFAULT_PREFERENCES } from '@finby/shared';
 import { ApiError, apiFetch } from './api-client';
 import type {
   ApiUser,
@@ -8,6 +9,14 @@ import type {
   RegisterInput,
   TokenPair,
 } from './types';
+
+/**
+ * Normalize a user from the API/persisted state so consumers can always rely
+ * on `preferences` being present (older sessions predate this field).
+ */
+function normalizeUser(user: ApiUser): ApiUser {
+  return { ...user, preferences: user.preferences ?? DEFAULT_PREFERENCES };
+}
 
 /**
  * Auth store: holds tokens + identity, persisted to localStorage.
@@ -30,6 +39,8 @@ interface AuthState {
   markVerified: () => void;
   refreshUser: () => Promise<void>;
   setWorkspaceTier: (tier: import('./types').SubscriptionTier) => void;
+  setUser: (patch: Partial<ApiUser>) => void;
+  setPreferredCurrencies: (codes: string[]) => void;
 }
 
 const CLEARED = {
@@ -53,7 +64,7 @@ export const useAuth = create<AuthState>()(
         set({
           accessToken: result.accessToken,
           refreshToken: result.refreshToken,
-          user: result.user,
+          user: normalizeUser(result.user),
           workspace: result.workspace,
           status: 'authed',
         });
@@ -67,7 +78,7 @@ export const useAuth = create<AuthState>()(
         set({
           accessToken: result.accessToken,
           refreshToken: result.refreshToken,
-          user: result.user,
+          user: normalizeUser(result.user),
           workspace: result.workspace,
           status: 'authed',
         });
@@ -118,7 +129,7 @@ export const useAuth = create<AuthState>()(
       refreshUser: async () => {
         try {
           const { user } = await get().authed<{ user: ApiUser }>('/auth/me');
-          set({ user });
+          set({ user: normalizeUser(user) });
         } catch {
           /* ignore — keep the current user */
         }
@@ -127,6 +138,18 @@ export const useAuth = create<AuthState>()(
       setWorkspaceTier: (tier) => {
         const ws = get().workspace;
         if (ws) set({ workspace: { ...ws, tier } });
+      },
+
+      setUser: (patch) => {
+        set((s) => (s.user ? { user: { ...s.user, ...patch } } : {}));
+      },
+
+      setPreferredCurrencies: (codes) => {
+        set((s) =>
+          s.workspace
+            ? { workspace: { ...s.workspace, preferredCurrencies: codes } }
+            : {},
+        );
       },
 
       authed: async <T>(path: string, init: RequestInit = {}): Promise<T> => {

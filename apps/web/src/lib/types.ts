@@ -1,3 +1,5 @@
+import type { UserPreferences } from '@finby/shared';
+
 export type SubscriptionTier = 'FREE' | 'PRO' | 'PREMIUM' | 'FAMILY';
 
 export interface ApiUser {
@@ -6,6 +8,8 @@ export interface ApiUser {
   email: string;
   emailVerified: boolean;
   timezone: string;
+  accountNumber: string | null;
+  preferences: UserPreferences;
 }
 
 export interface ApiWorkspace {
@@ -14,6 +18,7 @@ export interface ApiWorkspace {
   slug: string;
   tier: SubscriptionTier;
   baseCurrency: string;
+  preferredCurrencies: string[];
 }
 
 export interface AuthResult {
