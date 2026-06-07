@@ -1,6 +1,8 @@
+'use client';
+
 import { Skeleton } from '@/components/ui/skeleton';
 import type { SectionState } from '@/lib/dashboard-api';
-import { money } from '@/lib/format';
+import { useFormatters } from '@/lib/use-formatters';
 import type { BudgetView } from '@/lib/types';
 import { DashboardCard, SectionEmpty, SectionError } from './dashboard-card';
 
@@ -11,13 +13,14 @@ function barColor(pct: number): string {
 }
 
 function BudgetRow({ budget }: { budget: BudgetView }) {
+  const { formatMoney } = useFormatters();
   const pct = Math.round(budget.utilizationPercent);
   return (
     <div>
       <div className="flex items-baseline justify-between gap-2">
         <span className="text-sm text-ink">{budget.category.name}</span>
         <span className="font-mono text-xs text-muted">
-          {money(budget.amountSpent, budget.currency)} / {money(budget.amountLimit, budget.currency)}
+          {formatMoney(budget.amountSpent, budget.currency)} / {formatMoney(budget.amountLimit, budget.currency)}
         </span>
       </div>
       <div className="mt-1.5 flex items-center gap-2">
