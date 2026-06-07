@@ -6,7 +6,7 @@ import type { SubscriptionTier } from '@finby/shared';
 import { getSubscription, openPortal } from '@/lib/billing-api';
 import { useAuth } from '@/lib/store';
 import type { SubscriptionView } from '@/lib/types';
-import { shortDate } from '@/lib/format';
+import { useFormatters } from '@/lib/use-formatters';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { TierBadge } from '@/components/ui/tier-badge';
@@ -66,6 +66,7 @@ const COMPARE_FEATURES: { feature: string; format: (l: TierLimitsShape) => strin
 
 export function PlanCard() {
   const workspace = useAuth((s) => s.workspace);
+  const { formatDate } = useFormatters();
 
   const [sub, setSub] = useState<SubscriptionView | null>(null);
   const [loading, setLoading] = useState(true);
@@ -223,7 +224,7 @@ export function PlanCard() {
         {sub.currentPeriodEnd && (
           <p className="text-sm text-muted">
             Next billing date:{' '}
-            <span className="font-medium text-ink">{shortDate(sub.currentPeriodEnd)}</span>
+            <span className="font-medium text-ink">{formatDate(sub.currentPeriodEnd)}</span>
           </p>
         )}
         {sub.cancelAtPeriodEnd && (

@@ -1,10 +1,13 @@
+'use client';
+
 import { Skeleton } from '@/components/ui/skeleton';
 import type { SectionState } from '@/lib/dashboard-api';
-import { money } from '@/lib/format';
+import { useFormatters } from '@/lib/use-formatters';
 import type { AccountView } from '@/lib/types';
 import { DashboardCard, SectionEmpty, SectionError } from './dashboard-card';
 
 export function AccountList({ state }: { state: SectionState<AccountView[]> }) {
+  const { formatMoney } = useFormatters();
   const accounts = state.data?.filter((a) => !a.isArchived) ?? [];
   return (
     <DashboardCard title="Accounts">
@@ -26,7 +29,7 @@ export function AccountList({ state }: { state: SectionState<AccountView[]> }) {
                 <p className="truncate text-sm text-ink">{a.name}</p>
                 <p className="text-xs text-faint">{a.accountType}</p>
               </div>
-              <span className="shrink-0 font-mono text-sm text-ink">{money(a.balance, a.currency)}</span>
+              <span className="shrink-0 font-mono text-sm text-ink">{formatMoney(a.balance, a.currency)}</span>
             </div>
           ))}
         </div>
