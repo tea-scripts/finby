@@ -63,6 +63,11 @@ export const envSchema = z.object({
   FREE_ACTIVE_WINDOW_TOKEN_BUDGET: z.coerce.number().int().positive().default(4000),
   PRO_COMPRESSION_THRESHOLD: z.coerce.number().int().positive().default(8000),
   PREMIUM_COMPRESSION_THRESHOLD: z.coerce.number().int().positive().default(12000),
+
+  // Observability (Phase 1) — optional; Sentry no-ops when SENTRY_DSN is unset.
+  SENTRY_DSN: z.string().optional(),
+  SENTRY_TRACES_SAMPLE_RATE: z.coerce.number().min(0).max(1).default(0.1),
+  LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace']).default('info'),
 });
 
 export type Env = z.infer<typeof envSchema>;
