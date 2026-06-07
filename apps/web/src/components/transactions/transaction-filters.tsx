@@ -72,7 +72,7 @@ export function TransactionFilters({
             <Input
               id="f-from"
               type="date"
-              className="min-w-0 appearance-none"
+              className="min-w-0"
               value={filters.fromDate ?? ''}
               onChange={(e) => set({ fromDate: e.target.value || undefined })}
             />
@@ -88,7 +88,7 @@ export function TransactionFilters({
             <Input
               id="f-to"
               type="date"
-              className="min-w-0 appearance-none"
+              className="min-w-0"
               value={filters.toDate ?? ''}
               onChange={(e) => set({ toDate: e.target.value || undefined })}
             />
