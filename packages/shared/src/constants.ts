@@ -1,4 +1,4 @@
-import type { SubscriptionTier } from './types';
+import type { SubscriptionTier, UserPreferences } from './types';
 
 /**
  * Default spending categories seeded into every workspace on creation.
@@ -136,3 +136,40 @@ export const TIER_LIMITS: Record<SubscriptionTier, TierLimits> = {
     proactiveCoaching: true,
   },
 };
+
+export const DEFAULT_PREFERENCES: UserPreferences = {
+  dateFormat: 'MEDIUM',
+  numberFormat: 'GROUPED',
+  currencyDisplay: 'SYMBOL',
+};
+
+export interface Currency {
+  code: string;
+  name: string;
+  symbol: string;
+}
+
+/** Canonical currency list — single source of truth for all pickers + validation. */
+export const CURRENCIES: Currency[] = [
+  { code: 'USD', name: 'US Dollar', symbol: '$' },
+  { code: 'PHP', name: 'Philippine Peso', symbol: '₱' },
+  { code: 'EUR', name: 'Euro', symbol: '€' },
+  { code: 'GBP', name: 'British Pound', symbol: '£' },
+  { code: 'NGN', name: 'Nigerian Naira', symbol: '₦' },
+  { code: 'KES', name: 'Kenyan Shilling', symbol: 'KSh' },
+  { code: 'GHS', name: 'Ghanaian Cedi', symbol: 'GH₵' },
+  { code: 'ZAR', name: 'South African Rand', symbol: 'R' },
+  { code: 'CAD', name: 'Canadian Dollar', symbol: 'CA$' },
+  { code: 'AUD', name: 'Australian Dollar', symbol: 'A$' },
+  { code: 'INR', name: 'Indian Rupee', symbol: '₹' },
+  { code: 'JPY', name: 'Japanese Yen', symbol: '¥' },
+  { code: 'SGD', name: 'Singapore Dollar', symbol: 'S$' },
+  { code: 'AED', name: 'UAE Dirham', symbol: 'AED' },
+  { code: 'CNY', name: 'Chinese Yuan', symbol: '¥' },
+];
+
+export const CURRENCY_CODES: string[] = CURRENCIES.map((c) => c.code);
+
+export function isCurrencyCode(code: string): boolean {
+  return CURRENCY_CODES.includes(code);
+}

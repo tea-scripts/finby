@@ -11,3 +11,12 @@ export type IsoDateTime = string;
 
 export type SubscriptionTier = 'FREE' | 'PRO' | 'PREMIUM' | 'FAMILY';
 export type WorkspaceMemberRole = 'OWNER' | 'CO_MANAGER' | 'VIEWER';
+
+export type DateFormat = 'MEDIUM' | 'SHORT' | 'ISO';
+export type NumberFormat = 'GROUPED' | 'PLAIN';
+export type CurrencyDisplay = 'SYMBOL' | 'CODE';
+export interface UserPreferences {
+  dateFormat: DateFormat;
+  numberFormat: NumberFormat;
+  currencyDisplay: CurrencyDisplay;
+}
