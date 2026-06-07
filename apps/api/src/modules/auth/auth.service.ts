@@ -3,7 +3,8 @@ import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import * as bcrypt from 'bcrypt';
-import { DEFAULT_CATEGORIES } from '@finby/shared';
+import { Prisma } from '@prisma/client';
+import { DEFAULT_CATEGORIES, DEFAULT_PREFERENCES } from '@finby/shared';
 import { PrismaService } from '../../prisma/prisma.service';
 import type { Env } from '../../config/env.schema';
 import { EmailService } from '../email/email.service';
@@ -15,6 +16,7 @@ import type {
   RefreshTokenPayload,
   TokenPair,
 } from './auth.types';
+import { uniqueAccountNumber } from './account-number.util';
 
 function slugify(input: string): string {
   return input
@@ -51,6 +53,8 @@ export class AuthService {
     const workspaceName = `${firstName}'s Finances`;
     const slug = `${slugify(`${firstName} finances`)}-${randomBytes(2).toString('hex')}`;
 
+    const accountNumber = await uniqueAccountNumber(this.prisma);
+
     try {
       const { user, workspace } = await this.prisma.$transaction(async (tx) => {
         const createdUser = await tx.user.create({
@@ -59,12 +63,14 @@ export class AuthService {
             passwordHash,
             displayName: input.displayName,
             timezone: input.timezone,
+            accountNumber,
+            preferences: DEFAULT_PREFERENCES as unknown as Prisma.InputJsonValue,
           },
           select: { id: true, displayName: true, email: true, emailVerified: true, timezone: true },
         });
 
         const createdWorkspace = await tx.workspace.create({
-          data: { name: workspaceName, slug, baseCurrency: input.baseCurrency },
+          data: { name: workspaceName, slug, baseCurrency: input.baseCurrency, preferredCurrencies: [input.baseCurrency] },
           select: { id: true, name: true, slug: true, tier: true, baseCurrency: true },
         });
 
