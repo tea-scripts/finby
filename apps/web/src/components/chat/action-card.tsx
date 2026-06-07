@@ -4,11 +4,20 @@ import { Lottie } from '@/components/ui/lottie';
 import type { ChatAction } from '@/lib/types';
 import { useFormatters } from '@/lib/use-formatters';
 
-/** Renders a committed action (currently only TRANSACTION_CREATED) as a
+/** Renders a committed action (TRANSACTION_CREATED or BUDGET_SET) as a
  *  compact card. Money is shown in Geist Mono per the brand. */
 export function ActionCard({ action }: { action: ChatAction }) {
-  const { preview } = action;
   const { formatMoney } = useFormatters();
+
+  if (action.type === 'BUDGET_SET') {
+    return (
+      <div className="rounded-xl border border-line bg-surface/60 px-3 py-2 text-xs text-muted">
+        Budget set{action.preview.category ? ` for ${action.preview.category}` : ''}.
+      </div>
+    );
+  }
+
+  const { preview } = action;
   return (
     <div className="mt-2 rounded-xl border border-line bg-surface-2/70 p-3.5 shadow-card">
       <div className="flex items-center justify-between gap-3">

@@ -16,6 +16,7 @@ import {
   sendMessage,
 } from '@/lib/chat-api';
 import { useAuth } from '@/lib/store';
+import { track } from '@/lib/analytics';
 import type { ChatAction, PendingConfirmation } from '@/lib/types';
 
 interface UiMessage {
@@ -102,6 +103,7 @@ export default function ChatPage() {
       { id: genId(), role: 'USER', content, createdAt: new Date().toISOString() },
     ]);
     setSending(true);
+    track('chat_message_sent');
     try {
       const result = await sendMessage(workspace.id, conversationId, content);
       setMessages((m) => [
@@ -115,6 +117,13 @@ export default function ChatPage() {
           confirmations: result.pendingConfirmations,
         },
       ]);
+      for (const a of result.actions) {
+        if (a.type === 'TRANSACTION_CREATED') {
+          track('transaction_logged', { tx_type: a.txType, currency: a.preview.currency });
+        } else if (a.type === 'BUDGET_SET') {
+          track('budget_set', { currency: a.preview.currency });
+        }
+      }
     } catch (err) {
       handleError(err);
     } finally {
@@ -165,8 +174,8 @@ export default function ChatPage() {
                   </div>
                 )}
                 <MessageBubble role={m.role} content={m.content} createdAt={m.createdAt}>
-                  {m.actions?.map((a) => (
-                    <ActionCard key={a.transactionId} action={a} />
+                  {m.actions?.map((a, idx) => (
+                    <ActionCard key={a.type === 'TRANSACTION_CREATED' ? a.transactionId : `budget-${idx}`} action={a} />
                   ))}
                   {m.confirmations?.map((c) => (
                     <ConfirmationCard
