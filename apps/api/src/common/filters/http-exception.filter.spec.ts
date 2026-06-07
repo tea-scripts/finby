@@ -5,7 +5,22 @@ import {
   ServiceUnavailableException,
 } from '@nestjs/common';
 import type { ArgumentsHost } from '@nestjs/common';
+import * as Sentry from '@sentry/nestjs';
 import { HttpExceptionFilter } from './http-exception.filter';
+
+jest.mock('@sentry/nestjs', () => ({ captureException: jest.fn() }));
+
+function makeHost(req: Record<string, unknown> = {}): ArgumentsHost {
+  const response = {
+    status: (code: number) => {
+      void code;
+      return { json: (payload: Record<string, unknown>) => payload };
+    },
+  };
+  return {
+    switchToHttp: () => ({ getResponse: () => response, getRequest: () => req }),
+  } as unknown as ArgumentsHost;
+}
 
 function capture(exception: unknown): { status: number; body: Record<string, unknown> } {
   let status = 0;
@@ -17,7 +32,7 @@ function capture(exception: unknown): { status: number; body: Record<string, unk
     },
   };
   const host = {
-    switchToHttp: () => ({ getResponse: () => response }),
+    switchToHttp: () => ({ getResponse: () => response, getRequest: () => ({}) }),
   } as unknown as ArgumentsHost;
   new HttpExceptionFilter().catch(exception, host);
   return { status, body };
@@ -42,5 +57,28 @@ describe('HttpExceptionFilter', () => {
     const { status, body } = capture(new Error('boom'));
     expect(status).toBe(500);
     expect(body).toMatchObject({ error: 'INTERNAL' });
+  });
+
+  it('reports unknown (5xx) errors to Sentry', () => {
+    (Sentry.captureException as jest.Mock).mockClear();
+    const filter = new HttpExceptionFilter();
+    const host = makeHost();
+    filter.catch(new Error('db exploded'), host);
+    expect(Sentry.captureException).toHaveBeenCalledTimes(1);
+  });
+
+  it('reports 5xx HttpExceptions (e.g. ServiceUnavailableException) to Sentry', () => {
+    (Sentry.captureException as jest.Mock).mockClear();
+    const filter = new HttpExceptionFilter();
+    filter.catch(new ServiceUnavailableException('LLM down'), makeHost());
+    expect(Sentry.captureException).toHaveBeenCalledTimes(1);
+  });
+
+  it('does NOT report expected HttpExceptions (4xx) to Sentry', () => {
+    (Sentry.captureException as jest.Mock).mockClear();
+    const filter = new HttpExceptionFilter();
+    const host = makeHost();
+    filter.catch(new ForbiddenException('nope'), host);
+    expect(Sentry.captureException).not.toHaveBeenCalled();
   });
 });

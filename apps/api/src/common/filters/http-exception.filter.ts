@@ -6,6 +6,7 @@ import {
   HttpStatus,
   Logger,
 } from '@nestjs/common';
+import * as Sentry from '@sentry/nestjs';
 import type { Response } from 'express';
 
 const STATUS_NAMES: Record<number, string> = {
@@ -45,6 +46,10 @@ export class HttpExceptionFilter implements ExceptionFilter {
 
     if (exception instanceof HttpException) {
       status = exception.getStatus();
+      if (status >= 500) {
+        const req = host.switchToHttp().getRequest<{ id?: string }>();
+        Sentry.captureException(exception, { tags: { request_id: req?.id } });
+      }
       const res = exception.getResponse();
       if (typeof res === 'string') {
         message = res;
@@ -69,6 +74,10 @@ export class HttpExceptionFilter implements ExceptionFilter {
       }
     } else if (exception instanceof Error) {
       this.logger.error(exception.message, exception.stack);
+      // Only unexpected (5xx/unknown) errors reach Sentry — expected 4xx
+      // HttpExceptions are handled in the branch above and never reported.
+      const req = host.switchToHttp().getRequest<{ id?: string }>();
+      Sentry.captureException(exception, { tags: { request_id: req?.id } });
     }
 
     const body: ErrorBody = {

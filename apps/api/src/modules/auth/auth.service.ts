@@ -112,7 +112,7 @@ export class AuthService {
         const verifyUrl = await this.issueVerification(user.id);
         await this.email.sendVerification(user.email, user.displayName, verifyUrl);
       } catch (err) {
-        this.logger.warn(`Verification email failed for ${user.email}: ${String(err)}`);
+        this.logger.warn(`Verification email failed for userId=${user.id}: ${String(err)}`);
       }
 
       return { user: this.toUserView(user), workspace: this.toWorkspaceView(workspace), ...tokens };
@@ -218,7 +218,7 @@ export class AuthService {
     try {
       await this.email.sendPasswordReset(user.email, resetUrl);
     } catch (err) {
-      this.logger.warn(`Reset email failed for ${user.email}: ${String(err)}`);
+      this.logger.warn(`Reset email failed for userId=${user.id}: ${String(err)}`);
     }
   }
 
@@ -257,7 +257,7 @@ export class AuthService {
     try {
       await this.email.sendWelcome(user.email, user.displayName);
     } catch (err) {
-      this.logger.warn(`Welcome email failed for ${user.email}: ${String(err)}`);
+      this.logger.warn(`Welcome email failed for userId=${user.id}: ${String(err)}`);
     }
   }
 
@@ -268,7 +268,7 @@ export class AuthService {
     try {
       await this.email.sendVerification(user.email, user.displayName, verifyUrl);
     } catch (err) {
-      this.logger.warn(`Resend verification email failed for ${user.email}: ${String(err)}`);
+      this.logger.warn(`Resend verification email failed for userId=${user.id}: ${String(err)}`);
     }
   }
 
