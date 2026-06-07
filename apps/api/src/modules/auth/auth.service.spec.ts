@@ -8,6 +8,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { AuthService } from './auth.service';
 import { EmailService } from '../email/email.service';
 import { parsePreferences } from './preferences.util';
+import { updateProfileSchema } from './dto/auth.schemas';
 
 const ACCESS_SECRET = 'access-secret-access-secret-0001';
 const REFRESH_SECRET = 'refresh-secret-refresh-secret-01';
@@ -434,6 +435,101 @@ describe('AuthService', () => {
       const service = buildService(prisma);
       prisma.user.findUnique.mockResolvedValueOnce(null);
       await expect(service.getMe('missing')).rejects.toBeInstanceOf(UnauthorizedException);
+    });
+  });
+
+  describe('updateProfile', () => {
+    const baseUserRow = {
+      id: 'u1',
+      displayName: 'Tea',
+      email: 'a@b.com',
+      emailVerified: true,
+      timezone: 'UTC',
+      accountNumber: '1234567890',
+      preferences: { dateFormat: 'MEDIUM', numberFormat: 'GROUPED', currencyDisplay: 'SYMBOL' },
+    };
+
+    it('updates the display name and returns the mapped view', async () => {
+      const prisma = createPrismaMock();
+      const service = buildService(prisma);
+      prisma.user.update.mockResolvedValueOnce({ ...baseUserRow, displayName: 'New Name' });
+
+      const result = await service.updateProfile('u1', { displayName: 'New Name' });
+
+      const updateArg = prisma.user.update.mock.calls[0]?.[0] as {
+        where: { id: string };
+        data: { displayName?: string };
+      };
+      expect(updateArg.where).toEqual({ id: 'u1' });
+      expect(updateArg.data.displayName).toBe('New Name');
+      expect(result.displayName).toBe('New Name');
+      expect(prisma.user.findUnique).not.toHaveBeenCalled();
+    });
+
+    it('updates the timezone', async () => {
+      const prisma = createPrismaMock();
+      const service = buildService(prisma);
+      prisma.user.update.mockResolvedValueOnce({ ...baseUserRow, timezone: 'Asia/Manila' });
+
+      const result = await service.updateProfile('u1', { timezone: 'Asia/Manila' });
+
+      const updateArg = prisma.user.update.mock.calls[0]?.[0] as {
+        data: { timezone?: string };
+      };
+      expect(updateArg.data.timezone).toBe('Asia/Manila');
+      expect(result.timezone).toBe('Asia/Manila');
+    });
+
+    it('merges incoming preferences over the existing ones', async () => {
+      const prisma = createPrismaMock();
+      const service = buildService(prisma);
+      prisma.user.findUnique.mockResolvedValueOnce({
+        preferences: { dateFormat: 'MEDIUM', numberFormat: 'GROUPED', currencyDisplay: 'SYMBOL' },
+      });
+      prisma.user.update.mockResolvedValueOnce({
+        ...baseUserRow,
+        preferences: { dateFormat: 'SHORT', numberFormat: 'GROUPED', currencyDisplay: 'SYMBOL' },
+      });
+
+      const result = await service.updateProfile('u1', { preferences: { dateFormat: 'SHORT' } });
+
+      const updateArg = prisma.user.update.mock.calls[0]?.[0] as {
+        data: { preferences?: unknown };
+      };
+      expect(updateArg.data.preferences).toEqual({
+        dateFormat: 'SHORT',
+        numberFormat: 'GROUPED',
+        currencyDisplay: 'SYMBOL',
+      });
+      expect(result.preferences).toEqual({
+        dateFormat: 'SHORT',
+        numberFormat: 'GROUPED',
+        currencyDisplay: 'SYMBOL',
+      });
+    });
+
+    it('throws UnauthorizedException when merging preferences for a missing user', async () => {
+      const prisma = createPrismaMock();
+      const service = buildService(prisma);
+      prisma.user.findUnique.mockResolvedValueOnce(null);
+      await expect(
+        service.updateProfile('missing', { preferences: { dateFormat: 'SHORT' } }),
+      ).rejects.toBeInstanceOf(UnauthorizedException);
+      expect(prisma.user.update).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('updateProfileSchema', () => {
+    it('rejects an invalid preferences enum value', () => {
+      expect(updateProfileSchema.safeParse({ preferences: { dateFormat: 'BOGUS' } }).success).toBe(
+        false,
+      );
+    });
+
+    it('accepts a partial preferences patch', () => {
+      expect(updateProfileSchema.safeParse({ preferences: { dateFormat: 'SHORT' } }).success).toBe(
+        true,
+      );
     });
   });
 

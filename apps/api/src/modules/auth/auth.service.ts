@@ -8,7 +8,7 @@ import { DEFAULT_CATEGORIES, DEFAULT_PREFERENCES, type SubscriptionTier } from '
 import { PrismaService } from '../../prisma/prisma.service';
 import type { Env } from '../../config/env.schema';
 import { EmailService } from '../email/email.service';
-import type { LoginInput, RegisterInput } from './dto/auth.schemas';
+import type { LoginInput, RegisterInput, UpdateProfileInput } from './dto/auth.schemas';
 import type {
   AccessTokenPayload,
   AuthResult,
@@ -291,6 +291,45 @@ export class AuthService {
       throw new UnauthorizedException('User not found.');
     }
     return this.toUserView(user);
+  }
+
+  /** Updates display name, timezone, and/or preferences for the authenticated user. */
+  async updateProfile(userId: string, dto: UpdateProfileInput): Promise<AuthUserView> {
+    const data: Prisma.UserUpdateInput = {};
+
+    if (dto.displayName !== undefined) {
+      data.displayName = dto.displayName;
+    }
+    if (dto.timezone !== undefined) {
+      data.timezone = dto.timezone;
+    }
+    if (dto.preferences !== undefined) {
+      const current = await this.prisma.user.findUnique({
+        where: { id: userId },
+        select: { preferences: true },
+      });
+      if (!current) {
+        throw new UnauthorizedException('User not found.');
+      }
+      const merged = { ...parsePreferences(current.preferences), ...dto.preferences };
+      data.preferences = merged as unknown as Prisma.InputJsonValue;
+    }
+
+    const updated = await this.prisma.user.update({
+      where: { id: userId },
+      data,
+      select: {
+        id: true,
+        displayName: true,
+        email: true,
+        emailVerified: true,
+        timezone: true,
+        accountNumber: true,
+        preferences: true,
+      },
+    });
+
+    return this.toUserView(updated);
   }
 
   private rounds(): number {

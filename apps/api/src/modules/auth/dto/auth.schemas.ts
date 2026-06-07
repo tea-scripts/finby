@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { preferencesSchema } from '../preferences.util';
 
 /** Zod DTO schemas for the auth module (no class-validator). */
 
@@ -35,3 +36,10 @@ export type ResetPasswordInput = z.infer<typeof resetPasswordSchema>;
 
 export const verifyEmailSchema = z.object({ token: z.string().min(1) });
 export type VerifyEmailInput = z.infer<typeof verifyEmailSchema>;
+
+export const updateProfileSchema = z.object({
+  displayName: z.string().trim().min(1).max(120).optional(),
+  timezone: z.string().trim().min(1).max(64).optional(),
+  preferences: preferencesSchema.optional(),
+});
+export type UpdateProfileInput = z.infer<typeof updateProfileSchema>;

@@ -1,5 +1,6 @@
-import { Body, Controller, Get, HttpCode, HttpStatus, Post, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, HttpStatus, Patch, Post, Req, UseGuards } from '@nestjs/common';
 import type { Request } from 'express';
+import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { Public } from '../../common/decorators/public.decorator';
 import { ZodValidationPipe } from '../../common/pipes/zod-validation.pipe';
 import { AuthService } from './auth.service';
@@ -11,12 +12,14 @@ import {
   refreshSchema,
   registerSchema,
   resetPasswordSchema,
+  updateProfileSchema,
   verifyEmailSchema,
   type ForgotPasswordInput,
   type LoginInput,
   type RefreshInput,
   type RegisterInput,
   type ResetPasswordInput,
+  type UpdateProfileInput,
   type VerifyEmailInput,
 } from './dto/auth.schemas';
 
@@ -95,5 +98,13 @@ export class AuthController {
   @Get('me')
   async me(@Req() req: Request & { user: AuthUser }): Promise<{ user: AuthUserView }> {
     return { user: await this.auth.getMe(req.user.userId) };
+  }
+
+  @Patch('profile')
+  updateProfile(
+    @CurrentUser() user: AuthUser,
+    @Body(new ZodValidationPipe(updateProfileSchema)) body: UpdateProfileInput,
+  ): Promise<AuthUserView> {
+    return this.auth.updateProfile(user.userId, body);
   }
 }
