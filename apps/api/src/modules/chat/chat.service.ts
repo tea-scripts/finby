@@ -171,7 +171,7 @@ export class ChatService {
             content: exec.toolResult,
             toolResult: exec.toolResult,
             tokenCount: estimateTokens(exec.toolResult),
-            ...(exec.action ? { createdTransactionId: exec.action.transactionId } : {}),
+            ...(exec.action?.type === 'TRANSACTION_CREATED' ? { createdTransactionId: exec.action.transactionId } : {}),
           },
         });
 
@@ -384,6 +384,7 @@ export class ChatService {
       const action: ChatAction = {
         type: 'TRANSACTION_CREATED',
         transactionId: tx.id,
+        txType: type,
         preview: {
           amount: tx.amountOriginal,
           currency: tx.currencyOriginal,
@@ -475,6 +476,7 @@ export class ChatService {
       const action: ChatAction = {
         type: 'TRANSACTION_CREATED',
         transactionId: tx.id,
+        txType: 'TRANSFER',
         preview: { amount: tx.amountOriginal, currency: tx.currencyOriginal, merchant: null, category: null },
       };
       return {
@@ -525,6 +527,14 @@ export class ChatService {
         period,
         periodStart: asString(input.periodStart),
       });
+      const action: ChatAction = {
+        type: 'BUDGET_SET',
+        preview: {
+          currency: budget.currency,
+          amount: budget.amountLimit,
+          category: budget.category.name,
+        },
+      };
       return {
         toolResult: JSON.stringify({
           status: 'budget_set',
@@ -535,6 +545,7 @@ export class ChatService {
           alreadySpent: budget.amountSpent,
           utilizationPercent: budget.utilizationPercent,
         }),
+        action,
       };
     } catch (error) {
       return { toolResult: JSON.stringify({ error: this.errorMessage(error) }) };
