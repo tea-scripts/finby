@@ -3,6 +3,7 @@
 import { PlanCard } from '@/components/billing/PlanCard';
 import { ProfileSection } from '@/components/settings/profile-section';
 import { CurrenciesSection } from '@/components/settings/currencies-section';
+import { PreferencesSection } from '@/components/settings/preferences-section';
 
 export default function SettingsPage() {
   return (
@@ -13,6 +14,8 @@ export default function SettingsPage() {
         <ProfileSection />
 
         <CurrenciesSection />
+
+        <PreferencesSection />
 
         {/* Plan & Billing section */}
         <section className="space-y-3">

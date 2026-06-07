@@ -1,0 +1,120 @@
+'use client';
+
+import { useState } from 'react';
+import { DEFAULT_PREFERENCES } from '@finby/shared';
+import type { CurrencyDisplay, DateFormat, NumberFormat, UserPreferences } from '@finby/shared';
+import { Dropdown } from '@/components/ui/dropdown';
+import { Field } from '@/components/ui/field';
+import { NotifToggle } from '@/components/chat/notif-toggle';
+import { updateProfile } from '@/lib/settings-api';
+import { useAuth } from '@/lib/store';
+
+const DATE_FORMAT_OPTIONS: { value: DateFormat; label: string }[] = [
+  { value: 'MEDIUM', label: 'MEDIUM — Jun 7, 2026' },
+  { value: 'SHORT', label: 'SHORT — 07/06/2026' },
+  { value: 'ISO', label: 'ISO — 2026-06-07' },
+];
+
+const CURRENCY_DISPLAY_OPTIONS: { value: CurrencyDisplay; label: string }[] = [
+  { value: 'SYMBOL', label: 'Symbol — $1,234.50' },
+  { value: 'CODE', label: 'Code — USD 1,234.50' },
+];
+
+const NUMBER_FORMAT_OPTIONS: { value: NumberFormat; label: string }[] = [
+  { value: 'GROUPED', label: 'Grouped — 1,234.50' },
+  { value: 'PLAIN', label: 'Plain — 1234.50' },
+];
+
+type SaveState = 'idle' | 'saving' | 'saved' | 'error';
+
+/** Display preferences: date / currency / number formatting + push notifications.
+ *  Each dropdown change saves immediately (no Save button). */
+export function PreferencesSection() {
+  const user = useAuth((s) => s.user);
+  const setUser = useAuth((s) => s.setUser);
+  const prefs: UserPreferences = user?.preferences ?? DEFAULT_PREFERENCES;
+
+  const [saveState, setSaveState] = useState<SaveState>('idle');
+
+  async function savePref(patch: Partial<UserPreferences>) {
+    setSaveState('saving');
+    try {
+      const updated = await updateProfile({ preferences: patch });
+      setUser(updated);
+      setSaveState('saved');
+    } catch {
+      setSaveState('error');
+    }
+  }
+
+  return (
+    <section className="space-y-3">
+      <div className="flex items-center justify-between gap-3">
+        <h2 className="font-display text-sm font-semibold uppercase tracking-wide text-muted">
+          Preferences
+        </h2>
+        {saveState === 'saving' ? (
+          <span className="text-xs text-faint">Saving…</span>
+        ) : saveState === 'saved' ? (
+          <span className="text-xs text-accent">Saved</span>
+        ) : saveState === 'error' ? (
+          <span className="text-xs text-danger">Couldn&apos;t save</span>
+        ) : null}
+      </div>
+
+      <div className="space-y-5 rounded-2xl border border-line bg-surface/60 p-5 shadow-card">
+        <Field
+          label="Date format"
+          htmlFor="pref-date-format"
+          hint="How dates appear across the app."
+        >
+          <Dropdown
+            id="pref-date-format"
+            aria-label="Date format"
+            value={prefs.dateFormat}
+            options={DATE_FORMAT_OPTIONS}
+            onChange={(v) => savePref({ dateFormat: v as DateFormat })}
+          />
+        </Field>
+
+        <Field
+          label="Currency display"
+          htmlFor="pref-currency-display"
+          hint="Show the currency symbol or its code."
+        >
+          <Dropdown
+            id="pref-currency-display"
+            aria-label="Currency display"
+            value={prefs.currencyDisplay}
+            options={CURRENCY_DISPLAY_OPTIONS}
+            onChange={(v) => savePref({ currencyDisplay: v as CurrencyDisplay })}
+          />
+        </Field>
+
+        <Field
+          label="Number format"
+          htmlFor="pref-number-format"
+          hint="Group thousands or show plain numbers."
+        >
+          <Dropdown
+            id="pref-number-format"
+            aria-label="Number format"
+            value={prefs.numberFormat}
+            options={NUMBER_FORMAT_OPTIONS}
+            onChange={(v) => savePref({ numberFormat: v as NumberFormat })}
+          />
+        </Field>
+
+        <div className="flex items-center justify-between gap-3 border-t border-line pt-4">
+          <div>
+            <p className="text-sm font-medium text-ink">Push notifications</p>
+            <p className="text-xs text-muted">
+              Get alerts on this device for reminders and updates.
+            </p>
+          </div>
+          <NotifToggle />
+        </div>
+      </div>
+    </section>
+  );
+}

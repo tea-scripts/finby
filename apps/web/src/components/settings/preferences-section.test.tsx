@@ -1,0 +1,92 @@
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import type { ApiUser } from '../../lib/types';
+import { DEFAULT_PREFERENCES } from '@finby/shared';
+import { PreferencesSection } from './preferences-section';
+
+// ── Mocks ──────────────────────────────────────────────────────────────────
+
+const USER: ApiUser = {
+  id: 'u1',
+  displayName: 'Aisha',
+  email: 'a@b.com',
+  timezone: 'UTC',
+  accountNumber: 'FB-100000042',
+  preferences: DEFAULT_PREFERENCES,
+  emailVerified: true,
+};
+
+const WORKSPACE = { id: 'w1', tier: 'FREE' };
+const setUser = vi.fn();
+
+vi.mock('../../lib/store', () => ({
+  useAuth: vi.fn(
+    (
+      selector: (s: {
+        user: ApiUser;
+        setUser: typeof setUser;
+        workspace: typeof WORKSPACE;
+      }) => unknown,
+    ) => selector({ user: USER, setUser, workspace: WORKSPACE }),
+  ),
+}));
+
+vi.mock('../../lib/settings-api', () => ({
+  updateProfile: vi.fn(),
+}));
+
+// Push toggle's browser logic — fully stubbed so it never touches real APIs.
+vi.mock('../../lib/push', () => ({
+  isPushSupported: vi.fn(() => true),
+  getPushState: vi.fn(() => Promise.resolve('off')),
+  enablePush: vi.fn(() => Promise.resolve('on')),
+  disablePush: vi.fn(() => Promise.resolve('off')),
+}));
+
+import { updateProfile } from '../../lib/settings-api';
+
+const mockUpdateProfile = vi.mocked(updateProfile);
+
+beforeEach(() => {
+  vi.clearAllMocks();
+});
+
+// ── Tests ──────────────────────────────────────────────────────────────────
+
+describe('PreferencesSection', () => {
+  it('renders the three preference dropdowns + the push toggle', async () => {
+    render(<PreferencesSection />);
+
+    expect(screen.getByRole('button', { name: 'Date format' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Currency display' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Number format' })).toBeInTheDocument();
+
+    // NotifToggle renders once getPushState resolves (workspace present + supported).
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /enable notifications/i })).toBeInTheDocument();
+    });
+  });
+
+  it('changing the date format saves { preferences: { dateFormat } } then setUser', async () => {
+    const updated: ApiUser = {
+      ...USER,
+      preferences: { ...DEFAULT_PREFERENCES, dateFormat: 'ISO' },
+    };
+    mockUpdateProfile.mockResolvedValue(updated);
+
+    render(<PreferencesSection />);
+
+    // Open the date-format listbox, then pick the ISO option.
+    fireEvent.click(screen.getByRole('button', { name: 'Date format' }));
+    const isoOption = await screen.findByRole('option', { name: /ISO/ });
+    fireEvent.click(isoOption);
+
+    await waitFor(() => {
+      expect(mockUpdateProfile).toHaveBeenCalledWith({ preferences: { dateFormat: 'ISO' } });
+    });
+
+    await waitFor(() => {
+      expect(setUser).toHaveBeenCalledWith(updated);
+    });
+  });
+});
