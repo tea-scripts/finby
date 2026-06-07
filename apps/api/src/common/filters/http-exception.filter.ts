@@ -46,6 +46,10 @@ export class HttpExceptionFilter implements ExceptionFilter {
 
     if (exception instanceof HttpException) {
       status = exception.getStatus();
+      if (status >= 500) {
+        const req = host.switchToHttp().getRequest<{ id?: string }>();
+        Sentry.captureException(exception, { tags: { request_id: req?.id } });
+      }
       const res = exception.getResponse();
       if (typeof res === 'string') {
         message = res;

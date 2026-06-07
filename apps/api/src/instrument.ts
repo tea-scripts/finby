@@ -12,10 +12,11 @@ import { scrubEvent } from './observability/scrub';
 export function initSentry(): boolean {
   const dsn = process.env.SENTRY_DSN;
   if (!dsn) return false;
+  const rate = Number(process.env.SENTRY_TRACES_SAMPLE_RATE ?? '0.1');
   Sentry.init({
     dsn,
     environment: process.env.NODE_ENV ?? 'development',
-    tracesSampleRate: Number(process.env.SENTRY_TRACES_SAMPLE_RATE ?? '0.1'),
+    tracesSampleRate: Number.isFinite(rate) ? rate : 0.1,
     sendDefaultPii: false,
     beforeSend: scrubEvent,
   });

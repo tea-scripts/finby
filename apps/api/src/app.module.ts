@@ -44,10 +44,9 @@ import { RedisModule } from './redis/redis.module';
           paths: [
             'req.headers.authorization',
             'req.headers.cookie',
-            'req.body',
             'res.headers["set-cookie"]',
             '*.amount', '*.amountBase', '*.balance', '*.merchant',
-            '*.accountNumber', '*.email', '*.password', '*.token',
+            '*.accountNumber', '*.email', '*.password', '*.token', '*.refreshToken',
           ],
           censor: '[redacted]',
         },

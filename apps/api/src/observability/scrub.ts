@@ -27,6 +27,7 @@ function redactDeep(value: unknown, depth = 0): unknown {
 export function scrubEvent(event: ErrorEvent, _hint: EventHint): ErrorEvent | null {
   try {
     if (event.request) {
+      // Sentry owns this event object; in-place mutation here is intentional and safe.
       delete event.request.data;
       delete event.request.query_string;
       delete event.request.cookies;

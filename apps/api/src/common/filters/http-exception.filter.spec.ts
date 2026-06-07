@@ -67,6 +67,13 @@ describe('HttpExceptionFilter', () => {
     expect(Sentry.captureException).toHaveBeenCalledTimes(1);
   });
 
+  it('reports 5xx HttpExceptions (e.g. ServiceUnavailableException) to Sentry', () => {
+    (Sentry.captureException as jest.Mock).mockClear();
+    const filter = new HttpExceptionFilter();
+    filter.catch(new ServiceUnavailableException('LLM down'), makeHost());
+    expect(Sentry.captureException).toHaveBeenCalledTimes(1);
+  });
+
   it('does NOT report expected HttpExceptions (4xx) to Sentry', () => {
     (Sentry.captureException as jest.Mock).mockClear();
     const filter = new HttpExceptionFilter();
