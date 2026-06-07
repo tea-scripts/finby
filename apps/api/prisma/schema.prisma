@@ -127,6 +127,9 @@ model User {
   resetToken        String?  @unique
   resetTokenExpiry  DateTime?
 
+  accountNumber     String?  @unique
+  preferences       Json?
+
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
   lastLoginAt       DateTime?
@@ -184,7 +187,9 @@ model Workspace {
 
   // Base currency for cross-currency analytics
   // All monetary summaries normalize to this currency.
-  baseCurrency  String           @default("USD")  // ISO 4217 e.g. "USD", "PHP", "NGN"
+  baseCurrency          String   @default("USD")  // ISO 4217 e.g. "USD", "PHP", "NGN"
+
+  preferredCurrencies   String[] @default([])
 
   createdAt   DateTime           @default(now())
   updatedAt   DateTime           @updatedAt
