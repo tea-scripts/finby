@@ -214,4 +214,18 @@ describe('TransactionsService.list', () => {
     // floored to ~90d ago, not the requested year 2000
     expect((gte as Date).getTime()).toBeGreaterThan(ninetyDaysAgo - 86400000);
   });
+
+  it('excludes voided transactions from the list', async () => {
+    const prisma = buildPrisma();
+    prisma.transaction.findMany.mockResolvedValue([]);
+    const fx = buildFx();
+    const service = new TransactionsService(prisma as unknown as PrismaService, fx as unknown as FxService, buildBudgets() as unknown as BudgetsService, buildAlerts() as unknown as AlertsService);
+
+    await service.list('w1', 'PRO', { limit: 20, tags: [] } as never);
+
+    const arg = prisma.transaction.findMany.mock.calls[0]?.[0] as {
+      where: { status?: unknown };
+    };
+    expect(arg.where.status).toEqual({ not: 'VOID' });
+  });
 });

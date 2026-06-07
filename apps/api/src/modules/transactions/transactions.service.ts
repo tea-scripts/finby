@@ -162,6 +162,10 @@ export class TransactionsService {
 
     const where: Prisma.TransactionWhereInput = {
       workspaceId,
+      // Voided transactions are reversed and must never appear in the list
+      // (dashboard "Recent Transactions" and the Transactions page both read
+      // from here). PENDING is a legitimate display state, so exclude only VOID.
+      status: { not: 'VOID' },
       ...(query.type ? { type: query.type } : {}),
       ...(query.categoryId ? { categoryId: query.categoryId } : {}),
       ...(query.currency ? { currencyOriginal: query.currency } : {}),
