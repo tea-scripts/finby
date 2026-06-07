@@ -5,6 +5,7 @@ import { Modal } from '@/components/ui/modal';
 import { Button } from '@/components/ui/button';
 import { getPlans, startCheckout } from '@/lib/billing-api';
 import { useAuth } from '@/lib/store';
+import { track } from '@/lib/analytics';
 import type { BillingPlan } from '@/lib/types';
 
 type UpgradeTier = 'PRO' | 'PREMIUM' | 'FAMILY';
@@ -19,9 +20,10 @@ export interface UpgradeModalProps {
   open: boolean;
   onClose: () => void;
   initialTier?: UpgradeTier;
+  source?: string;
 }
 
-export function UpgradeModal({ open, onClose, initialTier = 'PRO' }: UpgradeModalProps) {
+export function UpgradeModal({ open, onClose, initialTier = 'PRO', source = 'unknown' }: UpgradeModalProps) {
   const workspaceId = useAuth((s) => s.workspace?.id);
 
   const [plans, setPlans] = useState<BillingPlan[]>([]);
@@ -45,6 +47,7 @@ export function UpgradeModal({ open, onClose, initialTier = 'PRO' }: UpgradeModa
 
   useEffect(() => {
     if (!open) return;
+    track('upgrade_modal_viewed', { source });
 
     setSelectedTier(initialTier);
     setError(null);
@@ -74,7 +77,7 @@ export function UpgradeModal({ open, onClose, initialTier = 'PRO' }: UpgradeModa
     return () => {
       cancelled = true;
     };
-  }, [open, initialTier]);
+  }, [open, initialTier, source]);
 
   const activePlan = plans.find((p) => p.tier === selectedTier) ?? null;
 
@@ -88,6 +91,7 @@ export function UpgradeModal({ open, onClose, initialTier = 'PRO' }: UpgradeModa
     setSubmitting(true);
 
     try {
+      track('checkout_started', { target_tier: selectedTier });
       const result = await startCheckout(workspaceId, selectedTier);
       window.location.href = result.url;
     } catch {
