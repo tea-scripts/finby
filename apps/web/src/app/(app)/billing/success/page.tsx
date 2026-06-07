@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { getSubscription } from '@/lib/billing-api';
 import { useAuth } from '@/lib/store';
+import { track } from '@/lib/analytics';
 import type { SubscriptionTier } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 
@@ -46,6 +47,7 @@ export default function BillingSuccessPage() {
         if (sub.tier !== 'FREE') {
           setTier(sub.tier);
           setWorkspaceTier(sub.tier);
+          track('subscription_activated', { tier: sub.tier });
           setPhase('upgraded');
           return;
         }

@@ -4,6 +4,8 @@ import { UpgradeModal } from './UpgradeModal';
 
 // ── Mocks ──────────────────────────────────────────────────────────────────
 
+vi.mock('../../lib/analytics', () => ({ track: vi.fn() }));
+
 vi.mock('../../lib/billing-api', () => ({
   getPlans: vi.fn(),
   startCheckout: vi.fn(),

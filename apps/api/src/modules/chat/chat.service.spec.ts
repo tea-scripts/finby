@@ -94,7 +94,10 @@ describe('ChatService.executeTool', () => {
       expect.objectContaining({ type: 'EXPENSE', amountOriginal: '50', currencyOriginal: 'USD' }),
     );
     expect(result.action?.type).toBe('TRANSACTION_CREATED');
-    expect(result.action?.transactionId).toBe('tx1');
+    if (result.action?.type === 'TRANSACTION_CREATED') {
+      expect(result.action.transactionId).toBe('tx1');
+      expect(result.action.txType).toBe('EXPENSE');
+    }
   });
 
   it('log_expense with low confidence returns a pendingConfirmation and does not create', async () => {
@@ -180,6 +183,30 @@ describe('ChatService.executeTool', () => {
     );
     expect(portfolio.logEvent).toHaveBeenCalledTimes(1);
     expect(result.toolResult).toContain('logged');
+  });
+
+  it('set_budget returns a BUDGET_SET action carrying only the currency', async () => {
+    const { service, budgets, categories } = build();
+    categories.findByName.mockResolvedValue({ id: 'c1', name: 'Groceries' });
+    budgets.createOrUpdate.mockResolvedValue({
+      category: { name: 'Groceries' },
+      amountLimit: '300',
+      currency: 'USD',
+      period: 'MONTHLY',
+      amountSpent: '0',
+      utilizationPercent: 0,
+    });
+
+    const result = await service.executeTool(
+      workspace,
+      'u1',
+      call('set_budget', { categoryName: 'Groceries', amountLimit: '300' }),
+    );
+
+    expect(result.action?.type).toBe('BUDGET_SET');
+    if (result.action?.type === 'BUDGET_SET') {
+      expect(result.action.preview.currency).toBe('USD');
+    }
   });
 });
 

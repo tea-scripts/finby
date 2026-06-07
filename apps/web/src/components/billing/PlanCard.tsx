@@ -203,6 +203,7 @@ export function PlanCard() {
           open={upgradeOpen}
           onClose={() => setUpgradeOpen(false)}
           initialTier="PRO"
+          source="settings"
         />
       </>
     );

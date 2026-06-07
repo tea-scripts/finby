@@ -3,6 +3,7 @@ import type { ReactNode } from 'react';
 import { Bricolage_Grotesque } from 'next/font/google';
 import { GeistSans } from 'geist/font/sans';
 import { GeistMono } from 'geist/font/mono';
+import { PostHogProvider } from '@/components/analytics/posthog-provider';
 import './globals.css';
 
 const display = Bricolage_Grotesque({
@@ -34,7 +35,9 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       lang="en"
       className={`${display.variable} ${GeistSans.variable} ${GeistMono.variable}`}
     >
-      <body>{children}</body>
+      <body>
+        <PostHogProvider>{children}</PostHogProvider>
+      </body>
     </html>
   );
 }

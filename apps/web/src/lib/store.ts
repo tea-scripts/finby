@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 import { DEFAULT_PREFERENCES } from '@finby/shared';
 import { ApiError, apiFetch } from './api-client';
+import { identifyUser, resetAnalytics, track } from './analytics';
 import type {
   ApiUser,
   ApiWorkspace,
@@ -68,6 +69,8 @@ export const useAuth = create<AuthState>()(
           workspace: result.workspace,
           status: 'authed',
         });
+        identifyUser(result.user.id, result.workspace.tier);
+        track('signed_up', { method: 'password' });
       },
 
       login: async (email, password) => {
@@ -82,6 +85,7 @@ export const useAuth = create<AuthState>()(
           workspace: result.workspace,
           status: 'authed',
         });
+        identifyUser(result.user.id, result.workspace.tier);
       },
 
       logout: async () => {
@@ -98,6 +102,7 @@ export const useAuth = create<AuthState>()(
           }
         }
         set({ ...CLEARED });
+        resetAnalytics();
       },
 
       tryRefresh: async () => {
@@ -136,8 +141,9 @@ export const useAuth = create<AuthState>()(
       },
 
       setWorkspaceTier: (tier) => {
-        const ws = get().workspace;
-        if (ws) set({ workspace: { ...ws, tier } });
+        const { workspace, user } = get();
+        if (workspace) set({ workspace: { ...workspace, tier } });
+        if (user) identifyUser(user.id, tier);
       },
 
       setUser: (patch) => {

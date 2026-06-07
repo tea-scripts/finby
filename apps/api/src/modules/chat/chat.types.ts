@@ -5,11 +5,19 @@ export interface ChatActionPreview {
   category: string | null;
 }
 
-export interface ChatAction {
+export interface TransactionCreatedAction {
   type: 'TRANSACTION_CREATED';
   transactionId: string;
+  txType: 'EXPENSE' | 'INCOME' | 'TRANSFER';
   preview: ChatActionPreview;
 }
+
+export interface BudgetSetAction {
+  type: 'BUDGET_SET';
+  preview: { currency: string; amount?: string; category?: string | null };
+}
+
+export type ChatAction = TransactionCreatedAction | BudgetSetAction;
 
 export interface PendingConfirmation {
   confirmationId: string;

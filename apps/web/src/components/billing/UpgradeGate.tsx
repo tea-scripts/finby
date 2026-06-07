@@ -51,7 +51,7 @@ export function UpgradeGate({ requiredTier, featureName, children }: UpgradeGate
         </Button>
       </div>
 
-      <UpgradeModal open={open} onClose={() => setOpen(false)} initialTier={requiredTier} />
+      <UpgradeModal open={open} onClose={() => setOpen(false)} initialTier={requiredTier} source="upgrade_gate" />
     </>
   );
 }

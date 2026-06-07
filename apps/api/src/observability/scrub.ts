@@ -4,6 +4,7 @@ import type { ErrorEvent, EventHint } from '@sentry/nestjs';
 export const DENY_KEYS = [
   'amount', 'amountbase', 'amountlimit', 'amountspent', 'balance', 'pricebase',
   'merchant', 'accountnumber', 'email', 'password', 'token', 'secret', 'refreshtoken',
+  'category', // category names can be sensitive (e.g. Therapy, Medication)
 ];
 
 function redactDeep(value: unknown, depth = 0): unknown {
