@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Lottie } from '@/components/ui/lottie';
+import { track } from '@/lib/analytics';
 
 const FLAG = 'finby_onboarded';
 
@@ -44,8 +45,10 @@ export function OnboardingCarousel() {
   );
 
   const next = useCallback(() => {
-    if (last) finish('/login');
-    else setIndex((i) => i + 1);
+    if (last) {
+      track('onboarding_completed');
+      finish('/login');
+    } else setIndex((i) => i + 1);
   }, [last, finish]);
 
   const back = useCallback(() => setIndex((i) => Math.max(0, i - 1)), []);
@@ -59,13 +62,20 @@ export function OnboardingCarousel() {
     return () => window.removeEventListener('keydown', onKey);
   }, [next, back]);
 
+  useEffect(() => {
+    track('onboarding_started');
+  }, []);
+
   return (
     <main className="relative flex min-h-app flex-col px-5 py-6">
       <div className="bg-grid pointer-events-none absolute inset-0 opacity-50" />
 
       <div className="relative flex justify-end">
         <button
-          onClick={() => finish('/login')}
+          onClick={() => {
+            track('onboarding_skipped');
+            finish('/login');
+          }}
           className="rounded-lg px-3 py-1.5 text-sm font-medium text-muted transition hover:text-ink"
         >
           Skip
