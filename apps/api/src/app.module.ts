@@ -1,5 +1,9 @@
+import { randomUUID } from 'node:crypto';
+import type { IncomingMessage, ServerResponse } from 'node:http';
 import { Module } from '@nestjs/common';
 import { APP_FILTER, APP_GUARD } from '@nestjs/core';
+import { SentryModule } from '@sentry/nestjs/setup';
+import { LoggerModule } from 'nestjs-pino';
 import { AppController } from './app.controller';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { ConfigModule } from './config/config.module';
@@ -24,6 +28,34 @@ import { RedisModule } from './redis/redis.module';
 
 @Module({
   imports: [
+    SentryModule.forRoot(),
+    LoggerModule.forRoot({
+      pinoHttp: {
+        level: process.env.LOG_LEVEL ?? 'info',
+        // Reuse an inbound x-request-id or mint one; echo it on the response so
+        // a log line, the response, and any Sentry event share the same id.
+        genReqId: (req: IncomingMessage, res: ServerResponse) => {
+          const incoming = req.headers['x-request-id'];
+          const id = (Array.isArray(incoming) ? incoming[0] : incoming) ?? randomUUID();
+          res.setHeader('x-request-id', id);
+          return id;
+        },
+        redact: {
+          paths: [
+            'req.headers.authorization',
+            'req.headers.cookie',
+            'req.body',
+            'res.headers["set-cookie"]',
+            '*.amount', '*.amountBase', '*.balance', '*.merchant',
+            '*.accountNumber', '*.email', '*.password', '*.token',
+          ],
+          censor: '[redacted]',
+        },
+        // Pretty logs only in local dev; JSON to stdout in prod and tests.
+        transport:
+          process.env.NODE_ENV === 'development' ? { target: 'pino-pretty' } : undefined,
+      },
+    }),
     ConfigModule,
     PrismaModule,
     RedisModule,
