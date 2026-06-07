@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Lottie } from '@/components/ui/lottie';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ApiError } from '@/lib/api-client';
+import { currentMonthRange } from '@/lib/format';
 import { listCategories, listTransactions } from '@/lib/transactions-api';
 import { useAuth } from '@/lib/store';
 import type { Category, Transaction, TransactionQuery } from '@/lib/types';
@@ -19,7 +20,12 @@ function errMsg(e: unknown): string {
 export default function TransactionsPage() {
   const workspace = useAuth((s) => s.workspace);
 
-  const [filters, setFilters] = useState<TransactionQuery>({});
+  // Default the date range to the current month (1st → today). The user can
+  // widen or clear it from the filters.
+  const [filters, setFilters] = useState<TransactionQuery>(() => {
+    const { from, to } = currentMonthRange();
+    return { fromDate: from, toDate: to };
+  });
   const [items, setItems] = useState<Transaction[]>([]);
   const [cursor, setCursor] = useState<string | null>(null);
   const [hasMore, setHasMore] = useState(false);
