@@ -17,7 +17,7 @@ const DATE_FORMAT_OPTIONS: { value: DateFormat; label: string }[] = [
 
 const CURRENCY_DISPLAY_OPTIONS: { value: CurrencyDisplay; label: string }[] = [
   { value: 'SYMBOL', label: 'Symbol — $1,234.50' },
-  { value: 'CODE', label: 'Code — USD 1,234.50' },
+  { value: 'CODE', label: 'Code — 1,234.50 USD' },
 ];
 
 const NUMBER_FORMAT_OPTIONS: { value: NumberFormat; label: string }[] = [

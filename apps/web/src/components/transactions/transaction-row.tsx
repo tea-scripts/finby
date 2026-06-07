@@ -1,5 +1,7 @@
-import { money, shortDate } from '@/lib/format';
+'use client';
+
 import type { Transaction } from '@/lib/types';
+import { useFormatters } from '@/lib/use-formatters';
 
 function tone(type: string): string {
   if (type === 'INCOME') return 'text-success';
@@ -13,6 +15,7 @@ function sign(type: string): string {
 }
 
 export function TransactionRow({ tx, onClick }: { tx: Transaction; onClick: () => void }) {
+  const { formatDate, formatMoney } = useFormatters();
   return (
     <button
       onClick={onClick}
@@ -21,7 +24,7 @@ export function TransactionRow({ tx, onClick }: { tx: Transaction; onClick: () =
       <div className="min-w-0">
         <p className="truncate text-sm text-ink">{tx.merchant ?? tx.description ?? 'Transaction'}</p>
         <p className="mt-0.5 flex flex-wrap items-center gap-2 text-xs text-muted">
-          <span>{shortDate(tx.transactionDate)}</span>
+          <span>{formatDate(tx.transactionDate)}</span>
           {tx.category && (
             <span className="rounded-md border border-line bg-canvas/60 px-1.5 py-0.5 text-faint">
               {tx.category.name}
@@ -36,7 +39,7 @@ export function TransactionRow({ tx, onClick }: { tx: Transaction; onClick: () =
       </div>
       <span className={`shrink-0 font-mono text-sm ${tone(tx.type)}`}>
         {sign(tx.type)}
-        {money(tx.amountOriginal, tx.currencyOriginal)}
+        {formatMoney(tx.amountOriginal, tx.currencyOriginal)}
       </span>
     </button>
   );
