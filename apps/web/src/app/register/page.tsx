@@ -9,12 +9,11 @@ import { Dropdown } from '@/components/ui/dropdown';
 import { Field } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { PasswordInput } from '@/components/ui/password-input';
+import { CURRENCIES } from '@finby/shared';
 import { ApiError } from '@/lib/api-client';
 import { useAuth } from '@/lib/store';
 
-const CURRENCIES = ['USD', 'EUR', 'GBP', 'NGN', 'KES', 'GHS', 'ZAR', 'CAD', 'AUD', 'INR', 'JPY'].map(
-  (code) => ({ value: code, label: code }),
-);
+const CURRENCY_OPTIONS = CURRENCIES.map((c) => ({ value: c.code, label: `${c.code} — ${c.name}` }));
 
 function detectTimezone(): string {
   try {
@@ -127,7 +126,7 @@ export default function RegisterPage() {
             aria-label="Base currency"
             value={baseCurrency}
             onChange={setBaseCurrency}
-            options={CURRENCIES}
+            options={CURRENCY_OPTIONS}
           />
         </Field>
 

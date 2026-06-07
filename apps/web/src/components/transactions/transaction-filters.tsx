@@ -1,8 +1,10 @@
 'use client';
 
+import { CURRENCY_CODES } from '@finby/shared';
 import { Dropdown, type DropdownOption } from '@/components/ui/dropdown';
 import { Field } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
+import { useAuth } from '@/lib/store';
 import type { Category, TransactionQuery } from '@/lib/types';
 
 const TYPE_OPTIONS: DropdownOption[] = [
@@ -10,12 +12,6 @@ const TYPE_OPTIONS: DropdownOption[] = [
   { value: 'EXPENSE', label: 'Expense' },
   { value: 'INCOME', label: 'Income' },
   { value: 'TRANSFER', label: 'Transfer' },
-];
-
-const CURRENCIES = ['USD', 'EUR', 'GBP', 'NGN', 'KES', 'GHS', 'ZAR', 'CAD', 'AUD', 'INR', 'JPY'];
-const CURRENCY_OPTIONS: DropdownOption[] = [
-  { value: '', label: 'All currencies' },
-  ...CURRENCIES.map((c) => ({ value: c, label: c })),
 ];
 
 export function TransactionFilters({
@@ -27,6 +23,13 @@ export function TransactionFilters({
   categories: Category[];
   onChange: (next: TransactionQuery) => void;
 }) {
+  const preferred = useAuth((s) => s.workspace?.preferredCurrencies);
+  const currencyCodes = preferred && preferred.length > 0 ? preferred : CURRENCY_CODES;
+  const currencyOptions: DropdownOption[] = [
+    { value: '', label: 'All currencies' },
+    ...currencyCodes.map((c) => ({ value: c, label: c })),
+  ];
+
   const categoryOptions: DropdownOption[] = [
     { value: '', label: 'All categories' },
     ...categories.filter((c) => !c.isArchived).map((c) => ({ value: c.id, label: c.name })),
@@ -60,7 +63,7 @@ export function TransactionFilters({
           aria-label="Filter by currency"
           value={filters.currency ?? ''}
           onChange={(v) => set({ currency: v || undefined })}
-          options={CURRENCY_OPTIONS}
+          options={currencyOptions}
         />
       </Field>
       <div className="grid grid-cols-1 gap-2 [&>*]:min-w-0 lg:grid-cols-2">
