@@ -9,7 +9,7 @@ const mockPosthog = vi.hoisted(() => ({
 }));
 vi.mock('posthog-js', () => ({ default: mockPosthog }));
 
-import { sanitizeProps, track, identifyUser, resetAnalytics } from './analytics';
+import { sanitizeProps, track, identifyUser, resetAnalytics, capturePageview } from './analytics';
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -49,5 +49,11 @@ describe('analytics active with a key', () => {
 
     identifyUser('user-1', 'PRO');
     expect(mockPosthog.identify).toHaveBeenCalledWith('user-1', { tier: 'PRO' });
+  });
+
+  it('capturePageview sends a $pageview with $current_url', () => {
+    vi.stubEnv('NEXT_PUBLIC_POSTHOG_KEY', 'phc_test');
+    capturePageview('https://app.finby.app/chat');
+    expect(mockPosthog.capture).toHaveBeenCalledWith('$pageview', { $current_url: 'https://app.finby.app/chat' });
   });
 });

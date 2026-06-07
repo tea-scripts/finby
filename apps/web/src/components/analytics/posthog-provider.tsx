@@ -24,7 +24,7 @@ export function PostHogProvider({ children }: { children: ReactNode }) {
   }, [userId, tier]);
 
   useEffect(() => {
-    if (pathname) capturePageview(pathname);
+    if (pathname) capturePageview(window.location.origin + pathname);
   }, [pathname]);
 
   return <>{children}</>;

@@ -37,6 +37,8 @@ export function UpgradeModal({ open, onClose, initialTier = 'PRO', source = 'unk
 
   const mountedRef = useRef(true);
   const tabRefs = useRef<(HTMLButtonElement | null)[]>([]);
+  const sourceRef = useRef(source);
+  sourceRef.current = source;
 
   useEffect(() => {
     mountedRef.current = true;
@@ -47,7 +49,7 @@ export function UpgradeModal({ open, onClose, initialTier = 'PRO', source = 'unk
 
   useEffect(() => {
     if (!open) return;
-    track('upgrade_modal_viewed', { source });
+    track('upgrade_modal_viewed', { source: sourceRef.current });
 
     setSelectedTier(initialTier);
     setError(null);
@@ -77,7 +79,7 @@ export function UpgradeModal({ open, onClose, initialTier = 'PRO', source = 'unk
     return () => {
       cancelled = true;
     };
-  }, [open, initialTier, source]);
+  }, [open, initialTier]);
 
   const activePlan = plans.find((p) => p.tier === selectedTier) ?? null;
 
