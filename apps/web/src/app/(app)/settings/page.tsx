@@ -2,6 +2,7 @@
 
 import { PlanCard } from '@/components/billing/PlanCard';
 import { ProfileSection } from '@/components/settings/profile-section';
+import { CurrenciesSection } from '@/components/settings/currencies-section';
 
 export default function SettingsPage() {
   return (
@@ -10,6 +11,8 @@ export default function SettingsPage() {
         <h1 className="font-display text-2xl font-bold text-ink">Settings</h1>
 
         <ProfileSection />
+
+        <CurrenciesSection />
 
         {/* Plan & Billing section */}
         <section className="space-y-3">
