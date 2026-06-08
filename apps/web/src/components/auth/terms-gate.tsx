@@ -37,14 +37,23 @@ export function TermsGate({
 
   return (
     <div className="space-y-1.5">
-      <label className="flex items-start gap-2.5 text-sm text-muted">
+      <div className="flex items-start gap-2.5 text-sm text-muted">
         <input
           type="checkbox"
           checked={accepted}
-          disabled={!read}
-          onChange={(e) => onAcceptedChange(e.target.checked)}
+          aria-label="I agree to the Terms of Service and Privacy Policy"
           aria-describedby={read ? undefined : 'terms-gate-hint'}
-          className="mt-0.5 h-4 w-4 shrink-0 accent-accent disabled:opacity-40"
+          // Until the Terms have been read, toggling instead opens them — so a
+          // user who taps the box first is shown what to read. The checkbox is
+          // controlled, so ignoring the change here keeps it unticked.
+          onChange={(e) => {
+            if (!read) {
+              setOpen(true);
+              return;
+            }
+            onAcceptedChange(e.target.checked);
+          }}
+          className="mt-0.5 h-4 w-4 shrink-0 cursor-pointer accent-accent"
         />
         <span>
           I agree to the{' '}
@@ -65,11 +74,11 @@ export function TermsGate({
           </Link>
           .
         </span>
-      </label>
+      </div>
 
       {!read && (
         <p id="terms-gate-hint" className="pl-[26px] text-xs text-faint">
-          Open and scroll the Terms to the end to continue.
+          Tap the checkbox or the Terms link, then scroll to the end to continue.
         </p>
       )}
 

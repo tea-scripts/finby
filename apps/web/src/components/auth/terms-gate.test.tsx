@@ -12,25 +12,30 @@ import { TermsGate } from './terms-gate';
 beforeEach(() => vi.clearAllMocks());
 
 describe('TermsGate', () => {
-  it('keeps the agree checkbox disabled until the Terms have been opened/read', () => {
-    render(<TermsGate accepted={false} onAcceptedChange={vi.fn()} />);
-    expect(screen.getByRole('checkbox')).toBeDisabled();
-    expect(screen.getByText(/scroll the terms to the end/i)).toBeInTheDocument();
-  });
-
-  it('unlocks the checkbox after reading the Terms, then reports an active tick', async () => {
+  it('opens the Terms (instead of ticking) when the checkbox is clicked before reading', async () => {
     const onChange = vi.fn();
     render(<TermsGate accepted={false} onAcceptedChange={onChange} />);
 
-    // open the Terms modal (in jsdom the content has no scroll height, so it
-    // counts as fully read on open — the real gate requires scrolling to the end)
+    expect(screen.getByText(/scroll to the end to continue/i)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('checkbox'));
+
+    // the Terms modal opened…
+    expect(await screen.findByRole('button', { name: /i've read the terms/i })).toBeInTheDocument();
+    // …and the box was NOT ticked
+    expect(onChange).not.toHaveBeenCalled();
+  });
+
+  it('reports an active tick once the Terms have been read', async () => {
+    const onChange = vi.fn();
+    render(<TermsGate accepted={false} onAcceptedChange={onChange} />);
+
+    // open via the link (in jsdom the content has no scroll height, so it counts
+    // as fully read on open — the real gate requires scrolling to the end)
     fireEvent.click(screen.getByRole('button', { name: /terms of service/i }));
-    const doneBtn = await screen.findByRole('button', { name: /i've read the terms/i });
-    expect(doneBtn).toBeEnabled();
-    fireEvent.click(doneBtn);
+    fireEvent.click(await screen.findByRole('button', { name: /i've read the terms/i }));
 
     const checkbox = screen.getByRole('checkbox');
-    await waitFor(() => expect(checkbox).not.toBeDisabled());
+    await waitFor(() => expect(screen.queryByText(/scroll to the end/i)).not.toBeInTheDocument());
 
     fireEvent.click(checkbox);
     expect(onChange).toHaveBeenCalledWith(true);
