@@ -55,7 +55,7 @@ export default function DashboardPage() {
   }, [workspace]);
 
   return (
-    <div className="h-full overflow-y-auto">
+    <div className="h-full overflow-y-auto pb-nav">
       <div className="mx-auto w-full max-w-3xl space-y-5 px-4 py-6 animate-fade-up">
         <h1 className="font-display text-2xl font-bold text-ink">Dashboard</h1>
         <MonthSummary state={summary} />

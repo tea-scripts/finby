@@ -51,7 +51,7 @@ export function AppNav({ variant }: { variant: 'sidebar' | 'bar' }) {
   // through the gutters; only the capsule itself catches pointer events.
   return (
     <div className="pointer-events-none fixed inset-x-0 bottom-0 z-40 flex justify-center px-4 pb-[max(0.875rem,calc(env(safe-area-inset-bottom)+0.375rem))] md:hidden">
-      <nav className="pointer-events-auto flex w-full max-w-sm items-stretch gap-1 rounded-[26px] border border-white/10 bg-surface-2/70 p-1.5 shadow-[0_14px_40px_-12px_rgba(0,0,0,0.85)] ring-1 ring-white/5 backdrop-blur-xl">
+      <nav className="pointer-events-auto flex w-full max-w-sm items-stretch gap-1 rounded-[26px] border border-white/10 bg-surface-2/45 p-1.5 shadow-[0_14px_40px_-12px_rgba(0,0,0,0.85)] ring-1 ring-white/5 backdrop-blur-md">
         {ITEMS.map(({ href, label, Icon }) => {
           const active = isActive(href);
           return (

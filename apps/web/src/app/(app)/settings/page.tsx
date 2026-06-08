@@ -7,7 +7,7 @@ import { PreferencesSection } from '@/components/settings/preferences-section';
 
 export default function SettingsPage() {
   return (
-    <div className="h-full overflow-y-auto">
+    <div className="h-full overflow-y-auto pb-nav">
       <div className="mx-auto w-full max-w-3xl space-y-8 px-4 py-6 animate-fade-up">
         <h1 className="font-display text-2xl font-bold text-ink">Settings</h1>
 

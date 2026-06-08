@@ -72,7 +72,7 @@ export default function BillingSuccessPage() {
   }, [workspace, setWorkspaceTier]);
 
   return (
-    <div className="h-full overflow-y-auto">
+    <div className="h-full overflow-y-auto pb-nav">
       <div className="mx-auto w-full max-w-3xl px-4 py-6 animate-fade-up">
         <div className="rounded-2xl border border-line bg-surface/60 p-8 shadow-card flex flex-col items-center gap-6 text-center">
           {phase === 'polling' && (
