@@ -8,6 +8,10 @@ import { PlanCard } from './PlanCard';
 vi.mock('../../lib/billing-api', () => ({
   getSubscription: vi.fn(),
   openPortal: vi.fn(),
+  // Mirror the real helper's same-tab fallback so redirect assertions hold.
+  openBillingUrl: vi.fn(async (resolveUrl: () => Promise<string>) => {
+    window.location.href = await resolveUrl();
+  }),
 }));
 
 vi.mock('../../lib/store', () => ({

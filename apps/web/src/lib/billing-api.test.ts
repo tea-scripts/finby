@@ -1,4 +1,5 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+// @vitest-environment jsdom
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 vi.mock('./store', () => ({
   useAuth: {
@@ -17,6 +18,7 @@ import {
   getPlans,
   startCheckout,
   openPortal,
+  openBillingUrl,
   cancelSubscription,
   resumeSubscription,
 } from './billing-api';
@@ -73,6 +75,54 @@ describe('openPortal', () => {
     expect(mockAuthed).toHaveBeenCalledWith('/workspaces/w1/subscription/portal', {
       method: 'POST',
     });
+  });
+});
+
+describe('openBillingUrl', () => {
+  const realOpen = window.open;
+  const realLocation = window.location;
+
+  beforeEach(() => {
+    Object.defineProperty(window, 'location', { value: { href: '' }, writable: true });
+  });
+
+  afterEach(() => {
+    window.open = realOpen;
+    Object.defineProperty(window, 'location', { value: realLocation, writable: true });
+  });
+
+  it('opens a blank tab synchronously and redirects it to the resolved url', async () => {
+    const tab = { location: { href: '' }, opener: {}, close: vi.fn() } as unknown as Window;
+    window.open = vi.fn().mockReturnValue(tab);
+
+    await openBillingUrl(async () => 'https://billing.stripe.com/x');
+
+    expect(window.open).toHaveBeenCalledWith('', '_blank');
+    expect((tab as unknown as { location: { href: string } }).location.href).toBe(
+      'https://billing.stripe.com/x',
+    );
+    // never touches the app's own context — that's the PWA bug being avoided
+    expect(window.location.href).toBe('');
+  });
+
+  it('falls back to a same-tab redirect when the popup is blocked', async () => {
+    window.open = vi.fn().mockReturnValue(null);
+
+    await openBillingUrl(async () => 'https://billing.stripe.com/y');
+
+    expect(window.location.href).toBe('https://billing.stripe.com/y');
+  });
+
+  it('closes the opened tab and rethrows when resolving the url fails', async () => {
+    const tab = { location: { href: '' }, opener: {}, close: vi.fn() } as unknown as Window;
+    window.open = vi.fn().mockReturnValue(tab);
+
+    await expect(
+      openBillingUrl(async () => {
+        throw new Error('portal failed');
+      }),
+    ).rejects.toThrow('portal failed');
+    expect((tab as unknown as { close: () => void }).close).toHaveBeenCalled();
   });
 });
 

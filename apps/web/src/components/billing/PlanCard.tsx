@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { TIER_LIMITS } from '@finby/shared';
 import type { SubscriptionTier } from '@finby/shared';
-import { getSubscription, openPortal } from '@/lib/billing-api';
+import { getSubscription, openPortal, openBillingUrl } from '@/lib/billing-api';
 import { useAuth } from '@/lib/store';
 import type { SubscriptionView } from '@/lib/types';
 import { useFormatters } from '@/lib/use-formatters';
@@ -116,8 +116,7 @@ export function PlanCard() {
     setPortalError(null);
     setPortalLoading(true);
     try {
-      const { url } = await openPortal(workspace.id);
-      window.location.href = url;
+      await openBillingUrl(async () => (await openPortal(workspace.id)).url);
     } catch {
       if (mountedRef.current) {
         setPortalError('Unable to open billing portal. Please try again.');

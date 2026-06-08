@@ -3,7 +3,7 @@
 import { type KeyboardEvent, useEffect, useRef, useState } from 'react';
 import { Modal } from '@/components/ui/modal';
 import { Button } from '@/components/ui/button';
-import { getPlans, startCheckout } from '@/lib/billing-api';
+import { getPlans, startCheckout, openBillingUrl } from '@/lib/billing-api';
 import { useAuth } from '@/lib/store';
 import { track } from '@/lib/analytics';
 import type { BillingPlan } from '@/lib/types';
@@ -94,8 +94,7 @@ export function UpgradeModal({ open, onClose, initialTier = 'PRO', source = 'unk
 
     try {
       track('checkout_started', { target_tier: selectedTier });
-      const result = await startCheckout(workspaceId, selectedTier);
-      window.location.href = result.url;
+      await openBillingUrl(async () => (await startCheckout(workspaceId, selectedTier)).url);
     } catch {
       if (mountedRef.current) {
         setSubmitError("Couldn't start checkout. Please try again.");

@@ -9,6 +9,10 @@ vi.mock('../../lib/analytics', () => ({ track: vi.fn() }));
 vi.mock('../../lib/billing-api', () => ({
   getPlans: vi.fn(),
   startCheckout: vi.fn(),
+  // Mirror the real helper's same-tab fallback so redirect assertions hold.
+  openBillingUrl: vi.fn(async (resolveUrl: () => Promise<string>) => {
+    window.location.href = await resolveUrl();
+  }),
 }));
 
 vi.mock('../../lib/store', () => ({
