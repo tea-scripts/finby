@@ -400,4 +400,35 @@ describe('SubscriptionService.changePlan', () => {
     prisma.subscription.findUnique.mockResolvedValue({ ...paidSub, billingProvider: 'PAYSTACK' });
     await expect(service.changePlan('w1', 'PREMIUM')).rejects.toMatchObject({ status: 400 }); // non-stripe
   });
+
+  it('re-downgrade: releases existing schedule before creating a new one', async () => {
+    const prisma = buildPrisma();
+    const existingSub = {
+      workspaceId: 'w1',
+      tier: 'FAMILY',
+      status: 'ACTIVE',
+      billingProvider: 'STRIPE',
+      stripeSubscriptionId: 'sub_1',
+      stripeScheduleId: 'sched_old',
+      pendingTier: 'PREMIUM',
+      currentPeriodEnd: new Date('2026-07-07T00:00:00.000Z'),
+    };
+    prisma.subscription.findUnique
+      .mockResolvedValueOnce(existingSub)
+      .mockResolvedValueOnce(existingSub);
+    prisma.workspaceMember.count.mockResolvedValue(1);
+
+    const stripe = stripeMock();
+    (stripe.releaseScheduledChange as jest.Mock) = jest.fn().mockResolvedValue(undefined);
+    (stripe.scheduleDowngrade as jest.Mock) = jest.fn().mockResolvedValue({ scheduleId: 'sched_new' });
+    const service = build(prisma, stripe).service;
+
+    await service.changePlan('w1', 'PRO');
+
+    expect(stripe.releaseScheduledChange).toHaveBeenCalledWith('sched_old');
+    expect(stripe.scheduleDowngrade).toHaveBeenCalledWith('sub_1', 'PRO', existingSub.currentPeriodEnd);
+    const data = prisma.subscription.update.mock.calls[0][0].data;
+    expect(data.stripeScheduleId).toBe('sched_new');
+    expect(data.pendingTier).toBe('PRO');
+  });
 });

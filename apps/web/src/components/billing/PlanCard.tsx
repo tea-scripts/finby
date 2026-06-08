@@ -284,6 +284,7 @@ export function PlanCard() {
             getSubscription(workspace.id).then(setSub).catch(() => {});
           }
         }}
+        initialTier={sub.tier as 'PRO' | 'PREMIUM' | 'FAMILY'}
         currentTier={sub.tier as 'PRO' | 'PREMIUM' | 'FAMILY'}
         source="settings_change_plan"
       />

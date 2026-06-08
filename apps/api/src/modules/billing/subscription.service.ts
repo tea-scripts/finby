@@ -154,6 +154,13 @@ export class SubscriptionService {
       );
     }
 
+    // Release any existing schedule before creating a new one — Stripe rejects
+    // subscriptionSchedules.create({ from_subscription }) if the subscription
+    // already has a schedule attached.
+    if (sub.stripeScheduleId) {
+      await provider.releaseScheduledChange(sub.stripeScheduleId);
+    }
+
     const { scheduleId } = await provider.scheduleDowngrade(
       sub.stripeSubscriptionId,
       targetTier,
