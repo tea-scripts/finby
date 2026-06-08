@@ -210,58 +210,85 @@ export function PlanCard() {
 
   // ── Paid tier ────────────────────────────────────────────────────────────
   return (
-    <section className="rounded-2xl border border-line bg-surface/60 p-5 shadow-card space-y-4">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <h2 className="font-display text-sm font-semibold uppercase tracking-wide text-muted">
-          Current Plan
-        </h2>
-        <TierBadge tier={sub.tier} />
-      </div>
-
-      {/* Billing info */}
-      <div className="space-y-1">
-        {sub.currentPeriodEnd && (
-          <p className="text-sm text-muted">
-            Next billing date:{' '}
-            <span className="font-medium text-ink">{formatDate(sub.currentPeriodEnd)}</span>
-          </p>
-        )}
-        {sub.cancelAtPeriodEnd && (
-          <p className="text-sm text-amber-400">
-            Your plan cancels at the end of the current period.
-          </p>
-        )}
-      </div>
-
-      {/* Manage Billing (Stripe only) */}
-      {sub.billingProvider === 'STRIPE' && (
-        <div className="space-y-1">
-          {portalError && (
-            <p className="text-xs text-danger">{portalError}</p>
-          )}
-          <Button
-            variant="ghost"
-            loading={portalLoading}
-            onClick={handleManageBilling}
-            className="w-full sm:w-auto"
-          >
-            Manage Billing
-          </Button>
+    <>
+      <section className="rounded-2xl border border-line bg-surface/60 p-5 shadow-card space-y-4">
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <h2 className="font-display text-sm font-semibold uppercase tracking-wide text-muted">
+            Current Plan
+          </h2>
+          <TierBadge tier={sub.tier} />
         </div>
-      )}
 
-      {/* Compare plans toggle */}
-      <button
-        onClick={() => setCompareOpen((o) => !o)}
-        className="w-full text-center text-xs text-accent hover:text-accent-hover focus:outline-none"
-        aria-expanded={compareOpen}
-      >
-        {compareOpen ? 'Hide plan comparison' : 'Compare plans'}
-      </button>
+        {/* Billing info */}
+        <div className="space-y-1">
+          {sub.currentPeriodEnd && (
+            <p className="text-sm text-muted">
+              Next billing date:{' '}
+              <span className="font-medium text-ink">{formatDate(sub.currentPeriodEnd)}</span>
+            </p>
+          )}
+          {sub.cancelAtPeriodEnd && (
+            <p className="text-sm text-amber-400">
+              Your plan cancels at the end of the current period.
+            </p>
+          )}
+          {sub.pendingTier && sub.pendingTierEffectiveAt && (
+            <p className="text-sm text-amber-400">
+              Changes to {sub.pendingTier} on {formatDate(sub.pendingTierEffectiveAt)}.
+            </p>
+          )}
+        </div>
 
-      {compareOpen && <CompareTable />}
-    </section>
+        {/* Manage Billing (Stripe only) */}
+        {sub.billingProvider === 'STRIPE' && (
+          <div className="space-y-1">
+            {portalError && (
+              <p className="text-xs text-danger">{portalError}</p>
+            )}
+            <Button
+              variant="ghost"
+              onClick={() => setUpgradeOpen(true)}
+              className="w-full sm:w-auto"
+            >
+              Change plan
+            </Button>
+            <Button
+              variant="ghost"
+              loading={portalLoading}
+              onClick={handleManageBilling}
+              className="w-full sm:w-auto"
+            >
+              Manage Billing
+            </Button>
+          </div>
+        )}
+
+        {/* Compare plans toggle */}
+        <button
+          onClick={() => setCompareOpen((o) => !o)}
+          className="w-full text-center text-xs text-accent hover:text-accent-hover focus:outline-none"
+          aria-expanded={compareOpen}
+        >
+          {compareOpen ? 'Hide plan comparison' : 'Compare plans'}
+        </button>
+
+        {compareOpen && <CompareTable />}
+      </section>
+
+      <UpgradeModal
+        open={upgradeOpen}
+        onClose={() => {
+          setUpgradeOpen(false);
+          if (workspace) {
+            getSubscription(workspace.id).then(setSub).catch(() => {});
+          }
+        }}
+        initialTier={sub.tier as 'PRO' | 'PREMIUM' | 'FAMILY'}
+        currentTier={sub.tier as 'PRO' | 'PREMIUM' | 'FAMILY'}
+        source="settings_change_plan"
+      />
+    </>
   );
 }
 

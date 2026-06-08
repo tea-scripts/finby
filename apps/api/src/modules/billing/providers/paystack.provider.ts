@@ -1,4 +1,4 @@
-import { Injectable, Logger, ServiceUnavailableException } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger, ServiceUnavailableException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { createHmac, timingSafeEqual } from 'node:crypto';
 import { TIER_PRICING, type SubscriptionTier } from '@finby/shared';
@@ -106,5 +106,15 @@ export class PaystackProvider implements BillingProvider {
   async cancelAtPeriodEnd(_providerSubscriptionId: string, _cancel: boolean): Promise<void> {
     // Paystack subscription cancellation requires the subscription code + email token;
     // deferred until Paystack goes live. DB cancelAtPeriodEnd flag still applies.
+  }
+
+  changePlanImmediately(): Promise<void> {
+    throw new BadRequestException('Plan change is not supported for this provider.');
+  }
+  scheduleDowngrade(): Promise<{ scheduleId: string }> {
+    throw new BadRequestException('Plan change is not supported for this provider.');
+  }
+  releaseScheduledChange(): Promise<void> {
+    throw new BadRequestException('Plan change is not supported for this provider.');
   }
 }

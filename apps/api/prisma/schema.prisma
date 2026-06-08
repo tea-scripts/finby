@@ -279,6 +279,11 @@ model Subscription {
   renewalReminder7SentAt DateTime?
   renewalReminder3SentAt DateTime?
 
+  // In-flight downgrade scheduled for period end (Stripe subscription schedule).
+  pendingTier            SubscriptionTier?
+  pendingTierEffectiveAt DateTime?
+  stripeScheduleId       String?
+
   createdAt             DateTime           @default(now())
   updatedAt             DateTime           @updatedAt
 

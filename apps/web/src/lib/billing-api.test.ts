@@ -21,6 +21,7 @@ import {
   openBillingUrl,
   cancelSubscription,
   resumeSubscription,
+  changePlan,
 } from './billing-api';
 
 const mockAuthed = vi.fn();
@@ -74,6 +75,17 @@ describe('openPortal', () => {
     openPortal('w1');
     expect(mockAuthed).toHaveBeenCalledWith('/workspaces/w1/subscription/portal', {
       method: 'POST',
+    });
+  });
+});
+
+describe('changePlan', () => {
+  it('calls authed POST /workspaces/:id/subscription/change-plan with tier body', () => {
+    mockAuthed.mockResolvedValue({ tier: 'PREMIUM' });
+    changePlan('w1', 'PREMIUM');
+    expect(mockAuthed).toHaveBeenCalledWith('/workspaces/w1/subscription/change-plan', {
+      method: 'POST',
+      body: JSON.stringify({ tier: 'PREMIUM' }),
     });
   });
 });

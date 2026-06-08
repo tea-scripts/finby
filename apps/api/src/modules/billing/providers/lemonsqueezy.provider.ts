@@ -1,4 +1,4 @@
-import { Injectable, Logger, ServiceUnavailableException } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger, ServiceUnavailableException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { createHmac, timingSafeEqual } from 'node:crypto';
 import type { SubscriptionTier } from '@finby/shared';
@@ -205,6 +205,16 @@ export class LemonSqueezyProvider implements BillingProvider {
     if (!response.ok) {
       throw new ServiceUnavailableException(`Lemon Squeezy error (${response.status}).`);
     }
+  }
+
+  changePlanImmediately(): Promise<void> {
+    throw new BadRequestException('Plan change is not supported for this provider.');
+  }
+  scheduleDowngrade(): Promise<{ scheduleId: string }> {
+    throw new BadRequestException('Plan change is not supported for this provider.');
+  }
+  releaseScheduledChange(): Promise<void> {
+    throw new BadRequestException('Plan change is not supported for this provider.');
   }
 
   private ignored(): BillingWebhookEvent {

@@ -3,7 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import type { Env } from '../../config/env.schema';
-import type { SubscriptionTier } from '@finby/shared';
+import { TIER_LIMITS, type SubscriptionTier } from '@finby/shared';
 import { LEMONSQUEEZY_PROVIDER, PAYSTACK_PROVIDER, STRIPE_PROVIDER } from './billing.constants';
 import type {
   BillingProvider,
@@ -15,6 +15,12 @@ import type {
 } from './billing.types';
 
 const MONTH_MS = 30 * 24 * 60 * 60 * 1000;
+
+const TIER_RANK: Record<Exclude<SubscriptionTier, 'FREE'>, number> = {
+  PRO: 1,
+  PREMIUM: 2,
+  FAMILY: 3,
+};
 
 @Injectable()
 export class SubscriptionService {
@@ -38,6 +44,8 @@ export class SubscriptionService {
         billingProvider: null,
         currentPeriodEnd: null,
         cancelAtPeriodEnd: false,
+        pendingTier: null,
+        pendingTierEffectiveAt: null,
       };
     }
     return {
@@ -46,6 +54,10 @@ export class SubscriptionService {
       billingProvider: sub.billingProvider as BillingProviderName,
       currentPeriodEnd: sub.currentPeriodEnd ? sub.currentPeriodEnd.toISOString() : null,
       cancelAtPeriodEnd: sub.cancelAtPeriodEnd,
+      pendingTier: sub.pendingTier as SubscriptionTier | null,
+      pendingTierEffectiveAt: sub.pendingTierEffectiveAt
+        ? sub.pendingTierEffectiveAt.toISOString()
+        : null,
     };
   }
 
@@ -88,6 +100,78 @@ export class SubscriptionService {
         canceledAt: cancel ? new Date() : null,
         // Resuming auto-renew clears any pending expiry reminders.
         ...(cancel ? {} : { renewalReminder7SentAt: null, renewalReminder3SentAt: null }),
+      },
+    });
+    return this.getSubscription(workspaceId);
+  }
+
+  async changePlan(
+    workspaceId: string,
+    targetTier: Exclude<SubscriptionTier, 'FREE'>,
+  ): Promise<SubscriptionView> {
+    const sub = await this.prisma.subscription.findUnique({ where: { workspaceId } });
+    if (!sub || sub.billingProvider !== 'STRIPE' || !sub.stripeSubscriptionId) {
+      throw new BadRequestException('No active Stripe subscription to change.');
+    }
+    const current = sub.tier as Exclude<SubscriptionTier, 'FREE'>;
+    if (targetTier === current) {
+      throw new BadRequestException('That is already your current plan.');
+    }
+
+    const provider = this.getProvider('STRIPE');
+    const upgrading = TIER_RANK[targetTier] > TIER_RANK[current];
+
+    if (upgrading) {
+      // Cancel any pending downgrade, then switch immediately (prorated).
+      if (sub.stripeScheduleId) {
+        await provider.releaseScheduledChange(sub.stripeScheduleId);
+      }
+      await provider.changePlanImmediately(sub.stripeSubscriptionId, targetTier);
+      await this.prisma.$transaction(async (txc) => {
+        await txc.subscription.update({
+          where: { workspaceId },
+          data: {
+            tier: targetTier,
+            pendingTier: null,
+            pendingTierEffectiveAt: null,
+            stripeScheduleId: null,
+          },
+        });
+        await txc.workspace.update({
+          where: { id: workspaceId },
+          data: { tier: targetTier, maxMembers: targetTier === 'FAMILY' ? 5 : 1 },
+        });
+      });
+      return this.getSubscription(workspaceId);
+    }
+
+    // Downgrade: enforce seat limit, then schedule for period end.
+    const seatLimit = TIER_LIMITS[targetTier].maxMembers;
+    const memberCount = await this.prisma.workspaceMember.count({ where: { workspaceId } });
+    if (memberCount > seatLimit) {
+      throw new BadRequestException(
+        `The ${targetTier} plan allows ${seatLimit} member${seatLimit === 1 ? '' : 's'}. Remove ${memberCount - seatLimit} before downgrading.`,
+      );
+    }
+
+    // Release any existing schedule before creating a new one — Stripe rejects
+    // subscriptionSchedules.create({ from_subscription }) if the subscription
+    // already has a schedule attached.
+    if (sub.stripeScheduleId) {
+      await provider.releaseScheduledChange(sub.stripeScheduleId);
+    }
+
+    const { scheduleId } = await provider.scheduleDowngrade(
+      sub.stripeSubscriptionId,
+      targetTier,
+      sub.currentPeriodEnd,
+    );
+    await this.prisma.subscription.update({
+      where: { workspaceId },
+      data: {
+        pendingTier: targetTier,
+        pendingTierEffectiveAt: sub.currentPeriodEnd,
+        stripeScheduleId: scheduleId,
       },
     });
     return this.getSubscription(workspaceId);
@@ -152,6 +236,10 @@ export class SubscriptionService {
           // Renewal/upgrade re-arms the reminder cycle for the new period.
           renewalReminder7SentAt: null,
           renewalReminder3SentAt: null,
+          // An applied downgrade/renewal resets any pending scheduled change.
+          pendingTier: null,
+          pendingTierEffectiveAt: null,
+          stripeScheduleId: null,
           ...ids,
         },
         create: {

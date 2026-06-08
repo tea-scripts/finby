@@ -34,6 +34,19 @@ export interface BillingProvider {
   createCheckout(params: CheckoutParams): Promise<CheckoutResult>;
   parseWebhook(rawBody: Buffer | string, signature: string): Promise<BillingWebhookEvent>;
   cancelAtPeriodEnd(providerSubscriptionId: string, cancel: boolean): Promise<void>;
+  /** Swap the subscription's price immediately, prorating the difference. */
+  changePlanImmediately(
+    providerSubscriptionId: string,
+    tier: Exclude<SubscriptionTier, 'FREE'>,
+  ): Promise<void>;
+  /** Schedule a switch to a (lower) tier at period end. Returns the schedule id. */
+  scheduleDowngrade(
+    providerSubscriptionId: string,
+    tier: Exclude<SubscriptionTier, 'FREE'>,
+    effectiveAt: Date,
+  ): Promise<{ scheduleId: string }>;
+  /** Cancel a pending scheduled change. */
+  releaseScheduledChange(scheduleId: string): Promise<void>;
   /** Optional: providers that support a hosted billing-management portal implement this. */
   createPortalSession?(params: { providerCustomerId: string; returnUrl: string }): Promise<{ url: string }>;
 }
@@ -44,4 +57,6 @@ export interface SubscriptionView {
   billingProvider: BillingProviderName | null;
   currentPeriodEnd: string | null;
   cancelAtPeriodEnd: boolean;
+  pendingTier: SubscriptionTier | null;
+  pendingTierEffectiveAt: string | null;
 }

@@ -9,6 +9,7 @@ vi.mock('../../lib/analytics', () => ({ track: vi.fn() }));
 vi.mock('../../lib/billing-api', () => ({
   getPlans: vi.fn(),
   startCheckout: vi.fn(),
+  changePlan: vi.fn(),
   // Mirror the real helper's same-tab fallback so redirect assertions hold.
   openBillingUrl: vi.fn(async (resolveUrl: () => Promise<string>) => {
     window.location.href = await resolveUrl();
@@ -21,13 +22,14 @@ vi.mock('../../lib/store', () => ({
   ),
 }));
 
-import { getPlans, startCheckout } from '../../lib/billing-api';
+import { getPlans, startCheckout, changePlan } from '../../lib/billing-api';
 import { useAuth } from '../../lib/store';
 
 const mockUseAuth = vi.mocked(useAuth);
 
 const mockGetPlans = vi.mocked(getPlans);
 const mockStartCheckout = vi.mocked(startCheckout);
+const mockChangePlan = vi.mocked(changePlan);
 
 const PLANS = [
   {
@@ -226,5 +228,27 @@ describe('UpgradeModal', () => {
     fireEvent.keyDown(screen.getByRole('tab', { name: 'Pro' }), { key: 'ArrowLeft' });
     expect(screen.getByRole('tab', { name: 'Family' })).toHaveAttribute('aria-selected', 'true');
     expect(screen.getByText('$29/mo')).toBeInTheDocument();
+  });
+
+  it('manage mode: badges the current tier and switches via changePlan', async () => {
+    mockGetPlans.mockResolvedValue({ plans: PLANS });
+    mockChangePlan.mockResolvedValue({ tier: 'PREMIUM' } as never);
+    render(<UpgradeModal open onClose={() => {}} currentTier="PRO" />);
+
+    // current tier marked (badge in tab + disabled button both show "Current plan")
+    await waitFor(() => expect(screen.getAllByText(/current plan/i).length).toBeGreaterThan(0));
+
+    // switch to PREMIUM
+    fireEvent.click(screen.getByRole('tab', { name: /premium/i }));
+    fireEvent.click(screen.getByRole('button', { name: /switch|change|confirm/i }));
+
+    await waitFor(() => expect(mockChangePlan).toHaveBeenCalledWith('w1', 'PREMIUM'));
+  });
+
+  it('manage mode: shows downgrade-at-period-end note for a lower tier', async () => {
+    mockGetPlans.mockResolvedValue({ plans: PLANS });
+    render(<UpgradeModal open onClose={() => {}} currentTier="FAMILY" />);
+    fireEvent.click(screen.getByRole('tab', { name: /pro/i }));
+    await waitFor(() => expect(screen.getByText(/at the end of your billing period/i)).toBeInTheDocument());
   });
 });

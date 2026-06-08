@@ -22,8 +22,8 @@ vi.mock('../../lib/store', () => ({
 
 // UpgradeModal does its own store/api calls — stub it out to avoid cascade mocks
 vi.mock('./UpgradeModal', () => ({
-  UpgradeModal: ({ open }: { open: boolean }) =>
-    open ? <div data-testid="upgrade-modal">UpgradeModal</div> : null,
+  UpgradeModal: ({ open, currentTier }: { open: boolean; currentTier?: string }) =>
+    open ? <div data-testid="upgrade-modal">{currentTier ?? 'none'}</div> : null,
 }));
 
 import { getSubscription, openPortal } from '../../lib/billing-api';
@@ -60,6 +60,8 @@ describe('PlanCard', () => {
       billingProvider: null,
       currentPeriodEnd: null,
       cancelAtPeriodEnd: false,
+      pendingTier: null,
+      pendingTierEffectiveAt: null,
     });
 
     render(<PlanCard />);
@@ -76,6 +78,8 @@ describe('PlanCard', () => {
       billingProvider: 'STRIPE',
       currentPeriodEnd: '2026-07-01T00:00:00.000Z',
       cancelAtPeriodEnd: false,
+      pendingTier: null,
+      pendingTierEffectiveAt: null,
     });
 
     render(<PlanCard />);
@@ -112,6 +116,8 @@ describe('PlanCard', () => {
       billingProvider: 'STRIPE',
       currentPeriodEnd: '2026-07-01T00:00:00.000Z',
       cancelAtPeriodEnd: false,
+      pendingTier: null,
+      pendingTierEffectiveAt: null,
     });
 
     mockOpenPortal.mockResolvedValue({ url: 'https://billing.stripe.com/session/x' });
@@ -140,6 +146,8 @@ describe('PlanCard', () => {
       billingProvider: null,
       currentPeriodEnd: null,
       cancelAtPeriodEnd: false,
+      pendingTier: null,
+      pendingTierEffectiveAt: null,
     });
 
     render(<PlanCard />);
@@ -162,6 +170,8 @@ describe('PlanCard', () => {
       billingProvider: 'PAYSTACK',
       currentPeriodEnd: '2026-07-01T00:00:00.000Z',
       cancelAtPeriodEnd: false,
+      pendingTier: null,
+      pendingTierEffectiveAt: null,
     });
 
     render(<PlanCard />);
@@ -181,6 +191,8 @@ describe('PlanCard', () => {
       billingProvider: null,
       currentPeriodEnd: null,
       cancelAtPeriodEnd: false,
+      pendingTier: null,
+      pendingTierEffectiveAt: null,
     });
 
     render(<PlanCard />);
@@ -208,6 +220,8 @@ describe('PlanCard', () => {
       billingProvider: 'STRIPE',
       currentPeriodEnd: '2026-07-01T00:00:00.000Z',
       cancelAtPeriodEnd: true,
+      pendingTier: null,
+      pendingTierEffectiveAt: null,
     });
 
     render(<PlanCard />);
@@ -217,5 +231,27 @@ describe('PlanCard', () => {
         screen.getByText(/your plan cancels at the end of the current period/i),
       ).toBeInTheDocument();
     });
+  });
+
+  it('paid tier: "Change plan" opens the modal in manage mode', async () => {
+    mockGetSubscription.mockResolvedValue({
+      tier: 'PRO', status: 'ACTIVE', billingProvider: 'STRIPE',
+      currentPeriodEnd: '2026-07-07T00:00:00.000Z', cancelAtPeriodEnd: false,
+      pendingTier: null, pendingTierEffectiveAt: null,
+    });
+    render(<PlanCard />);
+    await waitFor(() => expect(screen.getByRole('button', { name: /change plan/i })).toBeInTheDocument());
+    fireEvent.click(screen.getByRole('button', { name: /change plan/i }));
+    await waitFor(() => expect(screen.getByTestId('upgrade-modal')).toHaveTextContent('PRO'));
+  });
+
+  it('shows a pending-downgrade banner when pendingTier is set', async () => {
+    mockGetSubscription.mockResolvedValue({
+      tier: 'FAMILY', status: 'ACTIVE', billingProvider: 'STRIPE',
+      currentPeriodEnd: '2026-07-07T00:00:00.000Z', cancelAtPeriodEnd: false,
+      pendingTier: 'PRO', pendingTierEffectiveAt: '2026-07-07T00:00:00.000Z',
+    });
+    render(<PlanCard />);
+    await waitFor(() => expect(screen.getByText(/changes to pro/i)).toBeInTheDocument());
   });
 });
