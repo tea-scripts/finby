@@ -8,7 +8,7 @@ import { ZodValidationPipe } from '../../common/pipes/zod-validation.pipe';
 import type { WorkspaceContext } from '../../common/context';
 import type { AuthUser } from '../auth/auth.types';
 import { SubscriptionService } from './subscription.service';
-import { checkoutSchema, type CheckoutInput } from './dto/billing.schemas';
+import { checkoutSchema, changePlanSchema, type CheckoutInput, type ChangePlanInput } from './dto/billing.schemas';
 import type { CheckoutResult, SubscriptionView } from './billing.types';
 
 @Controller('workspaces/:workspaceId/subscription')
@@ -30,6 +30,17 @@ export class SubscriptionController {
     @Body(new ZodValidationPipe(checkoutSchema)) body: CheckoutInput,
   ): Promise<CheckoutResult> {
     return this.subscriptions.createCheckout(workspace.id, user.email, body.tier, body.provider);
+  }
+
+  @Post('change-plan')
+  @HttpCode(HttpStatus.OK)
+  @Roles('OWNER')
+  @UseGuards(RolesGuard)
+  changePlan(
+    @Workspace() workspace: WorkspaceContext,
+    @Body(new ZodValidationPipe(changePlanSchema)) body: ChangePlanInput,
+  ): Promise<SubscriptionView> {
+    return this.subscriptions.changePlan(workspace.id, body.tier);
   }
 
   @Post('cancel')
