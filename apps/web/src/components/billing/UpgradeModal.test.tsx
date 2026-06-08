@@ -26,7 +26,6 @@ import { getPlans, startCheckout, changePlan } from '../../lib/billing-api';
 import { useAuth } from '../../lib/store';
 
 const mockUseAuth = vi.mocked(useAuth);
-
 const mockGetPlans = vi.mocked(getPlans);
 const mockStartCheckout = vi.mocked(startCheckout);
 const mockChangePlan = vi.mocked(changePlan);
@@ -61,6 +60,9 @@ const PLANS = [
   },
 ];
 
+// jsdom doesn't implement scrollIntoView — the carousel calls it to center cards.
+Object.defineProperty(Element.prototype, 'scrollIntoView', { value: vi.fn(), writable: true });
+
 // Stub window.location so redirect assertions don't crash jsdom
 Object.defineProperty(window, 'location', {
   value: { href: '' },
@@ -70,74 +72,53 @@ Object.defineProperty(window, 'location', {
 beforeEach(() => {
   vi.clearAllMocks();
   window.location.href = '';
-  // Restore default workspace selector so per-test overrides don't bleed across tests
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   mockUseAuth.mockImplementation((selector: any) => selector({ workspace: { id: 'w1' } }));
 });
 
 // ── Tests ──────────────────────────────────────────────────────────────────
 
-describe('UpgradeModal', () => {
-  it('renders all three plan tabs when open with plans loaded', async () => {
+describe('UpgradeModal carousel', () => {
+  it('renders every plan card (name, price, highlights all visible at once)', async () => {
     mockGetPlans.mockResolvedValue({ plans: PLANS });
 
-    render(<UpgradeModal open={true} onClose={vi.fn()} />);
+    render(<UpgradeModal open onClose={vi.fn()} />);
 
-    await waitFor(() => {
-      expect(screen.getByText('Pro')).toBeInTheDocument();
-      expect(screen.getByText('Premium')).toBeInTheDocument();
-      expect(screen.getByText('Family')).toBeInTheDocument();
-    });
-  });
+    await waitFor(() => expect(screen.getByRole('group', { name: 'Plans' })).toBeInTheDocument());
 
-  it('switching tabs shows that plan price and highlights', async () => {
-    mockGetPlans.mockResolvedValue({ plans: PLANS });
-
-    render(<UpgradeModal open={true} onClose={vi.fn()} />);
-
-    // Wait for plans to load (default is Pro)
-    await waitFor(() => expect(screen.getByText('$9/mo')).toBeInTheDocument());
-
-    // Switch to Premium
-    fireEvent.click(screen.getByRole('tab', { name: 'Premium' }));
-
+    // Card headings
+    expect(screen.getByRole('heading', { name: 'Pro' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Premium' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Family' })).toBeInTheDocument();
+    // All prices on screen simultaneously (carousel, not tabs)
+    expect(screen.getByText('$9/mo')).toBeInTheDocument();
     expect(screen.getByText('$19/mo')).toBeInTheDocument();
-    expect(screen.getByText('Everything in Pro')).toBeInTheDocument();
+    expect(screen.getByText('$29/mo')).toBeInTheDocument();
+    // Highlights present
     expect(screen.getByText('Advanced reports')).toBeInTheDocument();
-
-    // Pro content should no longer be visible
-    expect(screen.queryByText('$9/mo')).not.toBeInTheDocument();
   });
 
-  it('calls startCheckout with workspaceId and selected tier, then sets redirect url', async () => {
+  it('free mode: each card has an "Upgrade to <tier>" CTA that checks out that tier', async () => {
     mockGetPlans.mockResolvedValue({ plans: PLANS });
     mockStartCheckout.mockResolvedValue({ url: 'https://checkout.stripe/x' });
 
-    render(<UpgradeModal open={true} onClose={vi.fn()} initialTier="PRO" />);
+    render(<UpgradeModal open onClose={vi.fn()} />);
 
-    await waitFor(() => expect(screen.getByText('$9/mo')).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText('$19/mo')).toBeInTheDocument());
 
-    fireEvent.click(screen.getByRole('button', { name: /start upgrade/i }));
+    fireEvent.click(screen.getByRole('button', { name: /upgrade to premium/i }));
 
-    await waitFor(() => {
-      expect(mockStartCheckout).toHaveBeenCalledWith('w1', 'PRO');
-    });
-
+    await waitFor(() => expect(mockStartCheckout).toHaveBeenCalledWith('w1', 'PREMIUM'));
     await waitFor(() => expect(window.location.href).toBe('https://checkout.stripe/x'));
   });
 
-  it('shows loading state while plans fetch is pending, then shows content', async () => {
+  it('shows loading state while plans fetch is pending, then the deck', async () => {
     let resolve!: (v: { plans: typeof PLANS }) => void;
-    mockGetPlans.mockReturnValue(
-      new Promise<{ plans: typeof PLANS }>((res) => { resolve = res; }),
-    );
+    mockGetPlans.mockReturnValue(new Promise<{ plans: typeof PLANS }>((res) => { resolve = res; }));
 
-    render(<UpgradeModal open={true} onClose={vi.fn()} />);
+    render(<UpgradeModal open onClose={vi.fn()} />);
 
-    // Should show loading while pending
     expect(screen.getByText(/loading plans/i)).toBeInTheDocument();
-
-    // Resolve the fetch
     resolve({ plans: PLANS });
 
     await waitFor(() => {
@@ -149,106 +130,101 @@ describe('UpgradeModal', () => {
   it('shows error state if getPlans rejects', async () => {
     mockGetPlans.mockRejectedValue(new Error('network fail'));
 
-    render(<UpgradeModal open={true} onClose={vi.fn()} />);
+    render(<UpgradeModal open onClose={vi.fn()} />);
 
-    await waitFor(() => {
-      expect(screen.getByText("Couldn't load plans")).toBeInTheDocument();
-    });
+    await waitFor(() => expect(screen.getByText("Couldn't load plans")).toBeInTheDocument());
   });
 
-  it('does not call startCheckout and shows error when workspaceId is undefined', async () => {
+  it('shows error and skips checkout when workspaceId is undefined', async () => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     mockUseAuth.mockImplementation((selector: any) => selector({ workspace: undefined }));
-
     mockGetPlans.mockResolvedValue({ plans: PLANS });
 
-    render(<UpgradeModal open={true} onClose={vi.fn()} initialTier="PRO" />);
+    render(<UpgradeModal open onClose={vi.fn()} />);
 
     await waitFor(() => expect(screen.getByText('$9/mo')).toBeInTheDocument());
+    fireEvent.click(screen.getByRole('button', { name: /upgrade to pro/i }));
 
-    fireEvent.click(screen.getByRole('button', { name: /start upgrade/i }));
-
-    await waitFor(() => {
-      expect(screen.getByText('No workspace found. Please reload and try again.')).toBeInTheDocument();
-    });
-
+    await waitFor(() =>
+      expect(screen.getByText('No workspace found. Please reload and try again.')).toBeInTheDocument(),
+    );
     expect(mockStartCheckout).not.toHaveBeenCalled();
   });
 
-  it('shows button loading while startCheckout is pending and submit error on reject', async () => {
+  it('shows the acting card button loading, and a submit error on reject', async () => {
     mockGetPlans.mockResolvedValue({ plans: PLANS });
-
     let rejectCheckout!: (e: Error) => void;
-    mockStartCheckout.mockReturnValue(
-      new Promise<{ url: string }>((_res, rej) => { rejectCheckout = rej; }),
-    );
+    mockStartCheckout.mockReturnValue(new Promise<{ url: string }>((_res, rej) => { rejectCheckout = rej; }));
 
-    render(<UpgradeModal open={true} onClose={vi.fn()} />);
+    render(<UpgradeModal open onClose={vi.fn()} />);
 
     await waitFor(() => expect(screen.getByText('$9/mo')).toBeInTheDocument());
+    const proBtn = screen.getByRole('button', { name: /upgrade to pro/i });
+    fireEvent.click(proBtn);
 
-    const btn = screen.getByRole('button', { name: /start upgrade/i });
-    fireEvent.click(btn);
-
-    // Button should be disabled while submitting
-    await waitFor(() => expect(btn).toBeDisabled());
-
-    // Reject the checkout
+    await waitFor(() => expect(proBtn).toBeDisabled());
     rejectCheckout(new Error('stripe fail'));
 
-    await waitFor(() => {
-      expect(screen.getByText("Couldn't start checkout. Please try again.")).toBeInTheDocument();
-    });
-
-    // Button should be enabled again after failure
-    expect(btn).not.toBeDisabled();
+    await waitFor(() =>
+      expect(screen.getByText("Couldn't start checkout. Please try again.")).toBeInTheDocument(),
+    );
+    expect(proBtn).not.toBeDisabled();
   });
 
-  it('uses the ARIA tab pattern with arrow-key navigation', async () => {
+  it('is a labelled carousel with position dots and arrow-key navigation', async () => {
     mockGetPlans.mockResolvedValue({ plans: PLANS });
 
-    render(<UpgradeModal open={true} onClose={vi.fn()} initialTier="PRO" />);
+    render(<UpgradeModal open onClose={vi.fn()} initialTier="PRO" />);
 
     await waitFor(() => expect(screen.getByText('$9/mo')).toBeInTheDocument());
 
-    // Proper roles: a labelled tablist with three tabs and a tabpanel
-    expect(screen.getByRole('tablist', { name: /plan tiers/i })).toBeInTheDocument();
+    const carousel = screen.getByRole('group', { name: 'Plans' });
+    expect(carousel).toHaveAttribute('aria-roledescription', 'carousel');
+    // one dot per plan
     expect(screen.getAllByRole('tab')).toHaveLength(3);
-    expect(screen.getByRole('tabpanel')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /previous plan/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /next plan/i })).toBeInTheDocument();
 
-    const proTab = screen.getByRole('tab', { name: 'Pro' });
-    expect(proTab).toHaveAttribute('aria-selected', 'true');
+    // start focused on Pro
+    expect(screen.getByRole('tab', { name: /show pro plan/i })).toHaveAttribute('aria-selected', 'true');
 
-    // ArrowRight → Premium becomes selected and its content shows
-    fireEvent.keyDown(proTab, { key: 'ArrowRight' });
-    expect(screen.getByRole('tab', { name: 'Premium' })).toHaveAttribute('aria-selected', 'true');
-    expect(screen.getByText('$19/mo')).toBeInTheDocument();
-
-    // ArrowLeft wraps from Pro back to Family
-    fireEvent.keyDown(screen.getByRole('tab', { name: 'Pro' }), { key: 'ArrowLeft' });
-    expect(screen.getByRole('tab', { name: 'Family' })).toHaveAttribute('aria-selected', 'true');
-    expect(screen.getByText('$29/mo')).toBeInTheDocument();
+    // ArrowRight advances focus to Premium
+    fireEvent.keyDown(carousel, { key: 'ArrowRight' });
+    expect(screen.getByRole('tab', { name: /show premium plan/i })).toHaveAttribute('aria-selected', 'true');
   });
 
-  it('manage mode: badges the current tier and switches via changePlan', async () => {
+  it('manage mode: current tier shows a Current plan badge + disabled CTA', async () => {
     mockGetPlans.mockResolvedValue({ plans: PLANS });
-    mockChangePlan.mockResolvedValue({ tier: 'PREMIUM' } as never);
+
     render(<UpgradeModal open onClose={() => {}} currentTier="PRO" />);
 
-    // current tier marked (badge in tab + disabled button both show "Current plan")
-    await waitFor(() => expect(screen.getAllByText(/current plan/i).length).toBeGreaterThan(0));
+    await waitFor(() => expect(screen.getByRole('group', { name: 'Plans' })).toBeInTheDocument());
 
-    // switch to PREMIUM
-    fireEvent.click(screen.getByRole('tab', { name: /premium/i }));
-    fireEvent.click(screen.getByRole('button', { name: /switch|change|confirm/i }));
+    // Pro card marked current + its CTA disabled
+    expect(screen.getByRole('button', { name: 'Current plan' })).toBeDisabled();
+    expect(screen.getByText(/you're on this plan/i)).toBeInTheDocument();
+  });
+
+  it('manage mode: switching to a higher tier calls changePlan', async () => {
+    mockGetPlans.mockResolvedValue({ plans: PLANS });
+    mockChangePlan.mockResolvedValue({ tier: 'PREMIUM' } as never);
+
+    render(<UpgradeModal open onClose={() => {}} currentTier="PRO" />);
+
+    await waitFor(() => expect(screen.getByRole('group', { name: 'Plans' })).toBeInTheDocument());
+    fireEvent.click(screen.getByRole('button', { name: /upgrade to premium/i }));
 
     await waitFor(() => expect(mockChangePlan).toHaveBeenCalledWith('w1', 'PREMIUM'));
   });
 
-  it('manage mode: shows downgrade-at-period-end note for a lower tier', async () => {
+  it('manage mode: lower tier shows a downgrade-at-period-end note', async () => {
     mockGetPlans.mockResolvedValue({ plans: PLANS });
+
     render(<UpgradeModal open onClose={() => {}} currentTier="FAMILY" />);
-    fireEvent.click(screen.getByRole('tab', { name: /pro/i }));
-    await waitFor(() => expect(screen.getByText(/at the end of your billing period/i)).toBeInTheDocument());
+
+    await waitFor(() => expect(screen.getByRole('group', { name: 'Plans' })).toBeInTheDocument());
+    // Pro is a downgrade from Family
+    expect(screen.getByRole('button', { name: /switch to pro/i })).toBeInTheDocument();
+    expect(screen.getAllByText(/at the end of your billing period/i).length).toBeGreaterThan(0);
   });
 });

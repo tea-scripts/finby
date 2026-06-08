@@ -10,13 +10,9 @@ import type { BillingPlan } from '@/lib/types';
 
 type UpgradeTier = 'PRO' | 'PREMIUM' | 'FAMILY';
 
-const TAB_LABELS: { tier: UpgradeTier; label: string }[] = [
-  { tier: 'PRO', label: 'Pro' },
-  { tier: 'PREMIUM', label: 'Premium' },
-  { tier: 'FAMILY', label: 'Family' },
-];
-
+const TIER_ORDER: UpgradeTier[] = ['PRO', 'PREMIUM', 'FAMILY'];
 const TIER_RANK: Record<UpgradeTier, number> = { PRO: 1, PREMIUM: 2, FAMILY: 3 };
+const TIER_LABEL: Record<UpgradeTier, string> = { PRO: 'Pro', PREMIUM: 'Premium', FAMILY: 'Family' };
 
 export interface UpgradeModalProps {
   open: boolean;
@@ -26,22 +22,34 @@ export interface UpgradeModalProps {
   currentTier?: UpgradeTier;
 }
 
-export function UpgradeModal({ open, onClose, initialTier = 'PRO', source = 'unknown', currentTier }: UpgradeModalProps) {
+export function UpgradeModal({
+  open,
+  onClose,
+  initialTier = 'PRO',
+  source = 'unknown',
+  currentTier,
+}: UpgradeModalProps) {
   const workspaceId = useAuth((s) => s.workspace?.id);
 
   const [plans, setPlans] = useState<BillingPlan[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const [selectedTier, setSelectedTier] = useState<UpgradeTier>(initialTier);
+  // The card currently centered in the carousel (drives the position dots + arrows).
+  const [focusedTier, setFocusedTier] = useState<UpgradeTier>(initialTier);
 
-  const [submitting, setSubmitting] = useState(false);
+  // Which tier's CTA is mid-request (so only that card's button shows a spinner).
+  const [submittingTier, setSubmittingTier] = useState<UpgradeTier | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
   const mountedRef = useRef(true);
-  const tabRefs = useRef<(HTMLButtonElement | null)[]>([]);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const cardRefs = useRef<Partial<Record<UpgradeTier, HTMLDivElement | null>>>({});
   const sourceRef = useRef(source);
   sourceRef.current = source;
+
+  const manageMode = !!currentTier;
+  const startTier = currentTier ?? initialTier;
 
   useEffect(() => {
     mountedRef.current = true;
@@ -54,7 +62,7 @@ export function UpgradeModal({ open, onClose, initialTier = 'PRO', source = 'unk
     if (!open) return;
     track('upgrade_modal_viewed', { source: sourceRef.current });
 
-    setSelectedTier(initialTier);
+    setFocusedTier(startTier);
     setError(null);
     setSubmitError(null);
     setPlans([]);
@@ -82,47 +90,91 @@ export function UpgradeModal({ open, onClose, initialTier = 'PRO', source = 'unk
     return () => {
       cancelled = true;
     };
-  }, [open, initialTier]);
+  }, [open, startTier]);
 
-  const activePlan = plans.find((p) => p.tier === selectedTier) ?? null;
+  // Order the fetched plans by tier rank so the deck reads Pro → Premium → Family.
+  const orderedPlans = TIER_ORDER.map((tier) => plans.find((p) => p.tier === tier)).filter(
+    (p): p is BillingPlan => !!p,
+  );
 
-  async function handleUpgrade() {
+  // Center the starting plan once the cards have rendered.
+  useEffect(() => {
+    if (!open || loading || error || orderedPlans.length === 0) return;
+    scrollToTier(startTier, false);
+  }, [open, loading, error, orderedPlans.length]);
+
+  function scrollToTier(tier: UpgradeTier, smooth = true) {
+    const card = cardRefs.current[tier];
+    setFocusedTier(tier);
+    card?.scrollIntoView?.({ behavior: smooth ? 'smooth' : 'auto', inline: 'center', block: 'nearest' });
+  }
+
+  // Track the nearest card to the viewport center as the user swipes.
+  function onCarouselScroll() {
+    const container = scrollRef.current;
+    if (!container) return;
+    const center = container.scrollLeft + container.clientWidth / 2;
+    let nearest: UpgradeTier = focusedTier;
+    let best = Infinity;
+    for (const tier of TIER_ORDER) {
+      const card = cardRefs.current[tier];
+      if (!card) continue;
+      const cardCenter = card.offsetLeft + card.offsetWidth / 2;
+      const dist = Math.abs(cardCenter - center);
+      if (dist < best) {
+        best = dist;
+        nearest = tier;
+      }
+    }
+    if (nearest !== focusedTier) setFocusedTier(nearest);
+  }
+
+  function step(delta: -1 | 1) {
+    const idx = TIER_ORDER.indexOf(focusedTier);
+    const next = TIER_ORDER[idx + delta];
+    if (next) scrollToTier(next);
+  }
+
+  function onCarouselKeyDown(event: KeyboardEvent<HTMLDivElement>) {
+    if (event.key === 'ArrowRight') {
+      event.preventDefault();
+      step(1);
+    } else if (event.key === 'ArrowLeft') {
+      event.preventDefault();
+      step(-1);
+    }
+  }
+
+  async function handleUpgrade(tier: UpgradeTier) {
     if (!workspaceId) {
       setSubmitError('No workspace found. Please reload and try again.');
       return;
     }
-
     setSubmitError(null);
-    setSubmitting(true);
-
+    setSubmittingTier(tier);
     try {
-      track('checkout_started', { target_tier: selectedTier });
-      await openBillingUrl(async () => (await startCheckout(workspaceId, selectedTier)).url);
+      track('checkout_started', { target_tier: tier });
+      await openBillingUrl(async () => (await startCheckout(workspaceId, tier)).url);
     } catch {
       if (mountedRef.current) {
         setSubmitError("Couldn't start checkout. Please try again.");
       }
     } finally {
       if (mountedRef.current) {
-        setSubmitting(false);
+        setSubmittingTier(null);
       }
     }
   }
 
-  const manageMode = !!currentTier;
-  const isCurrent = manageMode && selectedTier === currentTier;
-  const isDowngrade =
-    manageMode && !!currentTier && TIER_RANK[selectedTier] < TIER_RANK[currentTier];
-
-  async function handleChangePlan() {
+  async function handleChangePlan(tier: UpgradeTier) {
     if (!workspaceId) {
       setSubmitError('No workspace found. Please reload and try again.');
       return;
     }
     setSubmitError(null);
-    setSubmitting(true);
+    setSubmittingTier(tier);
     try {
-      await changePlan(workspaceId, selectedTier);
+      await changePlan(workspaceId, tier);
       onClose();
     } catch {
       if (mountedRef.current) {
@@ -130,123 +182,170 @@ export function UpgradeModal({ open, onClose, initialTier = 'PRO', source = 'unk
       }
     } finally {
       if (mountedRef.current) {
-        setSubmitting(false);
+        setSubmittingTier(null);
       }
     }
   }
 
-  function selectTier(tier: UpgradeTier) {
-    setSelectedTier(tier);
-    setSubmitError(null);
-  }
-
-  function onTabKeyDown(event: KeyboardEvent<HTMLButtonElement>, index: number) {
-    const last = TAB_LABELS.length - 1;
-    let next = index;
-    if (event.key === 'ArrowRight') next = index === last ? 0 : index + 1;
-    else if (event.key === 'ArrowLeft') next = index === 0 ? last : index - 1;
-    else if (event.key === 'Home') next = 0;
-    else if (event.key === 'End') next = last;
-    else return;
-    const target = TAB_LABELS[next];
-    if (!target) return;
-    event.preventDefault();
-    selectTier(target.tier);
-    tabRefs.current[next]?.focus();
+  /** Per-card call to action, derived from the tier's relationship to the current plan. */
+  function cardCta(tier: UpgradeTier): {
+    label: string;
+    note: string | null;
+    disabled: boolean;
+    onClick?: () => void;
+  } {
+    if (manageMode && tier === currentTier) {
+      return { label: 'Current plan', note: "You're on this plan", disabled: true };
+    }
+    if (manageMode) {
+      const downgrade = TIER_RANK[tier] < TIER_RANK[currentTier as UpgradeTier];
+      return downgrade
+        ? {
+            label: `Switch to ${TIER_LABEL[tier]}`,
+            note: 'Starts at the end of your billing period',
+            disabled: false,
+            onClick: () => handleChangePlan(tier),
+          }
+        : {
+            label: `Upgrade to ${TIER_LABEL[tier]}`,
+            note: 'Takes effect now · prorated',
+            disabled: false,
+            onClick: () => handleChangePlan(tier),
+          };
+    }
+    return {
+      label: `Upgrade to ${TIER_LABEL[tier]}`,
+      note: null,
+      disabled: false,
+      onClick: () => handleUpgrade(tier),
+    };
   }
 
   return (
     <Modal open={open} onClose={onClose} title={manageMode ? 'Change your plan' : 'Upgrade your plan'}>
-      {/* Tab row */}
-      <div
-        role="tablist"
-        aria-label="Plan tiers"
-        className="mb-4 flex gap-1 overflow-x-auto rounded-xl border border-line bg-surface-2 p-1"
-      >
-        {TAB_LABELS.map(({ tier, label }, index) => {
-          const selected = selectedTier === tier;
-          return (
-            <button
-              key={tier}
-              ref={(el) => {
-                tabRefs.current[index] = el;
-              }}
-              role="tab"
-              id={`upgrade-tab-${tier}`}
-              aria-selected={selected}
-              aria-controls="upgrade-plan-panel"
-              tabIndex={selected ? 0 : -1}
-              onClick={() => selectTier(tier)}
-              onKeyDown={(e) => onTabKeyDown(e, index)}
-              className={[
-                'flex-1 rounded-lg px-3 py-1.5 text-sm font-medium transition focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/60',
-                selected ? 'bg-accent text-white shadow-sm' : 'text-muted hover:text-ink',
-              ].join(' ')}
-            >
-              {label}
-              {manageMode && currentTier === tier && (
-                <span className="ml-1 text-[10px] opacity-80">• Current plan</span>
-              )}
-            </button>
-          );
-        })}
-      </div>
+      {loading && <p className="py-10 text-center text-sm text-muted">Loading plans…</p>}
 
-      {/* Body (tab panel) */}
-      <div
-        role="tabpanel"
-        id="upgrade-plan-panel"
-        aria-labelledby={`upgrade-tab-${selectedTier}`}
-        tabIndex={0}
-        className="focus:outline-none"
-      >
-        {loading && <p className="py-8 text-center text-sm text-muted">Loading plans…</p>}
+      {!loading && error && <p className="py-10 text-center text-sm text-red-400">{error}</p>}
 
-        {!loading && error && (
-          <p className="py-8 text-center text-sm text-red-400">{error}</p>
-        )}
-
-        {!loading && !error && activePlan && (
-          <div className="space-y-4">
-            <p className="text-2xl font-semibold text-ink">{activePlan.priceDisplay}</p>
-
-            <ul className="space-y-2">
-              {activePlan.highlights.map((h) => (
-                <li key={h} className="flex items-start gap-2 text-sm text-muted">
-                  <span className="mt-0.5 text-accent" aria-hidden="true">✓</span>
-                  <span>{h}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
-      </div>
-
-      {/* Submit area */}
-      <div className="mt-6 space-y-2">
-        {submitError && (
-          <p className="text-center text-sm text-red-400">{submitError}</p>
-        )}
-        {manageMode && isDowngrade && (
-          <p className="text-center text-xs text-muted">
-            Your plan switches to {selectedTier} at the end of your billing period.
-          </p>
-        )}
-        {manageMode && !isDowngrade && !isCurrent && (
-          <p className="text-center text-xs text-muted">
-            Upgrades take effect immediately (prorated).
-          </p>
-        )}
-        <Button
-          variant="primary"
-          loading={submitting}
-          disabled={loading || !!error || submitting || isCurrent}
-          onClick={manageMode ? handleChangePlan : handleUpgrade}
-          className="w-full"
+      {!loading && !error && orderedPlans.length > 0 && (
+        <div
+          role="group"
+          aria-roledescription="carousel"
+          aria-label="Plans"
+          tabIndex={0}
+          onKeyDown={onCarouselKeyDown}
+          className="focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/40 rounded-2xl"
         >
-          {!manageMode ? 'Start Upgrade' : isCurrent ? 'Current plan' : isDowngrade ? `Switch to ${selectedTier}` : `Change to ${selectedTier}`}
-        </Button>
-      </div>
+          {/* Swipeable deck — current card full, neighbours peek at the edges */}
+          <div
+            ref={scrollRef}
+            onScroll={onCarouselScroll}
+            className="flex snap-x snap-mandatory gap-3 overflow-x-auto scroll-smooth px-[10%] pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          >
+            {orderedPlans.map((plan) => {
+              const tier = plan.tier as UpgradeTier;
+              const isCurrent = manageMode && tier === currentTier;
+              const cta = cardCta(tier);
+              return (
+                <div
+                  key={tier}
+                  ref={(el) => {
+                    cardRefs.current[tier] = el;
+                  }}
+                  role="group"
+                  aria-label={`${TIER_LABEL[tier]} plan`}
+                  aria-current={isCurrent ? 'true' : undefined}
+                  className={[
+                    'snap-center shrink-0 basis-[80%] rounded-2xl border p-5 transition',
+                    focusedTier === tier
+                      ? 'border-accent/60 bg-surface-2 shadow-card'
+                      : 'border-line bg-surface/60 opacity-70',
+                  ].join(' ')}
+                >
+                  <div className="mb-1 flex items-center justify-between">
+                    <h3 className="font-display text-base font-semibold text-ink">
+                      {TIER_LABEL[tier]}
+                    </h3>
+                    {isCurrent && (
+                      <span className="rounded-full bg-accent/15 px-2 py-0.5 text-[11px] font-medium text-accent">
+                        Current plan
+                      </span>
+                    )}
+                  </div>
+
+                  <p className="mb-3 text-2xl font-semibold text-ink">{plan.priceDisplay}</p>
+
+                  <ul className="mb-4 space-y-2">
+                    {plan.highlights.map((h) => (
+                      <li key={h} className="flex items-start gap-2 text-sm text-muted">
+                        <span className="mt-0.5 text-accent" aria-hidden="true">
+                          ✓
+                        </span>
+                        <span>{h}</span>
+                      </li>
+                    ))}
+                  </ul>
+
+                  <Button
+                    variant={isCurrent ? 'ghost' : 'primary'}
+                    loading={submittingTier === tier}
+                    disabled={cta.disabled || submittingTier !== null}
+                    onClick={cta.onClick}
+                    className="w-full"
+                  >
+                    {cta.label}
+                  </Button>
+                  {cta.note && (
+                    <p className="mt-2 text-center text-xs text-muted">{cta.note}</p>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Position dots */}
+          <div className="mt-4 flex items-center justify-center gap-3" role="tablist" aria-label="Choose a plan">
+            <button
+              type="button"
+              aria-label="Previous plan"
+              disabled={focusedTier === TIER_ORDER[0]}
+              onClick={() => step(-1)}
+              className="text-muted transition hover:text-ink disabled:opacity-30"
+            >
+              ‹
+            </button>
+            {orderedPlans.map((plan) => {
+              const tier = plan.tier as UpgradeTier;
+              const active = focusedTier === tier;
+              return (
+                <button
+                  key={tier}
+                  type="button"
+                  role="tab"
+                  aria-selected={active}
+                  aria-label={`Show ${TIER_LABEL[tier]} plan`}
+                  onClick={() => scrollToTier(tier)}
+                  className={[
+                    'h-2 rounded-full transition-all',
+                    active ? 'w-5 bg-accent' : 'w-2 bg-line hover:bg-muted',
+                  ].join(' ')}
+                />
+              );
+            })}
+            <button
+              type="button"
+              aria-label="Next plan"
+              disabled={focusedTier === TIER_ORDER[TIER_ORDER.length - 1]}
+              onClick={() => step(1)}
+              className="text-muted transition hover:text-ink disabled:opacity-30"
+            >
+              ›
+            </button>
+          </div>
+        </div>
+      )}
+
+      {submitError && <p className="mt-4 text-center text-sm text-red-400">{submitError}</p>}
     </Modal>
   );
 }
