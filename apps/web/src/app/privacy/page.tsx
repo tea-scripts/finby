@@ -20,7 +20,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 
 export default function PrivacyPage() {
   return (
-    <div className="min-h-app overflow-y-auto">
+    <div className="h-app overflow-y-auto">
       <div className="mx-auto w-full max-w-2xl px-5 py-10">
         <Link href="/" className="inline-flex">
           <Logo />
