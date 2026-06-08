@@ -7,6 +7,7 @@ import { AuthShell } from '@/components/auth/auth-shell';
 import { Button } from '@/components/ui/button';
 import { Field } from '@/components/ui/field';
 import { PasswordInput } from '@/components/ui/password-input';
+import { PasswordStrength } from '@/components/ui/password-strength';
 import { resetPassword } from '@/lib/auth-api';
 
 function ResetInner() {
@@ -42,6 +43,7 @@ function ResetInner() {
         <form onSubmit={onSubmit} className="space-y-4">
           <Field label="New password" htmlFor="rp-pw" error={error ?? undefined}>
             <PasswordInput id="rp-pw" autoComplete="new-password" required minLength={8} value={pw} onChange={(e) => setPw(e.target.value)} />
+            <PasswordStrength value={pw} />
           </Field>
           <Button type="submit" loading={loading} disabled={!token} className="w-full">Update password</Button>
         </form>

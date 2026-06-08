@@ -10,6 +10,7 @@ import { Dropdown } from '@/components/ui/dropdown';
 import { Field } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { PasswordInput } from '@/components/ui/password-input';
+import { PasswordStrength } from '@/components/ui/password-strength';
 import { CURRENCIES } from '@finby/shared';
 import { ApiError } from '@/lib/api-client';
 import { useAuth } from '@/lib/store';
@@ -124,6 +125,7 @@ export default function RegisterPage() {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
           />
+          <PasswordStrength value={password} />
         </Field>
 
         <Field label="Base currency" htmlFor="baseCurrency" hint={`Timezone detected: ${timezone}`}>
