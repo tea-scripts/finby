@@ -222,7 +222,7 @@ export function UpgradeModal({
   }
 
   return (
-    <Modal open={open} onClose={onClose} title={manageMode ? 'Change your plan' : 'Upgrade your plan'}>
+    <Modal open={open} onClose={onClose} bare title={manageMode ? 'Change your plan' : 'Upgrade your plan'}>
       {loading && <p className="py-10 text-center text-sm text-muted">Loading plans…</p>}
 
       {!loading && error && <p className="py-10 text-center text-sm text-red-400">{error}</p>}
