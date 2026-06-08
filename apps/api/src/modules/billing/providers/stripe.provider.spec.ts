@@ -183,3 +183,75 @@ describe('StripeProvider.parseWebhook — invoice events', () => {
     );
   });
 });
+
+const planConfig = { get: jest.fn(() => '') } as unknown as ConfigService<Env, true>;
+
+function withStripe(stripe: Record<string, unknown>) {
+  const provider = new StripeProvider(planConfig);
+  // Inject a mock Stripe client (the real one is created in the constructor).
+  (provider as unknown as { stripe: unknown }).stripe = stripe;
+  return provider;
+}
+
+describe('StripeProvider.changePlanImmediately', () => {
+  it('updates the line item with new price_data, proration, and tier metadata', async () => {
+    const update = jest.fn().mockResolvedValue({});
+    const retrieve = jest.fn().mockResolvedValue({
+      id: 'sub_1',
+      items: { data: [{ id: 'si_1', price: { id: 'price_old' } }] },
+      metadata: { workspaceId: 'w1', tier: 'PRO' },
+    });
+    const provider = withStripe({ subscriptions: { retrieve, update } });
+
+    await provider.changePlanImmediately('sub_1', 'PREMIUM');
+
+    expect(update).toHaveBeenCalledTimes(1);
+    const [subId, params] = update.mock.calls[0];
+    expect(subId).toBe('sub_1');
+    expect(params.proration_behavior).toBe('create_prorations');
+    expect(params.metadata).toEqual({ workspaceId: 'w1', tier: 'PREMIUM' });
+    expect(params.items[0].id).toBe('si_1');
+    expect(params.items[0].price_data.unit_amount).toBe(999); // PREMIUM
+  });
+});
+
+describe('StripeProvider.scheduleDowngrade', () => {
+  it('creates a schedule from the sub and appends a period-end phase for the new tier', async () => {
+    const retrieve = jest.fn().mockResolvedValue({
+      id: 'sub_1',
+      schedule: null,
+      items: { data: [{ id: 'si_1', price: { id: 'price_premium' }, quantity: 1 }] },
+      metadata: { workspaceId: 'w1', tier: 'PREMIUM' },
+    });
+    const schedCreate = jest.fn().mockResolvedValue({
+      id: 'sched_1',
+      phases: [{ items: [{ price: 'price_premium', quantity: 1 }], start_date: 1000 }],
+    });
+    const schedUpdate = jest.fn().mockResolvedValue({});
+    const provider = withStripe({
+      subscriptions: { retrieve },
+      subscriptionSchedules: { create: schedCreate, update: schedUpdate },
+    });
+
+    const effectiveAt = new Date('2026-07-07T00:00:00.000Z');
+    const result = await provider.scheduleDowngrade('sub_1', 'PRO', effectiveAt);
+
+    expect(result).toEqual({ scheduleId: 'sched_1' });
+    expect(schedCreate).toHaveBeenCalledWith({ from_subscription: 'sub_1' });
+    const [, params] = schedUpdate.mock.calls[0];
+    expect(params.end_behavior).toBe('release');
+    expect(params.phases).toHaveLength(2);
+    expect(params.phases[0].end_date).toBe(Math.floor(effectiveAt.getTime() / 1000));
+    expect(params.phases[1].items[0].price_data.unit_amount).toBe(499); // PRO
+    expect(params.phases[1].metadata).toEqual({ workspaceId: 'w1', tier: 'PRO' });
+  });
+});
+
+describe('StripeProvider.releaseScheduledChange', () => {
+  it('releases the schedule', async () => {
+    const release = jest.fn().mockResolvedValue({});
+    const provider = withStripe({ subscriptionSchedules: { release } });
+    await provider.releaseScheduledChange('sched_1');
+    expect(release).toHaveBeenCalledWith('sched_1');
+  });
+});

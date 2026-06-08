@@ -58,6 +58,21 @@ function asId(value: string | { id: string } | null | undefined): string | null 
   return typeof value === 'string' ? value : value.id;
 }
 
+// Inline price for a tier. Mirrors the checkout flow's `price_data` (creates the
+// product inline via `product_data`). The Stripe SDK's subscription-item
+// `price_data` type instead expects an existing `product` id, so callers cast the
+// params they build with this. The runtime shape is validated by the mocked unit
+// tests; real Stripe behaviour is verified in staging QA (see plan Task 9).
+function priceData(tier: Exclude<SubscriptionTier, 'FREE'>) {
+  const p = TIER_PRICING[tier];
+  return {
+    currency: p.currency.toLowerCase(),
+    unit_amount: p.amountMinor,
+    recurring: { interval: p.interval },
+    product_data: { name: `Finby ${tier}` },
+  };
+}
+
 /** The ONLY file that imports the Stripe SDK. */
 @Injectable()
 export class StripeProvider implements BillingProvider {
@@ -171,6 +186,60 @@ export class StripeProvider implements BillingProvider {
 
   async cancelAtPeriodEnd(providerSubscriptionId: string, cancel: boolean): Promise<void> {
     await this.stripe.subscriptions.update(providerSubscriptionId, { cancel_at_period_end: cancel });
+  }
+
+  async changePlanImmediately(
+    providerSubscriptionId: string,
+    tier: Exclude<SubscriptionTier, 'FREE'>,
+  ): Promise<void> {
+    const sub = await this.stripe.subscriptions.retrieve(providerSubscriptionId);
+    const itemId = sub.items.data[0]?.id;
+    if (!itemId) {
+      throw new ServiceUnavailableException('Subscription has no line item to update.');
+    }
+    await this.stripe.subscriptions.update(providerSubscriptionId, {
+      items: [{ id: itemId, price_data: priceData(tier) }],
+      proration_behavior: 'create_prorations',
+      metadata: { ...(sub.metadata ?? {}), tier },
+    } as unknown as Parameters<typeof this.stripe.subscriptions.update>[1]);
+  }
+
+  async scheduleDowngrade(
+    providerSubscriptionId: string,
+    tier: Exclude<SubscriptionTier, 'FREE'>,
+    effectiveAt: Date,
+  ): Promise<{ scheduleId: string }> {
+    const sub = await this.stripe.subscriptions.retrieve(providerSubscriptionId);
+    const workspaceId = sub.metadata?.workspaceId ?? '';
+    const schedule = await this.stripe.subscriptionSchedules.create({
+      from_subscription: providerSubscriptionId,
+    });
+    const phase0 = schedule.phases[0];
+    if (!phase0) {
+      throw new ServiceUnavailableException('Stripe did not return a schedule phase.');
+    }
+    await this.stripe.subscriptionSchedules.update(schedule.id, {
+      end_behavior: 'release',
+      phases: [
+        {
+          items: phase0.items.map((i) => ({
+            price: i.price as string,
+            quantity: i.quantity ?? 1,
+          })),
+          start_date: phase0.start_date,
+          end_date: Math.floor(effectiveAt.getTime() / 1000),
+        },
+        {
+          items: [{ price_data: priceData(tier), quantity: 1 }],
+          metadata: { workspaceId, tier },
+        },
+      ],
+    } as unknown as Parameters<typeof this.stripe.subscriptionSchedules.update>[1]);
+    return { scheduleId: schedule.id };
+  }
+
+  async releaseScheduledChange(scheduleId: string): Promise<void> {
+    await this.stripe.subscriptionSchedules.release(scheduleId);
   }
 
   async createPortalSession(params: { providerCustomerId: string; returnUrl: string }): Promise<{ url: string }> {
