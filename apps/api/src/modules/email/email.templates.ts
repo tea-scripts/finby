@@ -42,6 +42,32 @@ export function welcomeEmail(name: string): { subject: string; html: string } {
   };
 }
 
+export function renewalReminderEmail(
+  name: string,
+  daysLeft: number,
+  endDateLabel: string,
+  manageUrl: string,
+  reason: 'CANCELING' | 'PAST_DUE',
+): { subject: string; html: string } {
+  const plural = daysLeft === 1 ? 'day' : 'days';
+  const lead =
+    reason === 'PAST_DUE'
+      ? `We couldn't process your latest Finby payment, so your plan is set to lapse in <strong style="color:#e8eef7;">${daysLeft} ${plural}</strong> (on ${esc(endDateLabel)}).`
+      : `Your Finby plan ends in <strong style="color:#e8eef7;">${daysLeft} ${plural}</strong> (on ${esc(endDateLabel)}) and is not set to renew.`;
+  const cta = reason === 'PAST_DUE' ? 'Update payment' : 'Keep my plan';
+  return {
+    subject:
+      reason === 'PAST_DUE'
+        ? `Action needed: your Finby plan lapses in ${daysLeft} ${plural}`
+        : `Your Finby plan ends in ${daysLeft} ${plural}`,
+    html: SHELL(`<h1 style="font-size:20px;margin:0 0 12px;color:#e8eef7;">Hey ${esc(name)} 👋</h1>
+      <p style="margin:0 0 14px;line-height:1.5;color:#8da3c0;">${lead}</p>
+      <p style="margin:0 0 22px;line-height:1.5;color:#8da3c0;">When it lapses you'll move to the free plan — your data stays safe, but Pro features (extra currencies, full history, portfolio, AI coaching) pause.</p>
+      ${button(manageUrl, cta)}
+      <p style="color:#5b6f8c;font-size:13px;line-height:1.5;margin:22px 0 0;">Already sorted? You can ignore this — nothing else is needed.</p>`),
+  };
+}
+
 export function passwordResetEmail(resetUrl: string): { subject: string; html: string } {
   return {
     subject: 'Reset your Finby password',

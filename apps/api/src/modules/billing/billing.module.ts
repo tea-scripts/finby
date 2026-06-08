@@ -1,17 +1,21 @@
 import { Module } from '@nestjs/common';
 import { LEMONSQUEEZY_PROVIDER, PAYSTACK_PROVIDER, STRIPE_PROVIDER } from './billing.constants';
 import { SubscriptionService } from './subscription.service';
+import { SubscriptionRemindersService } from './subscription-reminders.service';
 import { SubscriptionController } from './subscription.controller';
 import { WebhooksController } from './webhooks.controller';
 import { PlansController } from './plans.controller';
 import { StripeProvider } from './providers/stripe.provider';
 import { PaystackProvider } from './providers/paystack.provider';
 import { LemonSqueezyProvider } from './providers/lemonsqueezy.provider';
+import { EmailModule } from '../email/email.module';
 
 @Module({
+  imports: [EmailModule],
   controllers: [SubscriptionController, WebhooksController, PlansController],
   providers: [
     SubscriptionService,
+    SubscriptionRemindersService,
     { provide: STRIPE_PROVIDER, useClass: StripeProvider },
     { provide: PAYSTACK_PROVIDER, useClass: PaystackProvider },
     { provide: LEMONSQUEEZY_PROVIDER, useClass: LemonSqueezyProvider },

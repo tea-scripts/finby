@@ -3,6 +3,7 @@ import type { IncomingMessage, ServerResponse } from 'node:http';
 import { Module } from '@nestjs/common';
 import { APP_FILTER, APP_GUARD } from '@nestjs/core';
 import { SentryModule } from '@sentry/nestjs/setup';
+import { ScheduleModule } from '@nestjs/schedule';
 import { LoggerModule } from 'nestjs-pino';
 import { AppController } from './app.controller';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
@@ -29,6 +30,7 @@ import { RedisModule } from './redis/redis.module';
 @Module({
   imports: [
     SentryModule.forRoot(),
+    ScheduleModule.forRoot(),
     LoggerModule.forRoot({
       pinoHttp: {
         level: process.env.LOG_LEVEL ?? 'info',

@@ -1,7 +1,12 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { EMAIL_PROVIDER } from './email.constants';
 import type { EmailProvider } from './email.provider';
-import { passwordResetEmail, verificationEmail, welcomeEmail } from './email.templates';
+import {
+  passwordResetEmail,
+  renewalReminderEmail,
+  verificationEmail,
+  welcomeEmail,
+} from './email.templates';
 
 @Injectable()
 export class EmailService {
@@ -19,6 +24,18 @@ export class EmailService {
 
   async sendPasswordReset(to: string, resetUrl: string): Promise<void> {
     const { subject, html } = passwordResetEmail(resetUrl);
+    await this.provider.send({ to, subject, html });
+  }
+
+  async sendRenewalReminder(
+    to: string,
+    name: string,
+    daysLeft: number,
+    endDateLabel: string,
+    manageUrl: string,
+    reason: 'CANCELING' | 'PAST_DUE',
+  ): Promise<void> {
+    const { subject, html } = renewalReminderEmail(name, daysLeft, endDateLabel, manageUrl, reason);
     await this.provider.send({ to, subject, html });
   }
 }

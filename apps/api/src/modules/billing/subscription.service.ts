@@ -83,7 +83,12 @@ export class SubscriptionService {
 
     await this.prisma.subscription.update({
       where: { workspaceId },
-      data: { cancelAtPeriodEnd: cancel, canceledAt: cancel ? new Date() : null },
+      data: {
+        cancelAtPeriodEnd: cancel,
+        canceledAt: cancel ? new Date() : null,
+        // Resuming auto-renew clears any pending expiry reminders.
+        ...(cancel ? {} : { renewalReminder7SentAt: null, renewalReminder3SentAt: null }),
+      },
     });
     return this.getSubscription(workspaceId);
   }
@@ -103,13 +108,7 @@ export class SubscriptionService {
     const workspaceId = event.workspaceId;
 
     if (event.type === 'SUBSCRIPTION_CANCELED') {
-      await this.prisma.$transaction(async (txc) => {
-        await txc.subscription.update({
-          where: { workspaceId },
-          data: { status: 'CANCELED', tier: 'FREE', canceledAt: new Date() },
-        });
-        await txc.workspace.update({ where: { id: workspaceId }, data: { tier: 'FREE', maxMembers: 1 } });
-      });
+      await this.downgradeToFree(workspaceId);
       await this.markProcessed(provider, event.eventId);
       return;
     }
@@ -150,6 +149,9 @@ export class SubscriptionService {
           currentPeriodStart: periodStart,
           currentPeriodEnd: periodEnd,
           cancelAtPeriodEnd: false,
+          // Renewal/upgrade re-arms the reminder cycle for the new period.
+          renewalReminder7SentAt: null,
+          renewalReminder3SentAt: null,
           ...ids,
         },
         create: {
@@ -168,6 +170,21 @@ export class SubscriptionService {
       });
     });
     await this.markProcessed(provider, event.eventId);
+  }
+
+  /** Downgrade a workspace to the free plan and mark its subscription canceled.
+   *  Shared by the cancellation webhook and the expiry safety-net sweep. */
+  async downgradeToFree(workspaceId: string): Promise<void> {
+    await this.prisma.$transaction(async (txc) => {
+      await txc.subscription.update({
+        where: { workspaceId },
+        data: { status: 'CANCELED', tier: 'FREE', canceledAt: new Date() },
+      });
+      await txc.workspace.update({
+        where: { id: workspaceId },
+        data: { tier: 'FREE', maxMembers: 1 },
+      });
+    });
   }
 
   /** Record a processed webhook event so re-delivery is a no-op. Swallows the
