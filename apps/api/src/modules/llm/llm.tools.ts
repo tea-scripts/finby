@@ -70,11 +70,16 @@ export const PHASE2_TOOLS: LlmToolDef[] = [
   {
     name: 'set_budget',
     description:
-      'Create or update a budget for a spending category. Use when the user wants to allocate or cap spending, e.g. "budget ₱15,000 for groceries this month".',
+      'Create or update a budget for a spending category. Use when the user wants to allocate or cap spending, e.g. "budget ₱15,000 for groceries this month". To MOVE an existing budget to a different category (e.g. the user is clarifying the category of a budget you previously set under a placeholder like "Other"), set replacesCategoryName to the old category so the old budget is replaced instead of duplicated.',
     input_schema: {
       type: 'object',
       properties: {
         categoryName: { type: 'string', description: "Category to budget, e.g. 'Groceries'" },
+        replacesCategoryName: {
+          type: 'string',
+          description:
+            "The old category of a budget being re-categorized for the same period — pass this when the user clarifies or corrects the category of a budget you just set (e.g. moving it off the 'Other' placeholder). The old budget is removed and its spend carried over.",
+        },
         amountLimit: {
           type: 'string',
           description: 'Budget limit as a decimal string in the workspace base currency.',

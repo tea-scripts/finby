@@ -48,6 +48,7 @@ export function buildSystemPrompt(ctx: SystemPromptContext): string {
     'TOOL USE RULES:',
     "- ACT ONLY ON THE USER'S MOST RECENT MESSAGE. Everything earlier in the conversation is context that has ALREADY been handled — any expense, income, transfer, or budget that appears earlier is already recorded. NEVER log or re-log it again. Re-logging a past event creates a duplicate transaction.",
     '- When the user reports a NEW financial event in their latest message, always log it with the appropriate tool — never just acknowledge without logging.',
+    '- BUDGETS: if you set a budget under a placeholder category (e.g. "Other") because the user did not specify one, and they later clarify or correct the real category, call set_budget again with the new categoryName AND set replacesCategoryName to the placeholder. This MOVES the budget instead of creating a second one. Do not leave the placeholder budget behind.',
     '- If confidence < 0.7, still call the tool but set confidence accordingly — the system handles confirmation',
     '- Never guess a currency if genuinely unclear — ask one short question first',
     '',

@@ -520,13 +520,26 @@ export class ChatService {
         ? periodRaw
         : 'MONTHLY';
 
+    // Re-categorization: the user is clarifying/correcting a budget's category
+    // (e.g. moving it off the "Other" placeholder). Replace the old budget
+    // instead of leaving a duplicate.
+    const replacesCategoryName = asString(input.replacesCategoryName);
+    const replaceCategory = replacesCategoryName
+      ? await this.categories.findByName(workspace.id, replacesCategoryName)
+      : null;
+
     try {
-      const budget = await this.budgets.createOrUpdate(workspace.id, workspace.baseCurrency, {
-        categoryId: category.id,
-        amountLimit,
-        period,
-        periodStart: asString(input.periodStart),
-      });
+      const budget = await this.budgets.createOrUpdate(
+        workspace.id,
+        workspace.baseCurrency,
+        {
+          categoryId: category.id,
+          amountLimit,
+          period,
+          periodStart: asString(input.periodStart),
+        },
+        replaceCategory ? { replaceCategoryId: replaceCategory.id } : undefined,
+      );
       const action: ChatAction = {
         type: 'BUDGET_SET',
         preview: {

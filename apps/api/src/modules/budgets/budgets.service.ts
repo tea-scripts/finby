@@ -21,11 +21,12 @@ export class BudgetsService {
     workspaceId: string,
     baseCurrency: string,
     input: CreateBudgetInput,
+    opts?: { replaceCategoryId?: string },
   ): Promise<BudgetView> {
     const anchor = input.periodStart ? new Date(input.periodStart.slice(0, 10)) : new Date();
     const { periodStart, periodEnd } = this.computePeriodBounds(input.period, anchor);
 
-    const budget = await this.prisma.budget.upsert({
+    const upsertArgs = {
       where: {
         workspaceId_categoryId_periodStart: { workspaceId, categoryId: input.categoryId, periodStart },
       },
@@ -40,6 +41,45 @@ export class BudgetsService {
         periodEnd,
       },
       include: { category: true },
+    } satisfies Prisma.BudgetUpsertArgs;
+
+    // Re-categorization: the user is moving a budget from a placeholder category
+    // (e.g. "Other") to the real one. Replace the old row instead of leaving a
+    // duplicate, carrying any materialized spend over to the new category.
+    const replaceCategoryId =
+      opts?.replaceCategoryId && opts.replaceCategoryId !== input.categoryId
+        ? opts.replaceCategoryId
+        : null;
+
+    if (!replaceCategoryId) {
+      const budget = await this.prisma.budget.upsert(upsertArgs);
+      return this.toView(budget);
+    }
+
+    const budget = await this.prisma.$transaction(async (tx) => {
+      const stale = await tx.budget.findUnique({
+        where: {
+          workspaceId_categoryId_periodStart: {
+            workspaceId,
+            categoryId: replaceCategoryId,
+            periodStart,
+          },
+        },
+      });
+      if (stale) {
+        await tx.budget.delete({ where: { id: stale.id } });
+      }
+
+      const created = await tx.budget.upsert(upsertArgs);
+
+      if (stale && stale.amountSpent.greaterThan(0)) {
+        return tx.budget.update({
+          where: { id: created.id },
+          data: { amountSpent: { increment: stale.amountSpent } },
+          include: { category: true },
+        });
+      }
+      return created;
     });
 
     return this.toView(budget);

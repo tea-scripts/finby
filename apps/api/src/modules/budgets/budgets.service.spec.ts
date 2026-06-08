@@ -3,13 +3,18 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { BudgetsService } from './budgets.service';
 
 function buildPrisma() {
+  const budget = {
+    upsert: jest.fn(),
+    findMany: jest.fn(),
+    findFirst: jest.fn(),
+    findUnique: jest.fn(),
+    update: jest.fn(),
+    delete: jest.fn(),
+  };
   return {
-    budget: {
-      upsert: jest.fn(),
-      findMany: jest.fn(),
-      findFirst: jest.fn(),
-      update: jest.fn(),
-    },
+    budget,
+    // Interactive transaction: hand the same client to the callback.
+    $transaction: jest.fn((fn: (tx: { budget: typeof budget }) => unknown) => fn({ budget })),
   };
 }
 
@@ -70,6 +75,66 @@ describe('BudgetsService.createOrUpdate', () => {
     );
     expect(arg.create.currency).toBe('PHP');
     expect(view.utilizationPercent).toBeCloseTo(65.33, 1);
+  });
+
+  it('does not touch the transaction path when no replaceCategoryId is given', async () => {
+    const prisma = buildPrisma();
+    prisma.budget.upsert.mockResolvedValue(budgetRow());
+    const service = new BudgetsService(prisma as unknown as PrismaService);
+
+    await service.createOrUpdate('w1', 'PHP', {
+      categoryId: 'c1',
+      amountLimit: '15000',
+      period: 'MONTHLY',
+    });
+
+    expect(prisma.$transaction).not.toHaveBeenCalled();
+    expect(prisma.budget.delete).not.toHaveBeenCalled();
+  });
+
+  it('re-categorizes: deletes the placeholder budget and carries its spend over', async () => {
+    const prisma = buildPrisma();
+    const stale = budgetRow({
+      id: 'b-other',
+      amountSpent: new Prisma.Decimal('500'),
+      category: { id: 'c-other', name: 'Other' },
+    });
+    prisma.budget.findUnique.mockResolvedValue(stale);
+    prisma.budget.upsert.mockResolvedValue(budgetRow({ id: 'b-groceries' }));
+    prisma.budget.update.mockResolvedValue(budgetRow({ id: 'b-groceries' }));
+    const service = new BudgetsService(prisma as unknown as PrismaService);
+
+    await service.createOrUpdate(
+      'w1',
+      'PHP',
+      { categoryId: 'c1', amountLimit: '7000', period: 'MONTHLY' },
+      { replaceCategoryId: 'c-other' },
+    );
+
+    expect(prisma.budget.delete).toHaveBeenCalledWith({ where: { id: 'b-other' } });
+    expect(prisma.budget.upsert).toHaveBeenCalledTimes(1);
+    expect(prisma.budget.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: 'b-groceries' },
+        data: { amountSpent: { increment: stale.amountSpent } },
+      }),
+    );
+  });
+
+  it('skips the replace path when replaceCategoryId equals the target category', async () => {
+    const prisma = buildPrisma();
+    prisma.budget.upsert.mockResolvedValue(budgetRow());
+    const service = new BudgetsService(prisma as unknown as PrismaService);
+
+    await service.createOrUpdate(
+      'w1',
+      'PHP',
+      { categoryId: 'c1', amountLimit: '7000', period: 'MONTHLY' },
+      { replaceCategoryId: 'c1' },
+    );
+
+    expect(prisma.$transaction).not.toHaveBeenCalled();
+    expect(prisma.budget.delete).not.toHaveBeenCalled();
   });
 });
 
