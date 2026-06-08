@@ -18,6 +18,8 @@ describe('LlmService', () => {
       'log_income',
       'log_transfer',
       'set_budget',
+      'update_transaction',
+      'correct_holding_ticker',
       'query_analytics',
       'log_investment_event',
       'get_market_data',

@@ -132,6 +132,56 @@ export class PortfolioService {
     };
   }
 
+  /** Correct a holding's ticker (e.g. a typo logged earlier). Events link by
+   *  holdingId so they follow automatically. Merging into an existing holding is
+   *  not supported — surface a clear error rather than silently combining cost bases. */
+  async renameTicker(params: {
+    workspaceId: string;
+    ownedByUserId: string;
+    fromTicker: string;
+    toTicker: string;
+  }): Promise<HoldingView> {
+    const fromTicker = params.fromTicker.toUpperCase();
+    const toTicker = params.toTicker.toUpperCase();
+    if (fromTicker === toTicker) {
+      throw new ForbiddenException('The new ticker is the same as the current one.');
+    }
+
+    const existing = await this.prisma.portfolioHolding.findUnique({
+      where: {
+        workspaceId_ownedByUserId_ticker: {
+          workspaceId: params.workspaceId,
+          ownedByUserId: params.ownedByUserId,
+          ticker: fromTicker,
+        },
+      },
+    });
+    if (!existing) {
+      throw new NotFoundException(`No holding found for ${fromTicker}.`);
+    }
+
+    const conflict = await this.prisma.portfolioHolding.findUnique({
+      where: {
+        workspaceId_ownedByUserId_ticker: {
+          workspaceId: params.workspaceId,
+          ownedByUserId: params.ownedByUserId,
+          ticker: toTicker,
+        },
+      },
+    });
+    if (conflict) {
+      throw new ForbiddenException(
+        `You already hold ${toTicker}. Merging two holdings isn't supported yet — adjust the events manually.`,
+      );
+    }
+
+    const updated = await this.prisma.portfolioHolding.update({
+      where: { id: existing.id },
+      data: { ticker: toTicker },
+    });
+    return this.toHoldingView(updated, null);
+  }
+
   async getPortfolio(workspaceId: string): Promise<PortfolioResult> {
     const holdings = await this.prisma.portfolioHolding.findMany({
       where: { workspaceId, isActive: true },

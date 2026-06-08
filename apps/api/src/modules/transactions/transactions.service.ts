@@ -1,5 +1,6 @@
 import { Injectable, Logger, NotFoundException, UnprocessableEntityException } from '@nestjs/common';
-import type { Account, Prisma } from '@prisma/client';
+import { Prisma } from '@prisma/client';
+import type { Account } from '@prisma/client';
 import type { SubscriptionTier } from '@finby/shared';
 import { PrismaService } from '../../prisma/prisma.service';
 import { FxService } from '../fx/fx.service';
@@ -211,21 +212,82 @@ export class TransactionsService {
       throw new NotFoundException('Transaction not found.');
     }
 
-    const updated = await this.prisma.transaction.update({
-      where: { id: transactionId },
-      data: {
-        categoryId: input.categoryId,
-        merchant: input.merchant,
-        description: input.description,
-        tags: input.tags,
-        ...(input.transactionDate
-          ? { transactionDate: new Date(input.transactionDate.slice(0, 10)) }
-          : {}),
-      },
-      include: VIEW_INCLUDE,
+    const newCategoryId = input.categoryId === undefined ? existing.categoryId : input.categoryId;
+    const newDate = input.transactionDate
+      ? new Date(input.transactionDate.slice(0, 10))
+      : existing.transactionDate;
+    const categoryChanged = newCategoryId !== existing.categoryId;
+    const dateChanged = newDate.getTime() !== existing.transactionDate.getTime();
+
+    // Re-categorizing (or re-dating) a CONFIRMED expense must move the materialized
+    // budget spend off the old budget and onto the new one — otherwise the old
+    // category's budget keeps the spend forever and the new one never sees it.
+    const reapplyBudget =
+      existing.status === 'CONFIRMED' &&
+      existing.type === 'EXPENSE' &&
+      (categoryChanged || dateChanged);
+    const amountBase = existing.amountBase.toString();
+
+    const updated = await this.prisma.$transaction(async (txc) => {
+      if (reapplyBudget && existing.categoryId) {
+        await this.budgets.applyTransactionSpend(txc, {
+          workspaceId,
+          categoryId: existing.categoryId,
+          transactionDate: existing.transactionDate,
+          amountBase,
+          sign: -1,
+        });
+      }
+
+      const row = await txc.transaction.update({
+        where: { id: transactionId },
+        data: {
+          categoryId: input.categoryId,
+          merchant: input.merchant,
+          description: input.description,
+          tags: input.tags,
+          ...(input.transactionDate ? { transactionDate: newDate } : {}),
+        },
+        include: VIEW_INCLUDE,
+      });
+
+      if (reapplyBudget && newCategoryId) {
+        await this.budgets.applyTransactionSpend(txc, {
+          workspaceId,
+          categoryId: newCategoryId,
+          transactionDate: newDate,
+          amountBase,
+          sign: 1,
+        });
+      }
+
+      return row;
     });
 
     return this.toView(updated);
+  }
+
+  /** Resolve the most recent non-voided transaction for conversational correction.
+   *  The LLM never sees transaction IDs across turns, so corrections target the
+   *  latest match — optionally narrowed by merchant/amount to disambiguate. */
+  async findLatestForCorrection(
+    workspaceId: string,
+    filter: { type?: 'EXPENSE' | 'INCOME'; merchant?: string; amountOriginal?: string },
+  ): Promise<TransactionView | null> {
+    const row = await this.prisma.transaction.findFirst({
+      where: {
+        workspaceId,
+        status: { not: 'VOID' },
+        ...(filter.type ? { type: filter.type } : {}),
+        ...(filter.merchant
+          ? { merchant: { contains: filter.merchant, mode: 'insensitive' } }
+          : {}),
+        ...(filter.amountOriginal ? { amountOriginal: new Prisma.Decimal(filter.amountOriginal) } : {}),
+      },
+      orderBy: [{ transactionDate: 'desc' }, { createdAt: 'desc' }],
+      include: VIEW_INCLUDE,
+    });
+    return row ? this.toView(row) : null;
   }
 
   async void(workspaceId: string, transactionId: string): Promise<{ message: string }> {

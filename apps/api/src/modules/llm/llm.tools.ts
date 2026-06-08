@@ -98,6 +98,46 @@ export const PHASE2_TOOLS: LlmToolDef[] = [
     },
   },
   {
+    name: 'update_transaction',
+    description:
+      'Correct a transaction the user ALREADY logged — re-categorize it, fix the merchant, or fix the date. Use when the user fixes or clarifies a past entry ("that coffee was Dining, not Groceries", "the SM run was actually groceries"), NOT when they report a new spend. Targets the most recent matching transaction; pass matchMerchant/matchAmount to disambiguate which one. Re-categorizing automatically moves the budget spend to the correct budget.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        categoryName: { type: 'string', description: 'New category to move the transaction to.' },
+        merchant: { type: 'string', description: 'Corrected merchant/vendor name.' },
+        transactionDate: { type: 'string', description: 'Corrected ISO 8601 date.' },
+        matchMerchant: {
+          type: 'string',
+          description: 'Merchant of the transaction being corrected, to pick the right one.',
+        },
+        matchAmount: {
+          type: 'string',
+          description: 'Amount of the transaction being corrected, as a decimal string, to pick the right one.',
+        },
+        matchType: {
+          type: 'string',
+          enum: ['EXPENSE', 'INCOME'],
+          description: 'Whether the transaction being corrected is an expense or income.',
+        },
+      },
+      required: [],
+    },
+  },
+  {
+    name: 'correct_holding_ticker',
+    description:
+      'Fix the ticker symbol of an investment holding the user logged under the wrong/typo\'d symbol (e.g. "my APPL position is actually AAPL"). Moves the holding and all its events to the correct ticker. Use only to correct a symbol, not to log a new trade.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        fromTicker: { type: 'string', description: "The wrong ticker currently on record, e.g. 'APPL'." },
+        toTicker: { type: 'string', description: "The correct ticker, e.g. 'AAPL'." },
+      },
+      required: ['fromTicker', 'toTicker'],
+    },
+  },
+  {
     name: 'query_analytics',
     description:
       "Fetch spending/income analytics to answer questions like 'what did I spend most on this month?' or 'how much did I save last quarter?'. Always use this before answering analytics questions — never answer from memory.",

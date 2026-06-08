@@ -162,6 +162,48 @@ describe('PortfolioService.logEvent — cost basis', () => {
   });
 });
 
+describe('PortfolioService.renameTicker', () => {
+  it('renames the holding when the target ticker is free', async () => {
+    const prisma = buildPrisma();
+    prisma.portfolioHolding.findUnique
+      .mockResolvedValueOnce(holdingRow({ ticker: 'APPL' })) // source
+      .mockResolvedValueOnce(null); // no conflict
+    prisma.portfolioHolding.update.mockResolvedValue(holdingRow({ ticker: 'AAPL' }));
+    const service = new PortfolioService(prisma as unknown as PrismaService, buildFx() as unknown as FxService, buildMarket() as unknown as MarketDataService);
+
+    const view = await service.renameTicker({ workspaceId: 'w1', ownedByUserId: 'u1', fromTicker: 'appl', toTicker: 'aapl' });
+
+    expect(prisma.portfolioHolding.update).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { id: 'h1' }, data: { ticker: 'AAPL' } }),
+    );
+    expect(view.ticker).toBe('AAPL');
+  });
+
+  it('throws NotFound when the source ticker has no holding', async () => {
+    const prisma = buildPrisma();
+    prisma.portfolioHolding.findUnique.mockResolvedValueOnce(null);
+    const service = new PortfolioService(prisma as unknown as PrismaService, buildFx() as unknown as FxService, buildMarket() as unknown as MarketDataService);
+
+    await expect(
+      service.renameTicker({ workspaceId: 'w1', ownedByUserId: 'u1', fromTicker: 'APPL', toTicker: 'AAPL' }),
+    ).rejects.toMatchObject({ message: expect.stringContaining('APPL') });
+    expect(prisma.portfolioHolding.update).not.toHaveBeenCalled();
+  });
+
+  it('refuses to merge into an existing holding', async () => {
+    const prisma = buildPrisma();
+    prisma.portfolioHolding.findUnique
+      .mockResolvedValueOnce(holdingRow({ ticker: 'APPL' }))
+      .mockResolvedValueOnce(holdingRow({ id: 'h2', ticker: 'AAPL' }));
+    const service = new PortfolioService(prisma as unknown as PrismaService, buildFx() as unknown as FxService, buildMarket() as unknown as MarketDataService);
+
+    await expect(
+      service.renameTicker({ workspaceId: 'w1', ownedByUserId: 'u1', fromTicker: 'APPL', toTicker: 'AAPL' }),
+    ).rejects.toMatchObject({ message: expect.stringContaining('AAPL') });
+    expect(prisma.portfolioHolding.update).not.toHaveBeenCalled();
+  });
+});
+
 describe('PortfolioService.getPortfolio', () => {
   it('computes current value and gain/loss from a live quote', async () => {
     const prisma = buildPrisma();

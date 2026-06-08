@@ -17,7 +17,22 @@ export interface BudgetSetAction {
   preview: { currency: string; amount?: string; category?: string | null };
 }
 
-export type ChatAction = TransactionCreatedAction | BudgetSetAction;
+export interface TransactionUpdatedAction {
+  type: 'TRANSACTION_UPDATED';
+  transactionId: string;
+  preview: ChatActionPreview;
+}
+
+export interface HoldingUpdatedAction {
+  type: 'HOLDING_UPDATED';
+  preview: { fromTicker: string; toTicker: string };
+}
+
+export type ChatAction =
+  | TransactionCreatedAction
+  | BudgetSetAction
+  | TransactionUpdatedAction
+  | HoldingUpdatedAction;
 
 export interface PendingConfirmation {
   confirmationId: string;

@@ -260,6 +260,10 @@ export class ChatService {
         return this.execTransfer(workspace, userId, call.input, sourceMessageId);
       case 'set_budget':
         return this.execSetBudget(workspace, call.input);
+      case 'update_transaction':
+        return this.execUpdateTransaction(workspace, call.input);
+      case 'correct_holding_ticker':
+        return this.execCorrectHoldingTicker(workspace, userId, call.input);
       case 'query_analytics':
         return this.execQueryAnalytics(workspace, call.input);
       case 'log_investment_event':
@@ -557,6 +561,123 @@ export class ChatService {
           period: budget.period,
           alreadySpent: budget.amountSpent,
           utilizationPercent: budget.utilizationPercent,
+        }),
+        action,
+      };
+    } catch (error) {
+      return { toolResult: JSON.stringify({ error: this.errorMessage(error) }) };
+    }
+  }
+
+  private async execUpdateTransaction(
+    workspace: WorkspaceContext,
+    input: Record<string, unknown>,
+  ): Promise<ToolExecResult> {
+    const categoryName = asString(input.categoryName);
+    const merchant = asString(input.merchant);
+    const transactionDate = asString(input.transactionDate);
+    if (!categoryName && !merchant && !transactionDate) {
+      return { toolResult: JSON.stringify({ error: 'Nothing to update — specify a new category, merchant, or date.' }) };
+    }
+
+    // Re-categorizing only makes sense onto a real category — never re-route to
+    // the "Other" placeholder, which is the very thing this corrects.
+    let categoryId: string | undefined;
+    if (categoryName) {
+      const category = await this.categories.findByName(workspace.id, categoryName);
+      if (!category) {
+        return {
+          toolResult: JSON.stringify({
+            error: `No category named "${categoryName}". Ask the user to pick an existing category or create it first.`,
+          }),
+        };
+      }
+      categoryId = category.id;
+    }
+
+    const matchType = asString(input.matchType)?.toUpperCase();
+    const target = await this.transactions.findLatestForCorrection(workspace.id, {
+      type: matchType === 'EXPENSE' || matchType === 'INCOME' ? matchType : undefined,
+      merchant: asString(input.matchMerchant) ?? undefined,
+      amountOriginal: asString(input.matchAmount) ?? undefined,
+    });
+    if (!target) {
+      return {
+        toolResult: JSON.stringify({
+          error: 'Could not find a matching transaction to correct. Ask the user which one they mean.',
+        }),
+      };
+    }
+
+    try {
+      const updated = await this.transactions.update(workspace.id, target.id, {
+        ...(categoryId ? { categoryId } : {}),
+        ...(merchant ? { merchant } : {}),
+        ...(transactionDate ? { transactionDate } : {}),
+      });
+      const action: ChatAction = {
+        type: 'TRANSACTION_UPDATED',
+        transactionId: updated.id,
+        preview: {
+          amount: updated.amountOriginal,
+          currency: updated.currencyOriginal,
+          merchant: updated.merchant,
+          category: updated.category?.name ?? null,
+        },
+      };
+      return {
+        toolResult: JSON.stringify({
+          status: 'updated',
+          transactionId: updated.id,
+          amountOriginal: updated.amountOriginal,
+          currencyOriginal: updated.currencyOriginal,
+          category: updated.category?.name ?? null,
+          merchant: updated.merchant,
+          transactionDate: updated.transactionDate,
+        }),
+        action,
+      };
+    } catch (error) {
+      return { toolResult: JSON.stringify({ error: this.errorMessage(error) }) };
+    }
+  }
+
+  private async execCorrectHoldingTicker(
+    workspace: WorkspaceContext,
+    userId: string,
+    input: Record<string, unknown>,
+  ): Promise<ToolExecResult> {
+    if (!TIER_LIMITS[workspace.tier].portfolio) {
+      return {
+        toolResult: JSON.stringify({
+          error: 'tier_limit',
+          message: 'Portfolio tracking requires the Pro plan. Tell the user to upgrade.',
+        }),
+      };
+    }
+    const fromTicker = asString(input.fromTicker)?.toUpperCase();
+    const toTicker = asString(input.toTicker)?.toUpperCase();
+    if (!fromTicker || !toTicker) {
+      return { toolResult: JSON.stringify({ error: 'Missing fromTicker or toTicker.' }) };
+    }
+
+    try {
+      const holding = await this.portfolio.renameTicker({
+        workspaceId: workspace.id,
+        ownedByUserId: userId,
+        fromTicker,
+        toTicker,
+      });
+      const action: ChatAction = {
+        type: 'HOLDING_UPDATED',
+        preview: { fromTicker, toTicker: holding.ticker },
+      };
+      return {
+        toolResult: JSON.stringify({
+          status: 'ticker_corrected',
+          fromTicker,
+          toTicker: holding.ticker,
+          quantity: holding.quantity,
         }),
         action,
       };

@@ -196,6 +196,95 @@ describe('TransactionsService.void', () => {
   });
 });
 
+describe('TransactionsService.update', () => {
+  it('moves budget spend off the old category and onto the new one when re-categorized', async () => {
+    const prisma = buildPrisma();
+    prisma.transaction.findFirst.mockResolvedValue(txRow({ categoryId: 'c-old' }));
+    prisma.transaction.update.mockResolvedValue(txRow({ categoryId: 'c-new', category: { id: 'c-new', name: 'Dining' } }));
+    const fx = buildFx();
+    const budgets = buildBudgets();
+    const service = new TransactionsService(prisma as unknown as PrismaService, fx as unknown as FxService, budgets as unknown as BudgetsService, buildAlerts() as unknown as AlertsService);
+
+    await service.update('w1', 't1', { categoryId: 'c-new' } as never);
+
+    // reverse old category (sign -1) then apply new category (sign +1)
+    expect(budgets.applyTransactionSpend).toHaveBeenNthCalledWith(
+      1,
+      expect.anything(),
+      expect.objectContaining({ categoryId: 'c-old', amountBase: '50', sign: -1 }),
+    );
+    expect(budgets.applyTransactionSpend).toHaveBeenNthCalledWith(
+      2,
+      expect.anything(),
+      expect.objectContaining({ categoryId: 'c-new', amountBase: '50', sign: 1 }),
+    );
+  });
+
+  it('does not touch budgets when only the merchant changes', async () => {
+    const prisma = buildPrisma();
+    prisma.transaction.findFirst.mockResolvedValue(txRow({ categoryId: 'c-old' }));
+    prisma.transaction.update.mockResolvedValue(txRow({ categoryId: 'c-old', merchant: 'Starbucks' }));
+    const fx = buildFx();
+    const budgets = buildBudgets();
+    const service = new TransactionsService(prisma as unknown as PrismaService, fx as unknown as FxService, budgets as unknown as BudgetsService, buildAlerts() as unknown as AlertsService);
+
+    await service.update('w1', 't1', { merchant: 'Starbucks' } as never);
+
+    expect(budgets.applyTransactionSpend).not.toHaveBeenCalled();
+  });
+
+  it('does not re-apply budgets for a non-expense', async () => {
+    const prisma = buildPrisma();
+    prisma.transaction.findFirst.mockResolvedValue(txRow({ type: 'INCOME', categoryId: 'c-old' }));
+    prisma.transaction.update.mockResolvedValue(txRow({ type: 'INCOME', categoryId: 'c-new' }));
+    const fx = buildFx();
+    const budgets = buildBudgets();
+    const service = new TransactionsService(prisma as unknown as PrismaService, fx as unknown as FxService, budgets as unknown as BudgetsService, buildAlerts() as unknown as AlertsService);
+
+    await service.update('w1', 't1', { categoryId: 'c-new' } as never);
+
+    expect(budgets.applyTransactionSpend).not.toHaveBeenCalled();
+  });
+
+  it('throws NotFound for a missing transaction', async () => {
+    const prisma = buildPrisma();
+    prisma.transaction.findFirst.mockResolvedValue(null);
+    const fx = buildFx();
+    const service = new TransactionsService(prisma as unknown as PrismaService, fx as unknown as FxService, buildBudgets() as unknown as BudgetsService, buildAlerts() as unknown as AlertsService);
+
+    await expect(service.update('w1', 'missing', { categoryId: 'c-new' } as never)).rejects.toBeInstanceOf(NotFoundException);
+  });
+});
+
+describe('TransactionsService.findLatestForCorrection', () => {
+  it('returns the most recent non-void match with the given filters', async () => {
+    const prisma = buildPrisma();
+    prisma.transaction.findFirst.mockResolvedValue(txRow());
+    const fx = buildFx();
+    const service = new TransactionsService(prisma as unknown as PrismaService, fx as unknown as FxService, buildBudgets() as unknown as BudgetsService, buildAlerts() as unknown as AlertsService);
+
+    const view = await service.findLatestForCorrection('w1', { type: 'EXPENSE', merchant: 'SM' });
+
+    const arg = prisma.transaction.findFirst.mock.calls[0]?.[0] as {
+      where: Record<string, unknown>;
+      orderBy: unknown;
+    };
+    expect(arg.where.status).toEqual({ not: 'VOID' });
+    expect(arg.where.type).toBe('EXPENSE');
+    expect(arg.where.merchant).toEqual({ contains: 'SM', mode: 'insensitive' });
+    expect(view?.id).toBe('t1');
+  });
+
+  it('returns null when nothing matches', async () => {
+    const prisma = buildPrisma();
+    prisma.transaction.findFirst.mockResolvedValue(null);
+    const fx = buildFx();
+    const service = new TransactionsService(prisma as unknown as PrismaService, fx as unknown as FxService, buildBudgets() as unknown as BudgetsService, buildAlerts() as unknown as AlertsService);
+
+    expect(await service.findLatestForCorrection('w1', {})).toBeNull();
+  });
+});
+
 describe('TransactionsService.list', () => {
   it('caps fromDate to the last 90 days on FREE tier', async () => {
     const prisma = buildPrisma();
