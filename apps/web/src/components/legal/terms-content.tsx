@@ -75,6 +75,11 @@ export function TermsContent() {
           where required by law, payments are non-refundable. We may change prices with reasonable
           notice, effective on your next billing cycle.
         </p>
+        <p>
+          Cancelling stops future renewals but keeps your account; if you close your account, your
+          data is then retained or deleted as described in the Data retention section of our Privacy
+          Policy.
+        </p>
       </Section>
 
       <Section title="7. Acceptable use">
@@ -82,6 +87,10 @@ export function TermsContent() {
           Don&apos;t use Finby for anything unlawful, don&apos;t attempt to break, overload, reverse-
           engineer, or gain unauthorized access to it, and don&apos;t scrape or misuse the service or
           other users&apos; data.
+        </p>
+        <p>
+          Don&apos;t attempt to manipulate or deceive the AI assistant into producing false or
+          fraudulent financial records, or use it to generate misleading information.
         </p>
       </Section>
 
