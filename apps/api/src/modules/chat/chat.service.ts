@@ -944,6 +944,9 @@ export class ChatService {
         {
           error: 'RATE_LIMITED',
           message: `You've reached the ${tier} plan's daily limit of ${limit} messages. Upgrade for unlimited chat.`,
+          // Flags this 429 as an upgrade moment (vs a generic rate limit) so the
+          // web client can surface an upgrade CTA. Forwarded by HttpExceptionFilter.
+          details: { upgradeRequired: true },
         },
         HttpStatus.TOO_MANY_REQUESTS,
       );

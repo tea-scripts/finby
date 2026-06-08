@@ -1,4 +1,5 @@
 import { Body, Controller, Get, HttpCode, HttpStatus, Patch, Post, Req, UseGuards } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import type { Request } from 'express';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { Public } from '../../common/decorators/public.decorator';
@@ -33,6 +34,8 @@ export class AuthController {
     return this.auth.register(body);
   }
 
+  // Brute-force protection: 10 attempts / 15 min per IP.
+  @Throttle({ global: { limit: 10, ttl: 900_000 } })
   @Public()
   @HttpCode(HttpStatus.OK)
   @Post('login')
@@ -40,6 +43,8 @@ export class AuthController {
     return this.auth.login(body);
   }
 
+  // Token-rotation abuse protection: 20 attempts / min per IP.
+  @Throttle({ global: { limit: 20, ttl: 60_000 } })
   @Public()
   @HttpCode(HttpStatus.OK)
   @UseGuards(JwtRefreshGuard)
@@ -58,6 +63,8 @@ export class AuthController {
     await this.auth.logout(body.refreshToken);
   }
 
+  // Mail-bomb protection: 5 attempts / 60 min per IP.
+  @Throttle({ global: { limit: 5, ttl: 3_600_000 } })
   @Public()
   @HttpCode(HttpStatus.OK)
   @Post('forgot-password')
@@ -68,6 +75,8 @@ export class AuthController {
     return { message: 'If that email exists, a reset link has been sent.' };
   }
 
+  // Token-stuffing protection: 10 attempts / 15 min per IP.
+  @Throttle({ global: { limit: 10, ttl: 900_000 } })
   @Public()
   @HttpCode(HttpStatus.OK)
   @Post('reset-password')
@@ -88,6 +97,8 @@ export class AuthController {
     return { message: 'Email verified.' };
   }
 
+  // Mail-bomb protection: 5 attempts / 60 min per IP.
+  @Throttle({ global: { limit: 5, ttl: 3_600_000 } })
   @HttpCode(HttpStatus.OK)
   @Post('resend-verification')
   async resendVerification(@Req() req: Request & { user: AuthUser }): Promise<{ message: string }> {

@@ -2,6 +2,8 @@ import { randomUUID } from 'node:crypto';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { Module } from '@nestjs/common';
 import { APP_FILTER, APP_GUARD } from '@nestjs/core';
+import { ConfigService } from '@nestjs/config';
+import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { SentryModule } from '@sentry/nestjs/setup';
 import { ScheduleModule } from '@nestjs/schedule';
 import { LoggerModule } from 'nestjs-pino';
@@ -64,6 +66,20 @@ import { RedisModule } from './redis/redis.module';
       },
     }),
     ConfigModule,
+    // Global rate limiting. In-memory store is intentional for a single Render
+    // instance; swap in @nestjs/throttler-storage-redis when scaling horizontally.
+    ThrottlerModule.forRootAsync({
+      inject: [ConfigService],
+      useFactory: (config: ConfigService) => ({
+        throttlers: [
+          {
+            name: 'global',
+            ttl: config.get<number>('THROTTLE_TTL_MS', 60_000),
+            limit: config.get<number>('THROTTLE_LIMIT', 100),
+          },
+        ],
+      }),
+    }),
     PrismaModule,
     RedisModule,
     AuthModule,
@@ -85,6 +101,9 @@ import { RedisModule } from './redis/redis.module';
   ],
   controllers: [AppController],
   providers: [
+    // ThrottlerGuard is registered before JwtAuthGuard so rate limiting runs
+    // first — abusive callers are rejected before any auth work happens.
+    { provide: APP_GUARD, useClass: ThrottlerGuard },
     { provide: APP_GUARD, useClass: JwtAuthGuard },
     { provide: APP_FILTER, useClass: HttpExceptionFilter },
   ],

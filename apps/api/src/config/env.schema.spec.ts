@@ -31,4 +31,40 @@ describe('validateEnv', () => {
   it('rejects a too-short JWT secret', () => {
     expect(() => validateEnv({ ...base, JWT_ACCESS_SECRET: 'short' })).toThrow(/JWT_ACCESS_SECRET/);
   });
+
+  describe('production guard (superRefine)', () => {
+    // A fully-configured production env: the base required vars plus the
+    // optional-in-dev vars that the guard promotes to mandatory in production.
+    const prodBase = {
+      ...base,
+      NODE_ENV: 'production',
+      WEB_URL: 'https://chat.finby.app',
+      STRIPE_SECRET_KEY: 'sk_live_x',
+      STRIPE_WEBHOOK_SECRET: 'whsec_x',
+      RESEND_API_KEY: 're_x',
+      ANTHROPIC_API_KEY: 'sk-ant-x',
+    };
+
+    it('accepts a fully-configured production env', () => {
+      expect(() => validateEnv(prodBase)).not.toThrow();
+    });
+
+    it('refuses to start when a production-required var is missing', () => {
+      const { STRIPE_SECRET_KEY: _omit, ...rest } = prodBase;
+      expect(() => validateEnv(rest)).toThrow(/PRODUCTION/);
+      expect(() => validateEnv(rest)).toThrow(/STRIPE_SECRET_KEY/);
+    });
+
+    it('refuses to start when WEB_URL is left as the localhost default', () => {
+      // WEB_URL has a localhost default, so an unset value parses as localhost.
+      const { WEB_URL: _omit, ...rest } = prodBase;
+      expect(() => validateEnv(rest)).toThrow(/WEB_URL/);
+    });
+
+    it('does NOT enforce production-required vars in development', () => {
+      // Same missing STRIPE_SECRET_KEY, but dev must still boot.
+      const { STRIPE_SECRET_KEY: _omit, ...rest } = prodBase;
+      expect(() => validateEnv({ ...rest, NODE_ENV: 'development' })).not.toThrow();
+    });
+  });
 });
