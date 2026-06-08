@@ -41,8 +41,9 @@ PRO in our DB while paying for Premium.
   price. Tier flips at period end via webhook. Pending target stored locally for UI.
 - **Seat guard:** reject a downgrade whose seat limit (PRO/PREMIUM = 1,
   FAMILY = 5) is below the workspace's current member count, with a clear
-  "remove N members first" message. While a downgrade is pending, new invites are
-  capped at the lower (pending) seat limit so the gap can't be re-opened.
+  "remove N members first" message. (Member invites are not implemented yet —
+  workspaces have only the owner today — so this guard is future-proofing; the
+  pending-invite-cap safeguard is deferred until an invite flow exists.)
 - **Re-changing:** choosing a new target while a downgrade is pending re-schedules
   (or, if the new target is an upgrade, cancels the schedule and applies immediately).
 
@@ -107,9 +108,9 @@ stripeScheduleId       String?
 **`getSubscription` / `SubscriptionView`** gains `pendingTier` and
 `pendingTierEffectiveAt`.
 
-**Invite seat enforcement** — where invites check `workspace.maxMembers`, when a
-downgrade is pending use `min(currentMax, pendingTierMax)` so members can't be
-added above the lower limit before the downgrade lands.
+**Invite seat enforcement** — deferred. No member-invite flow exists yet
+(members are created only at signup), so there is nothing to cap. Revisit when
+invites ship.
 
 ### Frontend (`apps/web`)
 
