@@ -41,9 +41,9 @@ export default function AppLayout({ children }: { children: ReactNode }) {
         <div className="flex min-h-0 flex-1 flex-col">
           <AppHeader />
           <VerifyEmailBanner />
+          <InstallBanner />
           <main className="min-h-0 flex-1 overflow-hidden">{children}</main>
         </div>
-        <InstallBanner />
         <AppNav variant="bar" />
       </div>
     );
