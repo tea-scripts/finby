@@ -65,6 +65,16 @@
   .pb-safe {
     padding-bottom: max(env(safe-area-inset-bottom), 0px);
   }
+  /* Bottom clearance so scrolled page content (and the chat composer) clears the
+     floating mobile nav. Reset on md+ where the sidebar replaces the bottom bar. */
+  .pb-nav {
+    padding-bottom: calc(5.5rem + env(safe-area-inset-bottom));
+  }
+  @media (min-width: 768px) {
+    .pb-nav {
+      padding-bottom: 0;
+    }
+  }
   /* Full-app height = dynamic viewport (tracks the browser toolbar). The root
      viewport intentionally drops viewport-fit=cover, so iOS auto-insets content
      within the safe area on standalone PWAs (the status-bar / home-indicator
