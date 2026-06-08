@@ -60,6 +60,8 @@ describe('PlanCard', () => {
       billingProvider: null,
       currentPeriodEnd: null,
       cancelAtPeriodEnd: false,
+      pendingTier: null,
+      pendingTierEffectiveAt: null,
     });
 
     render(<PlanCard />);
@@ -76,6 +78,8 @@ describe('PlanCard', () => {
       billingProvider: 'STRIPE',
       currentPeriodEnd: '2026-07-01T00:00:00.000Z',
       cancelAtPeriodEnd: false,
+      pendingTier: null,
+      pendingTierEffectiveAt: null,
     });
 
     render(<PlanCard />);
@@ -112,6 +116,8 @@ describe('PlanCard', () => {
       billingProvider: 'STRIPE',
       currentPeriodEnd: '2026-07-01T00:00:00.000Z',
       cancelAtPeriodEnd: false,
+      pendingTier: null,
+      pendingTierEffectiveAt: null,
     });
 
     mockOpenPortal.mockResolvedValue({ url: 'https://billing.stripe.com/session/x' });
@@ -140,6 +146,8 @@ describe('PlanCard', () => {
       billingProvider: null,
       currentPeriodEnd: null,
       cancelAtPeriodEnd: false,
+      pendingTier: null,
+      pendingTierEffectiveAt: null,
     });
 
     render(<PlanCard />);
@@ -162,6 +170,8 @@ describe('PlanCard', () => {
       billingProvider: 'PAYSTACK',
       currentPeriodEnd: '2026-07-01T00:00:00.000Z',
       cancelAtPeriodEnd: false,
+      pendingTier: null,
+      pendingTierEffectiveAt: null,
     });
 
     render(<PlanCard />);
@@ -181,6 +191,8 @@ describe('PlanCard', () => {
       billingProvider: null,
       currentPeriodEnd: null,
       cancelAtPeriodEnd: false,
+      pendingTier: null,
+      pendingTierEffectiveAt: null,
     });
 
     render(<PlanCard />);
@@ -208,6 +220,8 @@ describe('PlanCard', () => {
       billingProvider: 'STRIPE',
       currentPeriodEnd: '2026-07-01T00:00:00.000Z',
       cancelAtPeriodEnd: true,
+      pendingTier: null,
+      pendingTierEffectiveAt: null,
     });
 
     render(<PlanCard />);

@@ -30,6 +30,16 @@ export function openPortal(workspaceId: string): Promise<{ url: string }> {
   });
 }
 
+export function changePlan(
+  workspaceId: string,
+  tier: Exclude<SubscriptionTier, 'FREE'>,
+): Promise<SubscriptionView> {
+  return authed<SubscriptionView>(`/workspaces/${workspaceId}/subscription/change-plan`, {
+    method: 'POST',
+    body: JSON.stringify({ tier }),
+  });
+}
+
 /**
  * Open a Stripe billing URL (resolved asynchronously) in a separate browser tab.
  *

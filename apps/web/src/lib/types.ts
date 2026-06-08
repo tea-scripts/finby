@@ -213,6 +213,8 @@ export interface SubscriptionView {
   billingProvider: BillingProviderName | null;
   currentPeriodEnd: string | null;
   cancelAtPeriodEnd: boolean;
+  pendingTier: SubscriptionTier | null;
+  pendingTierEffectiveAt: string | null;
 }
 
 export interface BillingPlan {
