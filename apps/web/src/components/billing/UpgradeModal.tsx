@@ -3,7 +3,7 @@
 import { type KeyboardEvent, useEffect, useRef, useState } from 'react';
 import { Modal } from '@/components/ui/modal';
 import { Button } from '@/components/ui/button';
-import { getPlans, startCheckout, openBillingUrl } from '@/lib/billing-api';
+import { getPlans, startCheckout, changePlan, openBillingUrl } from '@/lib/billing-api';
 import { useAuth } from '@/lib/store';
 import { track } from '@/lib/analytics';
 import type { BillingPlan } from '@/lib/types';
@@ -16,14 +16,17 @@ const TAB_LABELS: { tier: UpgradeTier; label: string }[] = [
   { tier: 'FAMILY', label: 'Family' },
 ];
 
+const TIER_RANK: Record<UpgradeTier, number> = { PRO: 1, PREMIUM: 2, FAMILY: 3 };
+
 export interface UpgradeModalProps {
   open: boolean;
   onClose: () => void;
   initialTier?: UpgradeTier;
   source?: string;
+  currentTier?: UpgradeTier;
 }
 
-export function UpgradeModal({ open, onClose, initialTier = 'PRO', source = 'unknown' }: UpgradeModalProps) {
+export function UpgradeModal({ open, onClose, initialTier = 'PRO', source = 'unknown', currentTier }: UpgradeModalProps) {
   const workspaceId = useAuth((s) => s.workspace?.id);
 
   const [plans, setPlans] = useState<BillingPlan[]>([]);
@@ -106,6 +109,32 @@ export function UpgradeModal({ open, onClose, initialTier = 'PRO', source = 'unk
     }
   }
 
+  const manageMode = !!currentTier;
+  const isCurrent = manageMode && selectedTier === currentTier;
+  const isDowngrade =
+    manageMode && !!currentTier && TIER_RANK[selectedTier] < TIER_RANK[currentTier];
+
+  async function handleChangePlan() {
+    if (!workspaceId) {
+      setSubmitError('No workspace found. Please reload and try again.');
+      return;
+    }
+    setSubmitError(null);
+    setSubmitting(true);
+    try {
+      await changePlan(workspaceId, selectedTier);
+      onClose();
+    } catch {
+      if (mountedRef.current) {
+        setSubmitError("Couldn't change your plan. Please try again.");
+      }
+    } finally {
+      if (mountedRef.current) {
+        setSubmitting(false);
+      }
+    }
+  }
+
   function selectTier(tier: UpgradeTier) {
     setSelectedTier(tier);
     setSubmitError(null);
@@ -127,7 +156,7 @@ export function UpgradeModal({ open, onClose, initialTier = 'PRO', source = 'unk
   }
 
   return (
-    <Modal open={open} onClose={onClose} title="Upgrade your plan">
+    <Modal open={open} onClose={onClose} title={manageMode ? 'Change your plan' : 'Upgrade your plan'}>
       {/* Tab row */}
       <div
         role="tablist"
@@ -155,6 +184,9 @@ export function UpgradeModal({ open, onClose, initialTier = 'PRO', source = 'unk
               ].join(' ')}
             >
               {label}
+              {manageMode && currentTier === tier && (
+                <span className="ml-1 text-[10px] opacity-80">• Current plan</span>
+              )}
             </button>
           );
         })}
@@ -195,14 +227,24 @@ export function UpgradeModal({ open, onClose, initialTier = 'PRO', source = 'unk
         {submitError && (
           <p className="text-center text-sm text-red-400">{submitError}</p>
         )}
+        {manageMode && isDowngrade && (
+          <p className="text-center text-xs text-muted">
+            Your plan switches to {selectedTier} at the end of your billing period.
+          </p>
+        )}
+        {manageMode && !isDowngrade && !isCurrent && (
+          <p className="text-center text-xs text-muted">
+            Upgrades take effect immediately (prorated).
+          </p>
+        )}
         <Button
           variant="primary"
           loading={submitting}
-          disabled={loading || !!error || submitting}
-          onClick={handleUpgrade}
+          disabled={loading || !!error || submitting || isCurrent}
+          onClick={manageMode ? handleChangePlan : handleUpgrade}
           className="w-full"
         >
-          Start Upgrade
+          {!manageMode ? 'Start Upgrade' : isCurrent ? 'Current plan' : isDowngrade ? `Switch to ${selectedTier}` : `Change to ${selectedTier}`}
         </Button>
       </div>
     </Modal>
