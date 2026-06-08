@@ -13,7 +13,8 @@ export type AnalyticsEvent =
   | 'budget_set'
   | 'upgrade_modal_viewed'
   | 'checkout_started'
-  | 'subscription_activated';
+  | 'subscription_activated'
+  | 'feedback_submitted';
 
 export type AnalyticsProps = Record<string, string | number | boolean | null | undefined>;
 
@@ -44,6 +45,7 @@ export function initAnalytics(): void {
       capture_pageview: false, // we fire pageviews manually on route change
       disable_session_recording: true,
       person_profiles: 'identified_only',
+      persistence: 'memory', // cookieless — no analytics cookies / localStorage (no EU cookie banner)
     });
     initialized = true;
   } catch {

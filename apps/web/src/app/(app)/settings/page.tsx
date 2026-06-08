@@ -1,9 +1,12 @@
 'use client';
 
+import Link from 'next/link';
 import { PlanCard } from '@/components/billing/PlanCard';
 import { ProfileSection } from '@/components/settings/profile-section';
 import { CurrenciesSection } from '@/components/settings/currencies-section';
 import { PreferencesSection } from '@/components/settings/preferences-section';
+import { FeedbackSection } from '@/components/settings/feedback-section';
+import { ReferSection } from '@/components/settings/refer-section';
 
 export default function SettingsPage() {
   return (
@@ -23,6 +26,25 @@ export default function SettingsPage() {
             Plan &amp; Billing
           </h2>
           <PlanCard />
+        </section>
+
+        <ReferSection />
+
+        <FeedbackSection />
+
+        {/* About & Legal */}
+        <section className="space-y-3">
+          <h2 className="font-display text-sm font-semibold uppercase tracking-wide text-muted">
+            About
+          </h2>
+          <div className="rounded-2xl border border-line bg-surface/60 p-5 shadow-card">
+            <Link
+              href="/privacy"
+              className="text-sm text-accent transition hover:text-accent-hover"
+            >
+              Privacy Policy
+            </Link>
+          </div>
         </section>
       </div>
     </div>

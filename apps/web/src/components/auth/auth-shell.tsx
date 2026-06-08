@@ -25,6 +25,11 @@ export function AuthShell({ title, subtitle, children, footer }: AuthShellProps)
           <div className="mt-6">{children}</div>
         </div>
         <p className="mt-6 text-center text-sm text-muted">{footer}</p>
+        <p className="mt-3 text-center text-xs text-faint">
+          <Link href="/privacy" className="transition hover:text-muted">
+            Privacy Policy
+          </Link>
+        </p>
       </div>
     </main>
   );
