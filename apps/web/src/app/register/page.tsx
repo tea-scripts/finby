@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState, type FormEvent } from 'react';
 import { AuthShell } from '@/components/auth/auth-shell';
+import { TermsGate } from '@/components/auth/terms-gate';
 import { Button } from '@/components/ui/button';
 import { Dropdown } from '@/components/ui/dropdown';
 import { Field } from '@/components/ui/field';
@@ -34,6 +35,7 @@ export default function RegisterPage() {
   const [timezone] = useState(detectTimezone);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
 
   async function onSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -49,6 +51,10 @@ export default function RegisterPage() {
     }
     if (password.length < 8) {
       setError('Password must be at least 8 characters.');
+      return;
+    }
+    if (!acceptedTerms) {
+      setError('Please read and accept the Terms to continue.');
       return;
     }
 
@@ -130,7 +136,9 @@ export default function RegisterPage() {
           />
         </Field>
 
-        <Button type="submit" loading={loading} className="w-full">
+        <TermsGate accepted={acceptedTerms} onAcceptedChange={setAcceptedTerms} />
+
+        <Button type="submit" loading={loading} disabled={!acceptedTerms} className="w-full">
           Create account
         </Button>
       </form>

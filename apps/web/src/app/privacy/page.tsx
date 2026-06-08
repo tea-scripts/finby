@@ -7,7 +7,7 @@ export const metadata: Metadata = {
   description: 'How Finby collects, uses, and protects your information.',
 };
 
-const LAST_UPDATED = 'June 8, 2026';
+const LAST_UPDATED = 'June 9, 2026';
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
@@ -66,11 +66,17 @@ export default function PrivacyPage() {
             <p>To manage your account, subscription, and security.</p>
             <p>To send essential emails (verification, password reset, billing, expiry reminders).</p>
             <p>To understand and improve the product, and act on the feedback you submit.</p>
+            <p>
+              We process your data on the basis of contract performance (to provide the service you
+              signed up for) and legitimate interest (security, fraud prevention, and product
+              improvement).
+            </p>
           </Section>
 
           <Section title="Service providers we share with">
             <p>
-              We share only what each provider needs to function, and we don&apos;t sell your data:
+              We share only what each provider needs to function. We do not sell your personal
+              information as defined under the CCPA. Our providers include:
             </p>
             <p>
               <span className="text-ink">AI processing</span> — chat messages are processed by our AI
@@ -84,11 +90,20 @@ export default function PrivacyPage() {
               <span className="text-ink">Email</span> — Resend delivers our transactional emails.
             </p>
             <p>
-              <span className="text-ink">Analytics</span> — PostHog helps us understand product usage.
+              <span className="text-ink">Analytics</span> — PostHog helps us understand product
+              usage. Our analytics run cookieless — no analytics cookies or browser storage are set.
             </p>
             <p>
               <span className="text-ink">Hosting &amp; infrastructure</span> — our cloud hosting and
               database providers store the app and your data.
+            </p>
+          </Section>
+
+          <Section title="Cookies">
+            <p>
+              We use only essential storage needed to keep you signed in and run the app. We do not
+              use advertising cookies, and our analytics are cookieless, so no consent banner is
+              required for tracking.
             </p>
           </Section>
 

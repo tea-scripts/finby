@@ -45,6 +45,7 @@ export function initAnalytics(): void {
       capture_pageview: false, // we fire pageviews manually on route change
       disable_session_recording: true,
       person_profiles: 'identified_only',
+      persistence: 'memory', // cookieless — no analytics cookies / localStorage (no EU cookie banner)
     });
     initialized = true;
   } catch {
