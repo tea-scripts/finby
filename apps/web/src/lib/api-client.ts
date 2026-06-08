@@ -6,6 +6,7 @@ export class ApiError extends Error {
     public readonly status: number,
     public readonly code: string,
     message: string,
+    public readonly details?: unknown,
   ) {
     super(message);
     this.name = 'ApiError';
@@ -31,8 +32,13 @@ export async function apiFetch<T>(path: string, init: RequestInit = {}): Promise
   const data: unknown = text ? JSON.parse(text) : null;
 
   if (!res.ok) {
-    const body = (data ?? {}) as { error?: string; message?: string };
-    throw new ApiError(res.status, body.error ?? 'ERROR', body.message ?? 'Something went wrong. Please try again.');
+    const body = (data ?? {}) as { error?: string; message?: string; details?: unknown };
+    throw new ApiError(
+      res.status,
+      body.error ?? 'ERROR',
+      body.message ?? 'Something went wrong. Please try again.',
+      body.details,
+    );
   }
   return data as T;
 }

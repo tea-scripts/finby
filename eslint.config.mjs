@@ -24,4 +24,18 @@ export default tseslint.config(
       ],
     },
   },
+  {
+    // The service worker runs in ServiceWorkerGlobalScope, where `self`, `clients`,
+    // `caches` and `registration` are valid globals unknown to the default parser.
+    files: ['apps/web/public/sw.js'],
+    languageOptions: {
+      globals: {
+        self: 'readonly',
+        clients: 'readonly',
+        caches: 'readonly',
+        registration: 'readonly',
+        fetch: 'readonly',
+      },
+    },
+  },
 );

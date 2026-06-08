@@ -6,6 +6,7 @@ import { Composer } from '@/components/chat/composer';
 import { ConfirmationCard } from '@/components/chat/confirmation-card';
 import { MessageBubble } from '@/components/chat/message-bubble';
 import { TypingDots } from '@/components/chat/typing-dots';
+import { UpgradeModal } from '@/components/billing/UpgradeModal';
 import { Lottie } from '@/components/ui/lottie';
 import { ApiError } from '@/lib/api-client';
 import { dayKey, dayLabel } from '@/lib/format';
@@ -28,7 +29,7 @@ interface UiMessage {
   confirmations?: PendingConfirmation[];
 }
 
-type Notice = { kind: 'limit' | 'down' | 'error'; message: string } | null;
+type Notice = { kind: 'limit' | 'down' | 'error'; message: string; upgrade?: boolean } | null;
 
 function genId(): string {
   try {
@@ -47,6 +48,7 @@ export default function ChatPage() {
   const [loadingHistory, setLoadingHistory] = useState(true);
   const [sending, setSending] = useState(false);
   const [notice, setNotice] = useState<Notice>(null);
+  const [upgradeOpen, setUpgradeOpen] = useState(false);
 
   const initialized = useRef(false);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -85,8 +87,12 @@ export default function ChatPage() {
 
   function handleError(err: unknown) {
     if (err instanceof ApiError) {
-      if (err.status === 429) setNotice({ kind: 'limit', message: err.message });
-      else if (err.status === 503) setNotice({ kind: 'down', message: err.message });
+      if (err.status === 429) {
+        // The chat daily-limit 429 carries { upgradeRequired: true } — the highest-intent
+        // upgrade moment in the app, so we surface an inline upgrade CTA (see notice block).
+        const upgrade = !!(err.details as { upgradeRequired?: boolean } | undefined)?.upgradeRequired;
+        setNotice({ kind: 'limit', message: err.message, upgrade });
+      } else if (err.status === 503) setNotice({ kind: 'down', message: err.message });
       else if (err.status === 401)
         setNotice({ kind: 'error', message: 'Your session expired. Please sign in again.' });
       else setNotice({ kind: 'error', message: err.message });
@@ -204,12 +210,23 @@ export default function ChatPage() {
         <div className="mx-auto w-full max-w-2xl px-4 py-3">
           {notice && (
             <div className={`mb-2 rounded-xl border px-3.5 py-2.5 text-sm ${noticeStyles[notice.kind]}`}>
-              {notice.message}
+              <p>{notice.message}</p>
+              {notice.upgrade && (
+                <button
+                  type="button"
+                  onClick={() => setUpgradeOpen(true)}
+                  className="mt-2 rounded-lg bg-accent px-3 py-1.5 text-xs font-semibold text-white transition hover:opacity-90"
+                >
+                  Upgrade to Pro
+                </button>
+              )}
             </div>
           )}
           <Composer disabled={sending} onSend={handleSend} />
         </div>
       </div>
+
+      <UpgradeModal open={upgradeOpen} onClose={() => setUpgradeOpen(false)} source="chat_limit" />
     </div>
   );
 }

@@ -14,6 +14,10 @@ export const envSchema = z.object({
   API_URL: z.string().url().default('http://localhost:3001'),
   WEB_URL: z.string().url().default('http://localhost:3000'),
 
+  // Rate limiting (global fallback — sensitive auth routes set stricter per-route limits).
+  THROTTLE_TTL_MS: z.coerce.number().int().positive().default(60_000),
+  THROTTLE_LIMIT: z.coerce.number().int().positive().default(100),
+
   // Datastores (required)
   DATABASE_URL: z.string().url(),
   REDIS_URL: z.string().url(),
@@ -68,6 +72,43 @@ export const envSchema = z.object({
   SENTRY_DSN: z.string().optional(),
   SENTRY_TRACES_SAMPLE_RATE: z.coerce.number().min(0).max(1).default(0.1),
   LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace']).default('info'),
+}).superRefine((env, ctx) => {
+  // Hard gate for production deploys only. Dev/test still boot with a partial env
+  // so local development and the test suite are unaffected.
+  // (DATABASE_URL, REDIS_URL and the JWT secrets are already required in the base
+  // schema above, so they fail fast regardless of NODE_ENV and aren't repeated here.)
+  if (env.NODE_ENV !== 'production') return;
+
+  // Optional-in-dev vars that become mandatory in production. Without these a deploy
+  // boots "healthy" and then fails silently at runtime (no billing, no email, no AI).
+  const productionRequired = [
+    'STRIPE_SECRET_KEY',
+    'STRIPE_WEBHOOK_SECRET',
+    'RESEND_API_KEY',
+    'ANTHROPIC_API_KEY',
+  ] as const;
+
+  for (const key of productionRequired) {
+    const value = env[key];
+    if (!value || value.trim() === '') {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `[PRODUCTION] Required environment variable "${key}" is missing or empty. Refusing to start.`,
+        path: [key],
+      });
+    }
+  }
+
+  // WEB_URL drives the CORS origin and Stripe checkout redirects. It has a localhost
+  // default, so a missing prod value won't surface as "empty" — assert it was set to a
+  // real public origin instead, or checkout/CORS break in production.
+  if (/localhost|127\.0\.0\.1/.test(env.WEB_URL)) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: `[PRODUCTION] WEB_URL must be a public origin, not the localhost default (got "${env.WEB_URL}"). Refusing to start.`,
+      path: ['WEB_URL'],
+    });
+  }
 });
 
 export type Env = z.infer<typeof envSchema>;
