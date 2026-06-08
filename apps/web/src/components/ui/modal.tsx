@@ -12,10 +12,10 @@ import { createPortal } from 'react-dom';
  * the modal on the whole page instead of the screen. Background scroll is
  * locked while open, and the panel scrolls internally when content is tall.
  *
- * Pass `bare` to drop the panel chrome (box, border, title heading) and render
- * the children directly on the dimmed backdrop with just a floating close
- * button — used when the content (e.g. a plan carousel) is already its own
- * self-contained card UI.
+ * Pass `bare` to drop the panel chrome (box, border, title heading, close
+ * button) and render the children directly on the dimmed backdrop — used when
+ * the content (e.g. a plan carousel) is already its own self-contained card UI.
+ * Bare modals close via backdrop tap or Escape.
  */
 export function Modal({
   open,
@@ -57,18 +57,9 @@ export function Modal({
           role="dialog"
           aria-modal="true"
           aria-label={title}
-          className="relative z-10 w-full max-w-md animate-fade-up"
+          className="relative z-10 max-h-[90dvh] w-full max-w-md overflow-y-auto animate-fade-up"
         >
-          <div className="mb-2 flex justify-end">
-            <button
-              onClick={onClose}
-              aria-label="Close"
-              className="flex h-9 w-9 items-center justify-center rounded-full bg-surface/80 text-muted shadow-card backdrop-blur transition hover:bg-surface-2 hover:text-ink"
-            >
-              ✕
-            </button>
-          </div>
-          <div className="max-h-[85dvh] overflow-y-auto">{children}</div>
+          {children}
         </div>
       ) : (
         <div
