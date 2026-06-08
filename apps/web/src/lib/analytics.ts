@@ -13,7 +13,8 @@ export type AnalyticsEvent =
   | 'budget_set'
   | 'upgrade_modal_viewed'
   | 'checkout_started'
-  | 'subscription_activated';
+  | 'subscription_activated'
+  | 'feedback_submitted';
 
 export type AnalyticsProps = Record<string, string | number | boolean | null | undefined>;
 

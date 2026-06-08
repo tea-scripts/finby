@@ -137,6 +137,7 @@ model User {
   // Relations
   workspaceMemberships  WorkspaceMember[]
   refreshTokens         RefreshToken[]
+  feedback              Feedback[]
 
   @@index([email])
   @@map("users")
@@ -731,4 +732,22 @@ model PushSubscription {
 
   @@index([workspaceId, userId])
   @@map("push_subscriptions")
+}
+
+// ============================================================
+// FEEDBACK
+// In-app "write a review" submissions — star rating + optional note.
+// ============================================================
+
+model Feedback {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  rating    Int // 1–5
+  comment   String?
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([createdAt])
+  @@map("feedback")
 }
