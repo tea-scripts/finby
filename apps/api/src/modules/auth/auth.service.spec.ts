@@ -24,6 +24,7 @@ function createPrismaMock() {
     create: jest.fn(),
     createMany: jest.fn(),
     findUnique: jest.fn(),
+    findMany: jest.fn(),
     update: jest.fn(),
     updateMany: jest.fn(),
   });
@@ -564,6 +565,25 @@ describe('AuthService', () => {
       expect(result.refreshToken).toEqual(expect.any(String));
       expect(result.user.email).toBe('ada@example.com');
       expect(emailMock.sendVerification).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('listWorkspaces', () => {
+    it('returns all memberships mapped to summaries', async () => {
+      const prisma = createPrismaMock();
+      prisma.workspaceMember.findMany.mockResolvedValue([
+        { role: 'OWNER', workspace: { id: 'w1', name: 'Mine', slug: 's1', tier: 'FREE', baseCurrency: 'USD' } },
+        { role: 'VIEWER', workspace: { id: 'w2', name: 'Fam', slug: 's2', tier: 'FAMILY', baseCurrency: 'USD' } },
+      ]);
+      const service = buildService(prisma);
+      const result = await service.listWorkspaces('u1');
+      expect(prisma.workspaceMember.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({ where: { userId: 'u1' } }),
+      );
+      expect(result).toEqual([
+        { workspaceId: 'w1', name: 'Mine', slug: 's1', tier: 'FREE', role: 'OWNER', baseCurrency: 'USD' },
+        { workspaceId: 'w2', name: 'Fam', slug: 's2', tier: 'FAMILY', role: 'VIEWER', baseCurrency: 'USD' },
+      ]);
     });
   });
 

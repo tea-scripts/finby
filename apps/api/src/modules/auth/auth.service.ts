@@ -16,6 +16,7 @@ import type {
   AuthWorkspaceView,
   RefreshTokenPayload,
   TokenPair,
+  WorkspaceMembershipView,
 } from './auth.types';
 import { uniqueAccountNumber } from './account-number.util';
 import { parsePreferences } from './preferences.util';
@@ -407,6 +408,25 @@ export class AuthService {
     });
 
     return this.toUserView(updated);
+  }
+
+  async listWorkspaces(userId: string): Promise<WorkspaceMembershipView[]> {
+    const memberships = await this.prisma.workspaceMember.findMany({
+      where: { userId },
+      orderBy: { joinedAt: 'asc' },
+      select: {
+        role: true,
+        workspace: { select: { id: true, name: true, slug: true, tier: true, baseCurrency: true } },
+      },
+    });
+    return memberships.map((m) => ({
+      workspaceId: m.workspace.id,
+      name: m.workspace.name,
+      slug: m.workspace.slug,
+      tier: m.workspace.tier,
+      role: m.role,
+      baseCurrency: m.workspace.baseCurrency,
+    }));
   }
 
   private rounds(): number {

@@ -41,6 +41,15 @@ export interface AuthResult extends TokenPair {
   workspace: AuthWorkspaceView;
 }
 
+export interface WorkspaceMembershipView {
+  workspaceId: string;
+  name: string;
+  slug: string;
+  tier: SubscriptionTier;
+  role: 'OWNER' | 'CO_MANAGER' | 'VIEWER';
+  baseCurrency: string;
+}
+
 /** JWT payloads. */
 export interface AccessTokenPayload {
   sub: string;
