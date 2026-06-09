@@ -34,7 +34,10 @@ export function MembersSection() {
 
   useEffect(() => {
     void refresh();
-  }, [wsId]); // wsId is the only dep needed; refresh closure intentionally omitted
+    // Re-run when isOwner flips true: `workspaces` (and thus the derived role)
+    // loads async via the header's fetchWorkspaces, so an owner who lands here
+    // first would otherwise never fetch pending invites. refresh closure omitted.
+  }, [wsId, isOwner]);
 
   // Only render for Family workspaces.
   if (!workspace || workspace.tier !== 'FAMILY') return null;
