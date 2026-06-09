@@ -2,11 +2,17 @@
 
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/lib/store';
+import { Dropdown } from '@/components/ui/dropdown';
 import {
   changeMemberRole, cancelInvite, inviteMember, leaveWorkspace,
   listInvites, listMembers, removeMember, resendInvite,
 } from '@/lib/members-api';
 import type { InviteView, MemberView, WorkspaceMemberRole } from '@/lib/types';
+
+const ROLE_OPTIONS = [
+  { value: 'VIEWER', label: 'Viewer' },
+  { value: 'CO_MANAGER', label: 'Co-manager' },
+];
 
 export function MembersSection() {
   const workspace = useAuth((s) => s.workspace);
@@ -103,15 +109,14 @@ export function MembersSection() {
               </div>
               <div className="flex items-center gap-2">
                 {isOwner && m.role !== 'OWNER' ? (
-                  <select
+                  <Dropdown
                     value={m.role}
                     disabled={busy}
-                    onChange={(e) => act(() => changeMemberRole(wsId!, m.id, e.target.value as WorkspaceMemberRole))}
-                    className="rounded-lg border border-line bg-surface px-2 py-1 text-xs text-ink"
-                  >
-                    <option value="CO_MANAGER">Co-manager</option>
-                    <option value="VIEWER">Viewer</option>
-                  </select>
+                    onChange={(v) => act(() => changeMemberRole(wsId!, m.id, v as WorkspaceMemberRole))}
+                    options={ROLE_OPTIONS}
+                    aria-label={`Role for ${m.displayName}`}
+                    className="w-36"
+                  />
                 ) : (
                   <span className="rounded-full bg-accent-soft px-2.5 py-0.5 text-[11px] font-medium text-accent">
                     {m.role === 'OWNER' ? 'Owner' : m.role === 'CO_MANAGER' ? 'Co-manager' : 'Viewer'}
@@ -139,14 +144,14 @@ export function MembersSection() {
               placeholder="name@email.com"
               className="flex-1 rounded-lg border border-line bg-surface px-3 py-2 text-sm text-ink"
             />
-            <select
-              value={role} disabled={busy}
-              onChange={(e) => setRole(e.target.value as Exclude<WorkspaceMemberRole, 'OWNER'>)}
-              className="rounded-lg border border-line bg-surface px-2 py-2 text-sm text-ink"
-            >
-              <option value="VIEWER">Viewer</option>
-              <option value="CO_MANAGER">Co-manager</option>
-            </select>
+            <Dropdown
+              value={role}
+              disabled={busy}
+              onChange={(v) => setRole(v as Exclude<WorkspaceMemberRole, 'OWNER'>)}
+              options={ROLE_OPTIONS}
+              aria-label="Invite role"
+              className="w-36"
+            />
             <button
               type="submit" disabled={busy || !email.trim()}
               className="rounded-lg bg-accent px-3 py-2 text-sm font-medium text-white disabled:opacity-50"

@@ -14,6 +14,7 @@ interface DropdownProps {
   id?: string;
   placeholder?: string;
   className?: string;
+  disabled?: boolean;
   'aria-label'?: string;
 }
 
@@ -40,6 +41,7 @@ export function Dropdown({
   id,
   placeholder = 'Select…',
   className = '',
+  disabled = false,
   'aria-label': ariaLabel,
 }: DropdownProps) {
   const [open, setOpen] = useState(false);
@@ -98,12 +100,13 @@ export function Dropdown({
       <button
         type="button"
         id={id}
+        disabled={disabled}
         aria-haspopup="listbox"
         aria-expanded={open}
         aria-label={ariaLabel}
         onClick={() => (open ? setOpen(false) : openMenu())}
         onKeyDown={onKeyDown}
-        className="flex w-full items-center justify-between gap-2 rounded-xl border border-line bg-canvas/60 px-3.5 py-2.5 text-left text-sm text-ink outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/30"
+        className="flex w-full items-center justify-between gap-2 rounded-xl border border-line bg-canvas/60 px-3.5 py-2.5 text-left text-sm text-ink outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/30 disabled:cursor-not-allowed disabled:opacity-50"
       >
         <span className={selected ? 'text-ink' : 'text-faint'}>
           {selected ? selected.label : placeholder}
