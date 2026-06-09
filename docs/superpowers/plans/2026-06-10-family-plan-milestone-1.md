@@ -620,11 +620,16 @@ describe('MembersService.changeRole', () => {
       workspaceMember: {
         findFirst: jest.fn().mockResolvedValue({ id: 'm2', role: 'VIEWER', userId: 'u2' }),
         update,
+        // changeRole returns via requireMemberView -> listMembers -> findMany
+        findMany: jest.fn().mockResolvedValue([
+          { id: 'm2', userId: 'u2', role: 'CO_MANAGER', joinedAt: new Date('2026-02-01'), user: { displayName: 'Ada', email: 'a@x.com' } },
+        ]),
       },
     });
     const { service } = build(prisma);
-    await service.changeRole('ws1', 'm2', { role: 'CO_MANAGER' });
+    const result = await service.changeRole('ws1', 'm2', { role: 'CO_MANAGER' });
     expect(update).toHaveBeenCalledWith({ where: { id: 'm2' }, data: { role: 'CO_MANAGER' } });
+    expect(result).toEqual(expect.objectContaining({ id: 'm2', role: 'CO_MANAGER' }));
   });
 
   it('404s for a member not in the workspace', async () => {
@@ -2307,3 +2312,5 @@ git commit -m "chore(family): verification fixes for milestone 1"
 - Member deactivate/suspend (decided against).
 - Cross-workspace financial rollups.
 - Notifications beyond the invite email.
+- **Seat-cap concurrency hardening:** the seat check at invite/accept time is best-effort (TOCTOU window). A truly race-proof cap needs a per-workspace advisory lock or DB-level constraint. Acceptable for a hard-capped 5-seat family in M1; harden in M2 if abuse is observed.
+- **acceptSignup two-phase atomicity:** account provisioning and family-membership linking run in separate transactions. If the second fails, the user has an account but no family membership; recovery is via the idempotent authenticated `accept()` path. M2 could unify these or add a first-login reconciliation/prompt.
