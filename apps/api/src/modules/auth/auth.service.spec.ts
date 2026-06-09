@@ -533,6 +533,40 @@ describe('AuthService', () => {
     });
   });
 
+  describe('provisionInvitedUser', () => {
+    it('creates a user + personal workspace + categories and returns tokens, no verification email', async () => {
+      const prisma = createPrismaMock();
+      prisma.user.create.mockResolvedValue({
+        id: 'u9', displayName: 'Ada Lovelace', email: 'ada@example.com',
+        emailVerified: false, timezone: 'UTC', accountNumber: '9999999999', preferences: null,
+      });
+      prisma.workspace.create.mockResolvedValue({
+        id: 'w9', name: "Ada's Finances", slug: 'ada-finances-cd34',
+        tier: 'FREE', baseCurrency: 'USD', preferredCurrencies: ['USD'],
+      });
+      prisma.workspaceMember.create.mockResolvedValue({ id: 'm9' });
+      prisma.category.createMany.mockResolvedValue({ count: 10 });
+      prisma.refreshToken.create.mockResolvedValue({ id: 'rt9' });
+
+      const service = buildService(prisma);
+      const result = await service.provisionInvitedUser({
+        email: 'ada@example.com', displayName: 'Ada Lovelace',
+        password: 'SuperSecret123!', baseCurrency: 'USD', timezone: 'UTC',
+      });
+
+      expect(prisma.user.create).toHaveBeenCalledTimes(1);
+      expect(prisma.workspace.create).toHaveBeenCalledTimes(1);
+      expect(prisma.workspaceMember.create).toHaveBeenCalledTimes(1);
+      const userCreateArg = prisma.user.create.mock.calls[0]?.[0] as { data: { passwordHash: string; email: string } };
+      expect(userCreateArg.data.email).toBe('ada@example.com');
+      expect(await bcrypt.compare('SuperSecret123!', userCreateArg.data.passwordHash)).toBe(true);
+      expect(result.accessToken).toEqual(expect.any(String));
+      expect(result.refreshToken).toEqual(expect.any(String));
+      expect(result.user.email).toBe('ada@example.com');
+      expect(emailMock.sendVerification).not.toHaveBeenCalled();
+    });
+  });
+
   describe('parsePreferences', () => {
     const defaults = { dateFormat: 'MEDIUM', numberFormat: 'GROUPED', currencyDisplay: 'SYMBOL' };
 

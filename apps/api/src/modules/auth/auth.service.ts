@@ -124,6 +124,83 @@ export class AuthService {
     }
   }
 
+  /**
+   * Create a brand-new user + their personal workspace (no email verification send).
+   * Used by the invite-accept-signup flow; the caller links the family membership.
+   * Returns the created user view and a fresh token pair.
+   */
+  async provisionInvitedUser(input: {
+    email: string;
+    displayName: string;
+    password: string;
+    baseCurrency: string;
+    timezone: string;
+  }): Promise<AuthResult> {
+    const passwordHash = await bcrypt.hash(input.password, this.rounds());
+    const firstName = input.displayName.split(/\s+/)[0] ?? input.displayName;
+    const workspaceName = `${firstName}'s Finances`;
+    const slug = `${slugify(`${firstName} finances`)}-${randomBytes(2).toString('hex')}`;
+    const accountNumber = await uniqueAccountNumber(this.prisma);
+
+    try {
+      const { user, workspace } = await this.prisma.$transaction(async (tx) => {
+        const createdUser = await tx.user.create({
+          data: {
+            email: input.email,
+            passwordHash,
+            displayName: input.displayName,
+            timezone: input.timezone,
+            accountNumber,
+            preferences: DEFAULT_PREFERENCES as unknown as Prisma.InputJsonValue,
+          },
+          select: {
+            id: true,
+            displayName: true,
+            email: true,
+            emailVerified: true,
+            timezone: true,
+            accountNumber: true,
+            preferences: true,
+          },
+        });
+
+        const createdWorkspace = await tx.workspace.create({
+          data: { name: workspaceName, slug, baseCurrency: input.baseCurrency, preferredCurrencies: [input.baseCurrency] },
+          select: { id: true, name: true, slug: true, tier: true, baseCurrency: true, preferredCurrencies: true },
+        });
+
+        await tx.workspaceMember.create({
+          data: {
+            workspaceId: createdWorkspace.id,
+            userId: createdUser.id,
+            role: 'OWNER',
+            acceptedAt: new Date(),
+          },
+        });
+
+        await tx.category.createMany({
+          data: DEFAULT_CATEGORIES.map((category) => ({
+            workspaceId: createdWorkspace.id,
+            name: category.name,
+            color: category.color,
+            icon: category.icon,
+            isDefault: true,
+          })),
+        });
+
+        return { user: createdUser, workspace: createdWorkspace };
+      });
+
+      const tokens = await this.issueTokenPair(user.id, user.email);
+      return { user: this.toUserView(user), workspace: this.toWorkspaceView(workspace), ...tokens };
+    } catch (error) {
+      if (isUniqueConstraintError(error)) {
+        throw new ConflictException('An account with that email already exists.');
+      }
+      throw error;
+    }
+  }
+
   async login(input: LoginInput): Promise<AuthResult> {
     const user = await this.prisma.user.findUnique({
       where: { email: input.email },
