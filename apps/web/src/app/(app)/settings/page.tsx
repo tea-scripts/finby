@@ -6,6 +6,7 @@ import { ProfileSection } from '@/components/settings/profile-section';
 import { CurrenciesSection } from '@/components/settings/currencies-section';
 import { PreferencesSection } from '@/components/settings/preferences-section';
 import { FeedbackSection } from '@/components/settings/feedback-section';
+import { MembersSection } from '@/components/settings/members-section';
 import { ReferSection } from '@/components/settings/refer-section';
 
 export default function SettingsPage() {
@@ -27,6 +28,8 @@ export default function SettingsPage() {
           </h2>
           <PlanCard />
         </section>
+
+        <MembersSection />
 
         <ReferSection />
 
