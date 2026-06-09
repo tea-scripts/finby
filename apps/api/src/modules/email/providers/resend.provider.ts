@@ -21,7 +21,13 @@ export class ResendProvider implements EmailProvider {
 
   async send(message: EmailMessage): Promise<void> {
     if (!this.client) {
-      this.logger.log(`[email skipped] to=${message.to} subject="${message.subject}"`);
+      // Local dev (no RESEND_API_KEY): surface the CTA link so flows that depend
+      // on an emailed link (invite accept, email verify, password reset) are
+      // testable without a real mail provider. Never runs when a key is set.
+      const link = message.html.match(/href="([^"]+)"/)?.[1];
+      this.logger.log(
+        `[email skipped] to=${message.to} subject="${message.subject}"${link ? ` link=${link}` : ''}`,
+      );
       return;
     }
     const { error } = await this.client.emails.send({
