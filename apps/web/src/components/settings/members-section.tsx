@@ -12,6 +12,8 @@ export function MembersSection() {
   const workspace = useAuth((s) => s.workspace);
   const workspaces = useAuth((s) => s.workspaces);
   const activeId = useAuth((s) => s.activeWorkspaceId);
+  const fetchWorkspaces = useAuth((s) => s.fetchWorkspaces);
+  const setActiveWorkspace = useAuth((s) => s.setActiveWorkspace);
   const myRole = workspaces.find((w) => w.workspaceId === activeId)?.role ?? 'VIEWER';
   const isOwner = myRole === 'OWNER';
 
@@ -62,6 +64,24 @@ export function MembersSection() {
     try { await fn(); await refresh(); }
     catch (err) { setError(err instanceof Error ? err.message : 'Action failed.'); }
     finally { setBusy(false); }
+  }
+
+  // Leaving is special: don't refresh() the workspace you just left (it would 404).
+  // Refresh the membership list and switch the active workspace to a remaining one,
+  // which unmounts this Family-only section.
+  async function onLeave() {
+    if (!wsId) return;
+    setBusy(true); setError(null);
+    try {
+      await leaveWorkspace(wsId);
+      await fetchWorkspaces();
+      const remaining = useAuth.getState().workspaces.find((w) => w.workspaceId !== wsId);
+      if (remaining) setActiveWorkspace(remaining.workspaceId);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not leave this family.');
+    } finally {
+      setBusy(false);
+    }
   }
 
   return (
@@ -156,7 +176,7 @@ export function MembersSection() {
         {!isOwner && (
           <button
             type="button" disabled={busy}
-            onClick={() => act(() => leaveWorkspace(wsId!))}
+            onClick={onLeave}
             className="text-sm text-red-400 hover:text-red-300"
           >
             Leave this family
