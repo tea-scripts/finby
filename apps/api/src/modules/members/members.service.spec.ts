@@ -85,3 +85,36 @@ describe('MembersService.inviteMember', () => {
     expect(result).toEqual(expect.objectContaining({ id: 'inv1', email: 'a@x.com', role: 'CO_MANAGER' }));
   });
 });
+
+describe('MembersService.listMembers', () => {
+  it('maps members and flags the acting user as self', async () => {
+    const prisma = buildPrisma({
+      workspaceMember: {
+        findMany: jest.fn().mockResolvedValue([
+          { id: 'm1', userId: 'u1', role: 'OWNER', joinedAt: new Date('2026-01-01'), user: { displayName: 'Bola', email: 'b@x.com' } },
+          { id: 'm2', userId: 'u2', role: 'VIEWER', joinedAt: new Date('2026-02-01'), user: { displayName: 'Ada', email: 'a@x.com' } },
+        ]),
+      },
+    });
+    const { service } = build(prisma);
+    const members = await service.listMembers('ws1', 'u2');
+    expect(members).toHaveLength(2);
+    expect(members[0]).toEqual(expect.objectContaining({ id: 'm1', displayName: 'Bola', role: 'OWNER', isSelf: false }));
+    expect(members[1]).toEqual(expect.objectContaining({ id: 'm2', displayName: 'Ada', isSelf: true }));
+  });
+});
+
+describe('MembersService.listInvites', () => {
+  it('returns pending invites mapped to views', async () => {
+    const prisma = buildPrisma({
+      workspaceInvite: {
+        findMany: jest.fn().mockResolvedValue([
+          { id: 'inv1', email: 'a@x.com', role: 'VIEWER', invitedByUserId: 'u1', expiresAt: new Date(), createdAt: new Date() },
+        ]),
+      },
+    });
+    const { service } = build(prisma);
+    const invites = await service.listInvites('ws1');
+    expect(invites).toEqual([expect.objectContaining({ id: 'inv1', email: 'a@x.com', role: 'VIEWER' })]);
+  });
+});

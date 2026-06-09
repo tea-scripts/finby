@@ -106,6 +106,37 @@ export class MembersService {
     return this.toInviteView(invite);
   }
 
+  async listMembers(workspaceId: string, currentUserId: string): Promise<MemberView[]> {
+    const members = await this.prisma.workspaceMember.findMany({
+      where: { workspaceId },
+      orderBy: { joinedAt: 'asc' },
+      select: {
+        id: true,
+        userId: true,
+        role: true,
+        joinedAt: true,
+        user: { select: { displayName: true, email: true } },
+      },
+    });
+    return members.map((m) => ({
+      id: m.id,
+      userId: m.userId,
+      displayName: m.user.displayName,
+      email: m.user.email,
+      role: m.role,
+      joinedAt: m.joinedAt,
+      isSelf: m.userId === currentUserId,
+    }));
+  }
+
+  async listInvites(workspaceId: string): Promise<InviteView[]> {
+    const invites = await this.prisma.workspaceInvite.findMany({
+      where: { workspaceId, status: 'PENDING' },
+      orderBy: { createdAt: 'desc' },
+    });
+    return invites.map((i) => this.toInviteView(i));
+  }
+
   private toInviteView(i: {
     id: string;
     email: string;
