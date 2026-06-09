@@ -3,6 +3,7 @@ import type { ReactNode } from 'react';
 import { Bricolage_Grotesque } from 'next/font/google';
 import { GeistSans } from 'geist/font/sans';
 import { GeistMono } from 'geist/font/mono';
+import { Analytics } from '@vercel/analytics/next';
 import { PostHogProvider } from '@/components/analytics/posthog-provider';
 import { SplashScreen } from '@/components/app/splash-screen';
 import './globals.css';
@@ -39,6 +40,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       <body>
         <SplashScreen />
         <PostHogProvider>{children}</PostHogProvider>
+        <Analytics />
       </body>
     </html>
   );
