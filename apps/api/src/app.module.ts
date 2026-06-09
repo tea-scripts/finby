@@ -25,6 +25,7 @@ import { FxModule } from './modules/fx/fx.module';
 import { MarketModule } from './modules/market/market.module';
 import { PortfolioModule } from './modules/portfolio/portfolio.module';
 import { PushModule } from './modules/push/push.module';
+import { MembersModule } from './modules/members/members.module';
 import { SettingsModule } from './modules/settings/settings.module';
 import { TransactionsModule } from './modules/transactions/transactions.module';
 import { PrismaModule } from './prisma/prisma.module';
@@ -97,6 +98,7 @@ import { RedisModule } from './redis/redis.module';
     PushModule,
     ChatModule,
     SettingsModule,
+    MembersModule,
     FeedbackModule,
   ],
   controllers: [AppController],
