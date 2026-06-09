@@ -159,6 +159,7 @@ export const CURRENCIES: Currency[] = [
   { code: 'KES', name: 'Kenyan Shilling', symbol: 'KSh' },
   { code: 'GHS', name: 'Ghanaian Cedi', symbol: 'GH₵' },
   { code: 'ZAR', name: 'South African Rand', symbol: 'R' },
+  { code: 'BWP', name: 'Botswana Pula', symbol: 'P' },
   { code: 'CAD', name: 'Canadian Dollar', symbol: 'CA$' },
   { code: 'AUD', name: 'Australian Dollar', symbol: 'A$' },
   { code: 'INR', name: 'Indian Rupee', symbol: '₹' },
