@@ -120,3 +120,28 @@ describe('setPreferredCurrencies', () => {
     expect(useAuth.getState().workspace).toBeNull();
   });
 });
+
+describe('workspace switcher', () => {
+  it('setActiveWorkspace swaps the active workspace to a known membership', () => {
+    useAuth.setState({
+      workspace: { id: 'ws1', name: 'Mine', slug: 's1', tier: 'FREE', baseCurrency: 'USD', preferredCurrencies: ['USD'] } as never,
+      workspaces: [
+        { workspaceId: 'ws1', name: 'Mine', slug: 's1', tier: 'FREE', role: 'OWNER', baseCurrency: 'USD' },
+        { workspaceId: 'ws2', name: 'Fam', slug: 's2', tier: 'FAMILY', role: 'VIEWER', baseCurrency: 'USD' },
+      ],
+      activeWorkspaceId: 'ws1',
+    } as never);
+
+    useAuth.getState().setActiveWorkspace('ws2');
+
+    expect(useAuth.getState().activeWorkspaceId).toBe('ws2');
+    expect(useAuth.getState().workspace?.id).toBe('ws2');
+    expect(useAuth.getState().workspace?.tier).toBe('FAMILY');
+  });
+
+  it('setActiveWorkspace ignores an unknown id', () => {
+    useAuth.setState({ workspaces: [], activeWorkspaceId: 'ws1' } as never);
+    useAuth.getState().setActiveWorkspace('nope');
+    expect(useAuth.getState().activeWorkspaceId).toBe('ws1');
+  });
+});

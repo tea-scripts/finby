@@ -9,6 +9,7 @@ import type {
   AuthResult,
   RegisterInput,
   TokenPair,
+  WorkspaceMembershipSummary,
 } from './types';
 
 /**
@@ -39,6 +40,10 @@ interface AuthState {
   authed: <T>(path: string, init?: RequestInit) => Promise<T>;
   markVerified: () => void;
   refreshUser: () => Promise<void>;
+  workspaces: WorkspaceMembershipSummary[];
+  activeWorkspaceId: string | null;
+  fetchWorkspaces: () => Promise<void>;
+  setActiveWorkspace: (id: string) => void;
   setWorkspaceTier: (tier: import('./types').SubscriptionTier) => void;
   setUser: (patch: Partial<ApiUser>) => void;
   setPreferredCurrencies: (codes: string[]) => void;
@@ -50,6 +55,8 @@ const CLEARED = {
   user: null,
   workspace: null,
   status: 'idle' as const,
+  workspaces: [] as WorkspaceMembershipSummary[],
+  activeWorkspaceId: null as string | null,
 };
 
 export const useAuth = create<AuthState>()(
@@ -68,6 +75,7 @@ export const useAuth = create<AuthState>()(
           user: normalizeUser(result.user),
           workspace: result.workspace,
           status: 'authed',
+          activeWorkspaceId: result.workspace.id,
         });
         identifyUser(result.user.id, result.workspace.tier);
         track('signed_up', { method: 'password' });
@@ -84,6 +92,7 @@ export const useAuth = create<AuthState>()(
           user: normalizeUser(result.user),
           workspace: result.workspace,
           status: 'authed',
+          activeWorkspaceId: result.workspace.id,
         });
         identifyUser(result.user.id, result.workspace.tier);
       },
@@ -158,6 +167,35 @@ export const useAuth = create<AuthState>()(
         );
       },
 
+      fetchWorkspaces: async () => {
+        try {
+          const list = await get().authed<WorkspaceMembershipSummary[]>('/auth/workspaces');
+          set({ workspaces: list });
+        } catch {
+          /* ignore — keep current list */
+        }
+      },
+
+      setActiveWorkspace: (id) => {
+        const target = get().workspaces.find((w) => w.workspaceId === id);
+        if (!target) return;
+        const current = get().workspace;
+        set({
+          activeWorkspaceId: id,
+          workspace: {
+            ...(current ?? ({} as ApiWorkspace)),
+            id: target.workspaceId,
+            name: target.name,
+            slug: target.slug,
+            tier: target.tier,
+            baseCurrency: target.baseCurrency,
+            preferredCurrencies: current?.id === id ? (current?.preferredCurrencies ?? []) : [],
+          } as ApiWorkspace,
+        });
+        const u = get().user;
+        if (u) identifyUser(u.id, target.tier);
+      },
+
       authed: async <T>(path: string, init: RequestInit = {}): Promise<T> => {
         const withToken = (token: string | null): RequestInit => ({
           ...init,
@@ -194,6 +232,8 @@ export const useAuth = create<AuthState>()(
         user: s.user,
         workspace: s.workspace,
         status: s.status,
+        workspaces: s.workspaces,
+        activeWorkspaceId: s.activeWorkspaceId,
       }),
     },
   ),
