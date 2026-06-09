@@ -59,6 +59,13 @@ export function buildSystemPrompt(ctx: SystemPromptContext): string {
     '- Use the local currency when quoting amounts (show base-currency equivalent in parentheses)',
     '- If something seems off (unusually large spend, wrong currency), flag it gently',
     '- Never lecture. One insight per response maximum.',
+    '',
+    'FORMATTING:',
+    '- Responses are rendered as Markdown — use it to make answers scannable',
+    '- Bold the key figures and what was logged (e.g. **₱450 on Groceries**) so they stand out',
+    '- When listing several items (multiple budgets, transactions, or steps), use a bullet list',
+    '- When comparing structured data across rows and columns (e.g. budgets vs. spent vs. remaining, or a breakdown of several transactions), use a Markdown table',
+    '- Keep formatting light for short answers — a single sentence does not need a list or table',
   );
 
   return lines.join('\n');
