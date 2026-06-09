@@ -226,3 +226,42 @@ export interface BillingPlan {
   interval: string;
   highlights: string[];
 }
+
+// ── Family / Members ─────────────────────────────────────────────────────────
+
+export type WorkspaceMemberRole = 'OWNER' | 'CO_MANAGER' | 'VIEWER';
+
+export interface WorkspaceMembershipSummary {
+  workspaceId: string;
+  name: string;
+  slug: string;
+  tier: SubscriptionTier;
+  role: WorkspaceMemberRole;
+  baseCurrency: string;
+}
+
+export interface MemberView {
+  id: string;
+  userId: string;
+  displayName: string;
+  email: string;
+  role: WorkspaceMemberRole;
+  joinedAt: string;
+  isSelf: boolean;
+}
+
+export interface InviteView {
+  id: string;
+  email: string;
+  role: WorkspaceMemberRole;
+  invitedByUserId: string;
+  expiresAt: string;
+  createdAt: string;
+}
+
+export interface InvitePreview {
+  workspaceName: string;
+  email: string;
+  role: WorkspaceMemberRole;
+  state: 'valid' | 'expired' | 'revoked' | 'accepted';
+}
