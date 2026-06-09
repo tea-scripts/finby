@@ -145,7 +145,6 @@ export class MembersService {
     });
     if (!member) throw new NotFoundException('Member not found.');
     if (member.role === 'OWNER') throw new BadRequestException("The owner's role cannot be changed.");
-    if (input.role === 'OWNER') throw new BadRequestException('Ownership cannot be transferred here.');
     await this.prisma.workspaceMember.update({ where: { id: memberId }, data: { role: input.role } });
     return this.requireMemberView(workspaceId, memberId, member.userId);
   }

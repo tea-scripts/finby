@@ -1,7 +1,5 @@
 import { z } from 'zod';
 
-const roleSchema = z.enum(['OWNER', 'CO_MANAGER', 'VIEWER']);
-
 export const createInviteSchema = z.object({
   email: z.string().trim().email().toLowerCase(),
   role: z.enum(['CO_MANAGER', 'VIEWER']).default('VIEWER'),
@@ -9,7 +7,7 @@ export const createInviteSchema = z.object({
 export type CreateInviteInput = z.infer<typeof createInviteSchema>;
 
 export const changeRoleSchema = z.object({
-  role: roleSchema,
+  role: z.enum(['CO_MANAGER', 'VIEWER']),
 });
 export type ChangeRoleInput = z.infer<typeof changeRoleSchema>;
 
