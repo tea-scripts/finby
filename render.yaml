@@ -39,7 +39,7 @@ services:
       - key: JWT_REFRESH_TTL
         value: 7d
       - key: BCRYPT_ROUNDS
-        value: "12"
+        value: "10" # 0.5 vCPU starter box: 12 rounds ×2 hashes/register caps signup throughput. 10 is OWASP-acceptable.
       - key: VAPID_SUBJECT
         value: mailto:support@finby.app
       # --- generated once by Render ---
@@ -54,7 +54,12 @@ services:
           type: keyvalue
           property: connectionString
       # --- secrets: paste in the Render dashboard (never committed) ---
-      - key: DATABASE_URL # Prisma Postgres DIRECT string + ?connection_limit=5
+      # App traffic uses the Accelerate ("Prisma ORM") string — managed pooling + global edge.
+      # The plain client (5.22) connects to it natively; no extension needed. The DIRECT
+      # string exhausts connections under load (Prisma's documented footgun) — migrations only.
+      - key: DATABASE_URL # Accelerate string: prisma+postgres://accelerate.prisma-data.net/?api_key=…
+        sync: false
+      - key: DIRECT_DATABASE_URL # Direct ("Any Client") string: postgres://… — used only by `prisma migrate deploy`
         sync: false
       - key: ANTHROPIC_API_KEY
         sync: false
