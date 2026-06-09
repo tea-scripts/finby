@@ -9,6 +9,7 @@ export type AnalyticsEvent =
   | 'onboarding_skipped'
   | 'signed_up'
   | 'chat_message_sent'
+  | 'chat_cleared'
   | 'transaction_logged'
   | 'budget_set'
   | 'upgrade_modal_viewed'

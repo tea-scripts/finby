@@ -3,19 +3,28 @@
 import { useState, type FormEvent, type KeyboardEvent } from 'react';
 import { Button } from '@/components/ui/button';
 
-/** Chat input. Enter sends, Shift+Enter inserts a newline. */
+/** Chat input. Enter sends, Shift+Enter inserts a newline.
+ *  Typing the `/clear` command starts a fresh chat instead of sending. */
 export function Composer({
   disabled,
   onSend,
+  onClearCommand,
 }: {
   disabled: boolean;
   onSend: (content: string) => void;
+  onClearCommand: () => void;
 }) {
   const [value, setValue] = useState('');
 
   function submit() {
     const content = value.trim();
     if (!content || disabled) return;
+    // `/clear` is a client-side command — it never reaches the LLM.
+    if (content.toLowerCase() === '/clear') {
+      setValue('');
+      onClearCommand();
+      return;
+    }
     onSend(content);
     setValue('');
   }

@@ -7,7 +7,9 @@ import { ConfirmationCard } from '@/components/chat/confirmation-card';
 import { MessageBubble } from '@/components/chat/message-bubble';
 import { TypingDots } from '@/components/chat/typing-dots';
 import { UpgradeModal } from '@/components/billing/UpgradeModal';
+import { Button } from '@/components/ui/button';
 import { Lottie } from '@/components/ui/lottie';
+import { Modal } from '@/components/ui/modal';
 import { ApiError } from '@/lib/api-client';
 import { dayKey, dayLabel } from '@/lib/format';
 import {
@@ -49,6 +51,8 @@ export default function ChatPage() {
   const [sending, setSending] = useState(false);
   const [notice, setNotice] = useState<Notice>(null);
   const [upgradeOpen, setUpgradeOpen] = useState(false);
+  const [clearOpen, setClearOpen] = useState(false);
+  const [clearing, setClearing] = useState(false);
 
   const initialized = useRef(false);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -137,6 +141,34 @@ export default function ChatPage() {
     }
   }
 
+  // `/clear` and the "New chat" button both land here. Nothing to clear on an
+  // empty thread, so it's a no-op (avoids spawning throwaway conversations).
+  function requestClear() {
+    if (messages.length === 0 || sending || clearing) return;
+    setClearOpen(true);
+  }
+
+  // Start a fresh conversation: the old one stays in the DB (recoverable),
+  // and the AI context resets because summary/history are per-conversation.
+  // No financial data is touched — transactions live independently of chat.
+  async function confirmClear() {
+    if (!workspace) return;
+    setClearing(true);
+    try {
+      const { id } = await createConversation(workspace.id);
+      setConversationId(id);
+      setMessages([]);
+      setNotice(null);
+      setClearOpen(false);
+      track('chat_cleared');
+    } catch (err) {
+      setClearOpen(false);
+      handleError(err);
+    } finally {
+      setClearing(false);
+    }
+  }
+
   if (loadingHistory) {
     return (
       <div className="flex h-full items-center justify-center">
@@ -153,6 +185,18 @@ export default function ChatPage() {
 
   return (
     <div className="flex h-full flex-col pb-nav">
+      {messages.length > 0 && (
+        <div className="flex shrink-0 justify-end px-4 pt-3">
+          <button
+            type="button"
+            onClick={requestClear}
+            disabled={sending || clearing}
+            className="rounded-full border border-line bg-surface/80 px-3 py-1.5 text-xs text-muted backdrop-blur transition hover:border-accent/50 hover:text-ink disabled:opacity-50"
+          >
+            + New chat
+          </button>
+        </div>
+      )}
       <div ref={scrollRef} className="flex-1 overflow-y-auto">
         <div className="mx-auto flex w-full max-w-2xl flex-col gap-4 px-4 py-6">
           {messages.length === 0 && (
@@ -222,11 +266,31 @@ export default function ChatPage() {
               )}
             </div>
           )}
-          <Composer disabled={sending} onSend={handleSend} />
+          <Composer disabled={sending} onSend={handleSend} onClearCommand={requestClear} />
         </div>
       </div>
 
       <UpgradeModal open={upgradeOpen} onClose={() => setUpgradeOpen(false)} source="chat_limit" />
+
+      <Modal open={clearOpen} onClose={() => !clearing && setClearOpen(false)} title="Start a fresh chat?">
+        <p className="text-sm text-muted">
+          This clears the current chat from view and starts a new one. Your previous messages are
+          saved, and all your logged transactions stay untouched.
+        </p>
+        <div className="mt-5 flex justify-end gap-2">
+          <button
+            type="button"
+            onClick={() => setClearOpen(false)}
+            disabled={clearing}
+            className="rounded-lg border border-line bg-surface px-3.5 py-2 text-sm text-muted transition hover:text-ink disabled:opacity-50"
+          >
+            Cancel
+          </button>
+          <Button type="button" onClick={confirmClear} loading={clearing}>
+            Start fresh
+          </Button>
+        </div>
+      </Modal>
     </div>
   );
 }
