@@ -1,6 +1,13 @@
 import { EmailService } from './email.service';
 import type { EmailProvider } from './email.provider';
 
+function build() {
+  const send = jest.fn().mockResolvedValue(undefined);
+  const provider: EmailProvider = { send };
+  const service = new EmailService(provider);
+  return { service, send };
+}
+
 describe('EmailService', () => {
   const send = jest.fn().mockResolvedValue(undefined);
   const provider: EmailProvider = { send };
@@ -24,5 +31,19 @@ describe('EmailService', () => {
   it('sendPasswordReset → reset url in html', async () => {
     await service.sendPasswordReset('a@b.com', 'https://chat.finby.app/reset-password?token=xyz');
     expect(send.mock.calls[0][0].html).toContain('token=xyz');
+  });
+});
+
+describe('EmailService.sendMemberInvite', () => {
+  it('sends an invite email containing the accept URL and inviter/workspace names', async () => {
+    const { service, send } = build();
+    await service.sendMemberInvite('a@x.com', 'Bola', 'The Johnson Family', 'https://app/invite/tok123');
+    expect(send).toHaveBeenCalledTimes(1);
+    const msg = send.mock.calls[0][0];
+    expect(msg.to).toBe('a@x.com');
+    expect(msg.subject).toContain('family');
+    expect(msg.html).toContain('https://app/invite/tok123');
+    expect(msg.html).toContain('The Johnson Family');
+    expect(msg.html).toContain('Bola');
   });
 });

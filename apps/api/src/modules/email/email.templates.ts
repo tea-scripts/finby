@@ -77,3 +77,17 @@ export function passwordResetEmail(resetUrl: string): { subject: string; html: s
       <p style="color:#5b6f8c;font-size:13px;line-height:1.5;margin:22px 0 0;">This link expires in 1 hour. If you didn't request this, ignore this email — your password is unchanged.</p>`),
   };
 }
+
+export function memberInviteEmail(
+  inviterName: string,
+  workspaceName: string,
+  acceptUrl: string,
+): { subject: string; html: string } {
+  return {
+    subject: `You're invited to a Finby family workspace`,
+    html: SHELL(`<h1 style="font-size:20px;margin:0 0 12px;color:#e8eef7;">Join ${esc(workspaceName)}</h1>
+      <p style="margin:0 0 22px;line-height:1.5;color:#8da3c0;">${esc(inviterName)} invited you to share their Finby family workspace. Accept to see and help manage your shared finances.</p>
+      ${button(acceptUrl, 'Accept invitation')}
+      <p style="color:#5b6f8c;font-size:13px;line-height:1.5;margin:22px 0 0;">This invitation expires in 7 days. If you weren't expecting it, you can ignore this email.</p>`),
+  };
+}
