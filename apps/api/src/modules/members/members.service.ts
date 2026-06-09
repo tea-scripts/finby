@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ConflictException,
   ForbiddenException,
   Injectable,
@@ -9,7 +10,7 @@ import { createHash, randomBytes } from 'node:crypto';
 import { PrismaService } from '../../prisma/prisma.service';
 import type { Env } from '../../config/env.schema';
 import { EmailService } from '../email/email.service';
-import type { CreateInviteInput } from './dto/members.schemas';
+import type { CreateInviteInput, ChangeRoleInput } from './dto/members.schemas';
 
 const INVITE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
@@ -135,6 +136,48 @@ export class MembersService {
       orderBy: { createdAt: 'desc' },
     });
     return invites.map((i) => this.toInviteView(i));
+  }
+
+  async changeRole(workspaceId: string, memberId: string, input: ChangeRoleInput): Promise<MemberView> {
+    const member = await this.prisma.workspaceMember.findFirst({
+      where: { id: memberId, workspaceId },
+      select: { id: true, role: true, userId: true },
+    });
+    if (!member) throw new NotFoundException('Member not found.');
+    if (member.role === 'OWNER') throw new BadRequestException("The owner's role cannot be changed.");
+    if (input.role === 'OWNER') throw new BadRequestException('Ownership cannot be transferred here.');
+    await this.prisma.workspaceMember.update({ where: { id: memberId }, data: { role: input.role } });
+    return this.requireMemberView(workspaceId, memberId, member.userId);
+  }
+
+  async removeMember(workspaceId: string, memberId: string): Promise<void> {
+    const member = await this.prisma.workspaceMember.findFirst({
+      where: { id: memberId, workspaceId },
+      select: { id: true, role: true },
+    });
+    if (!member) throw new NotFoundException('Member not found.');
+    if (member.role === 'OWNER') {
+      throw new BadRequestException('The owner cannot be removed. Cancel the Family subscription instead.');
+    }
+    await this.prisma.workspaceMember.delete({ where: { id: memberId } });
+  }
+
+  async leave(workspaceId: string, currentUserId: string): Promise<void> {
+    const member = await this.prisma.workspaceMember.findFirst({
+      where: { workspaceId, userId: currentUserId },
+      select: { id: true, role: true },
+    });
+    if (!member) throw new NotFoundException('You are not a member of this workspace.');
+    if (member.role === 'OWNER') {
+      throw new BadRequestException('The owner cannot leave. Cancel the Family subscription instead.');
+    }
+    await this.prisma.workspaceMember.delete({ where: { id: member.id } });
+  }
+
+  private async requireMemberView(workspaceId: string, memberId: string, currentUserId: string): Promise<MemberView> {
+    const found = (await this.listMembers(workspaceId, currentUserId)).find((m) => m.id === memberId);
+    if (!found) throw new NotFoundException('Member not found.');
+    return found;
   }
 
   private toInviteView(i: {

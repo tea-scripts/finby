@@ -1,4 +1,4 @@
-import { ConflictException, ForbiddenException } from '@nestjs/common';
+import { BadRequestException, ConflictException, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { MembersService } from './members.service';
 
 function buildPrisma(overrides: Record<string, unknown> = {}) {
@@ -116,5 +116,85 @@ describe('MembersService.listInvites', () => {
     const { service } = build(prisma);
     const invites = await service.listInvites('ws1');
     expect(invites).toEqual([expect.objectContaining({ id: 'inv1', email: 'a@x.com', role: 'VIEWER' })]);
+  });
+});
+
+describe('MembersService.changeRole', () => {
+  it('rejects changing an OWNER role', async () => {
+    const prisma = buildPrisma({
+      workspaceMember: { findFirst: jest.fn().mockResolvedValue({ id: 'm1', role: 'OWNER', userId: 'u1' }) },
+    });
+    const { service } = build(prisma);
+    await expect(service.changeRole('ws1', 'm1', { role: 'VIEWER' })).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it('updates a non-owner member role', async () => {
+    const update = jest.fn().mockResolvedValue({ id: 'm2', role: 'CO_MANAGER' });
+    const prisma = buildPrisma({
+      workspaceMember: {
+        findFirst: jest.fn().mockResolvedValue({ id: 'm2', role: 'VIEWER', userId: 'u2' }),
+        update,
+        // changeRole returns via requireMemberView -> listMembers -> findMany
+        findMany: jest.fn().mockResolvedValue([
+          { id: 'm2', userId: 'u2', role: 'CO_MANAGER', joinedAt: new Date('2026-02-01'), user: { displayName: 'Ada', email: 'a@x.com' } },
+        ]),
+      },
+    });
+    const { service } = build(prisma);
+    const result = await service.changeRole('ws1', 'm2', { role: 'CO_MANAGER' });
+    expect(update).toHaveBeenCalledWith({ where: { id: 'm2' }, data: { role: 'CO_MANAGER' } });
+    expect(result).toEqual(expect.objectContaining({ id: 'm2', role: 'CO_MANAGER' }));
+  });
+
+  it('404s for a member not in the workspace', async () => {
+    const prisma = buildPrisma({ workspaceMember: { findFirst: jest.fn().mockResolvedValue(null) } });
+    const { service } = build(prisma);
+    await expect(service.changeRole('ws1', 'mX', { role: 'VIEWER' })).rejects.toBeInstanceOf(NotFoundException);
+  });
+});
+
+describe('MembersService.removeMember', () => {
+  it('rejects removing an OWNER', async () => {
+    const prisma = buildPrisma({
+      workspaceMember: { findFirst: jest.fn().mockResolvedValue({ id: 'm1', role: 'OWNER', userId: 'u1' }) },
+    });
+    const { service } = build(prisma);
+    await expect(service.removeMember('ws1', 'm1')).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it('deletes a non-owner member', async () => {
+    const del = jest.fn().mockResolvedValue({});
+    const prisma = buildPrisma({
+      workspaceMember: {
+        findFirst: jest.fn().mockResolvedValue({ id: 'm2', role: 'VIEWER', userId: 'u2' }),
+        delete: del,
+      },
+    });
+    const { service } = build(prisma);
+    await service.removeMember('ws1', 'm2');
+    expect(del).toHaveBeenCalledWith({ where: { id: 'm2' } });
+  });
+});
+
+describe('MembersService.leave', () => {
+  it('rejects when the leaver is the OWNER', async () => {
+    const prisma = buildPrisma({
+      workspaceMember: { findFirst: jest.fn().mockResolvedValue({ id: 'm1', role: 'OWNER', userId: 'u1' }) },
+    });
+    const { service } = build(prisma);
+    await expect(service.leave('ws1', 'u1')).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it('deletes the leaver membership for a non-owner', async () => {
+    const del = jest.fn().mockResolvedValue({});
+    const prisma = buildPrisma({
+      workspaceMember: {
+        findFirst: jest.fn().mockResolvedValue({ id: 'm2', role: 'VIEWER', userId: 'u2' }),
+        delete: del,
+      },
+    });
+    const { service } = build(prisma);
+    await service.leave('ws1', 'u2');
+    expect(del).toHaveBeenCalledWith({ where: { id: 'm2' } });
   });
 });
