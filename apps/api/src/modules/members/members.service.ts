@@ -161,6 +161,33 @@ export class MembersService {
     await this.prisma.workspaceMember.delete({ where: { id: memberId } });
   }
 
+  async cancelInvite(workspaceId: string, inviteId: string): Promise<void> {
+    const res = await this.prisma.workspaceInvite.updateMany({
+      where: { id: inviteId, workspaceId, status: 'PENDING' },
+      data: { status: 'REVOKED' },
+    });
+    if (res.count === 0) throw new NotFoundException('Pending invite not found.');
+  }
+
+  async resendInvite(workspaceId: string, inviteId: string, inviterName: string): Promise<InviteView> {
+    const invite = await this.prisma.workspaceInvite.findFirst({
+      where: { id: inviteId, workspaceId, status: 'PENDING' },
+      select: { id: true, email: true, role: true },
+    });
+    if (!invite) throw new NotFoundException('Pending invite not found.');
+    const workspace = await this.prisma.workspace.findUnique({ where: { id: workspaceId }, select: { name: true } });
+    if (!workspace) throw new NotFoundException('Workspace not found.');
+
+    const rawToken = randomBytes(32).toString('hex');
+    const updated = await this.prisma.workspaceInvite.update({
+      where: { id: inviteId },
+      data: { tokenHash: hashToken(rawToken), expiresAt: new Date(Date.now() + INVITE_TTL_MS) },
+    });
+    const acceptUrl = `${this.config.get('WEB_URL', { infer: true })}/invite/${rawToken}`;
+    await this.email.sendMemberInvite(invite.email, inviterName, workspace.name, acceptUrl);
+    return this.toInviteView(updated);
+  }
+
   async leave(workspaceId: string, currentUserId: string): Promise<void> {
     const member = await this.prisma.workspaceMember.findFirst({
       where: { workspaceId, userId: currentUserId },

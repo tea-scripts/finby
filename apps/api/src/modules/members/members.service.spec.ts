@@ -198,3 +198,41 @@ describe('MembersService.leave', () => {
     expect(del).toHaveBeenCalledWith({ where: { id: 'm2' } });
   });
 });
+
+describe('MembersService.cancelInvite', () => {
+  it('marks a pending invite REVOKED', async () => {
+    const updateMany = jest.fn().mockResolvedValue({ count: 1 });
+    const prisma = buildPrisma({ workspaceInvite: { updateMany } });
+    const { service } = build(prisma);
+    await service.cancelInvite('ws1', 'inv1');
+    expect(updateMany).toHaveBeenCalledWith({
+      where: { id: 'inv1', workspaceId: 'ws1', status: 'PENDING' },
+      data: { status: 'REVOKED' },
+    });
+  });
+
+  it('404s when no pending invite matched', async () => {
+    const prisma = buildPrisma({ workspaceInvite: { updateMany: jest.fn().mockResolvedValue({ count: 0 }) } });
+    const { service } = build(prisma);
+    await expect(service.cancelInvite('ws1', 'invX')).rejects.toBeInstanceOf(NotFoundException);
+  });
+});
+
+describe('MembersService.resendInvite', () => {
+  it('regenerates the token + expiry and re-sends the email', async () => {
+    const prisma = buildPrisma({
+      workspace: { findUnique: jest.fn().mockResolvedValue({ name: 'Fam', tier: 'FAMILY', maxMembers: 5 }) },
+      workspaceInvite: {
+        findFirst: jest.fn().mockResolvedValue({ id: 'inv1', email: 'a@x.com', role: 'VIEWER', status: 'PENDING' }),
+        update: jest.fn().mockImplementation(({ data }: { data: Record<string, unknown> }) => Promise.resolve({ id: 'inv1', email: 'a@x.com', role: 'VIEWER', invitedByUserId: 'u1', expiresAt: new Date(), createdAt: new Date(), ...data })),
+      },
+    });
+    const { service, email } = build(prisma);
+    await service.resendInvite('ws1', 'inv1', 'Bola');
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const data = (prisma.workspaceInvite as any).update.mock.calls[0][0].data;
+    expect(data.tokenHash).toMatch(/^[a-f0-9]{64}$/);
+    expect(data.expiresAt).toBeInstanceOf(Date);
+    expect(email.sendMemberInvite).toHaveBeenCalledTimes(1);
+  });
+});
