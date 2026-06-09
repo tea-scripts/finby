@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import { NotifToggle } from '@/components/chat/notif-toggle';
 import { Logo } from '@/components/logo';
 import { TierBadge } from '@/components/ui/tier-badge';
+import { WorkspaceSwitcher } from '@/components/workspace/workspace-switcher';
 import { useAuth } from '@/lib/store';
 
 /** Shared top header for the authed app shell. Mirrors the chat screen's
@@ -25,6 +26,7 @@ export function AppHeader() {
         <div className="flex items-center gap-2">
           <Logo />
           <TierBadge tier={tier} />
+          <WorkspaceSwitcher />
         </div>
         <div className="flex items-center gap-3">
           {user && <span className="hidden text-sm text-muted sm:inline">{user.displayName}</span>}
