@@ -47,6 +47,13 @@ enum WorkspaceMemberRole {
   VIEWER       // Read-only. Can view transactions and analytics, cannot log.
 }
 
+enum InviteStatus {
+  PENDING
+  ACCEPTED
+  REVOKED
+  EXPIRED
+}
+
 enum TransactionType {
   EXPENSE
   INCOME
@@ -201,6 +208,7 @@ model Workspace {
 
   // Relations
   members           WorkspaceMember[]
+  invites           WorkspaceInvite[]
   subscription      Subscription?
   transactions      Transaction[]
   categories        Category[]
@@ -243,6 +251,32 @@ model WorkspaceMember {
   @@index([workspaceId])
   @@index([userId])
   @@map("workspace_members")
+}
+
+// ============================================================
+// WORKSPACE INVITES
+// Dedicated invite table for the Family plan flow.
+// Raw token is emailed once and never stored; only the SHA-256
+// hash is persisted so a DB breach cannot be used to accept invites.
+// ============================================================
+
+model WorkspaceInvite {
+  id              String              @id @default(cuid())
+  workspaceId     String
+  workspace       Workspace           @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  email           String              // invitee email, stored lowercased
+  role            WorkspaceMemberRole @default(VIEWER)
+  tokenHash       String              @unique // SHA-256 of raw token; raw is emailed only
+  status          InviteStatus        @default(PENDING)
+  invitedByUserId String
+  expiresAt       DateTime
+  acceptedAt      DateTime?
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+
+  @@unique([workspaceId, email]) // at most one live invite per email per workspace
+  @@index([workspaceId])
+  @@map("workspace_invites")
 }
 
 // ============================================================
