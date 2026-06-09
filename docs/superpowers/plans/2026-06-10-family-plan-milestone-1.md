@@ -266,6 +266,7 @@ function buildPrisma(overrides: Record<string, unknown> = {}) {
     workspaceInvite: {
       count: jest.fn().mockResolvedValue(0),
       findFirst: jest.fn().mockResolvedValue(null),
+      deleteMany: jest.fn().mockResolvedValue({ count: 0 }),
       create: jest.fn().mockImplementation(({ data }: { data: Record<string, unknown> }) =>
         Promise.resolve({ id: 'inv1', ...data }),
       ),
@@ -432,6 +433,12 @@ export class MembersService {
       select: { id: true },
     });
     if (pending) throw new ConflictException('There is already a pending invite for that email.');
+
+    // Clear any stale (REVOKED/ACCEPTED) invite row for this email so the
+    // @@unique([workspaceId, email]) constraint doesn't collide on re-invite.
+    await this.prisma.workspaceInvite.deleteMany({
+      where: { workspaceId, email: input.email, status: { not: 'PENDING' } },
+    });
 
     const rawToken = randomBytes(32).toString('hex');
     const invite = await this.prisma.workspaceInvite.create({
