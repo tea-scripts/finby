@@ -220,17 +220,19 @@ describe('MembersService.cancelInvite', () => {
 
 describe('MembersService.resendInvite', () => {
   it('regenerates the token + expiry and re-sends the email', async () => {
+    const update = jest.fn().mockImplementation(({ data }: { data: Record<string, unknown> }) =>
+      Promise.resolve({ id: 'inv1', email: 'a@x.com', role: 'VIEWER', invitedByUserId: 'u1', expiresAt: new Date(), createdAt: new Date(), ...data }),
+    );
     const prisma = buildPrisma({
       workspace: { findUnique: jest.fn().mockResolvedValue({ name: 'Fam', tier: 'FAMILY', maxMembers: 5 }) },
       workspaceInvite: {
         findFirst: jest.fn().mockResolvedValue({ id: 'inv1', email: 'a@x.com', role: 'VIEWER', status: 'PENDING' }),
-        update: jest.fn().mockImplementation(({ data }: { data: Record<string, unknown> }) => Promise.resolve({ id: 'inv1', email: 'a@x.com', role: 'VIEWER', invitedByUserId: 'u1', expiresAt: new Date(), createdAt: new Date(), ...data })),
+        update,
       },
     });
     const { service, email } = build(prisma);
     await service.resendInvite('ws1', 'inv1', 'Bola');
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const data = (prisma.workspaceInvite as any).update.mock.calls[0][0].data;
+    const data = update.mock.calls[0][0].data;
     expect(data.tokenHash).toMatch(/^[a-f0-9]{64}$/);
     expect(data.expiresAt).toBeInstanceOf(Date);
     expect(email.sendMemberInvite).toHaveBeenCalledTimes(1);
