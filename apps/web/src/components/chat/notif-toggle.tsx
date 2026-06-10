@@ -20,19 +20,25 @@ function BellIcon({ active }: { active: boolean }) {
   );
 }
 
-export function NotifToggle() {
+export function NotifToggle({ onStateChange }: { onStateChange?: (s: PushState) => void } = {}) {
   const workspace = useAuth((s) => s.workspace);
   const [state, setState] = useState<PushState>('off');
   const [busy, setBusy] = useState(false);
 
+  const apply = (s: PushState) => {
+    setState(s);
+    onStateChange?.(s);
+  };
+
   useEffect(() => {
     if (!isPushSupported()) {
-      setState('unsupported');
+      apply('unsupported');
       return;
     }
     getPushState()
-      .then(setState)
+      .then(apply)
       .catch(() => undefined);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   if (state === 'unsupported' || !workspace) return null;
@@ -49,7 +55,7 @@ export function NotifToggle() {
     if (busy || denied || !workspace) return;
     setBusy(true);
     try {
-      setState(on ? await disablePush(workspace.id) : await enablePush(workspace.id));
+      apply(on ? await disablePush(workspace.id) : await enablePush(workspace.id));
     } finally {
       setBusy(false);
     }

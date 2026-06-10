@@ -35,6 +35,7 @@ export function PreferencesSection() {
   const prefs: UserPreferences = user?.preferences ?? DEFAULT_PREFERENCES;
 
   const [saveState, setSaveState] = useState<SaveState>('idle');
+  const [pushOn, setPushOn] = useState(false);
 
   async function savePref(patch: Partial<UserPreferences>) {
     setSaveState('saving');
@@ -112,7 +113,33 @@ export function PreferencesSection() {
               Get alerts on this device for reminders and updates.
             </p>
           </div>
-          <NotifToggle />
+          <NotifToggle onStateChange={(s) => setPushOn(s === 'on')} />
+        </div>
+
+        <div className="flex items-center justify-between gap-3 border-t border-line pt-4">
+          <div>
+            <p className="text-sm font-medium text-ink">Daily reminder</p>
+            <p className="text-xs text-muted">
+              A nudge at ~8pm if you haven&apos;t logged anything that day. Requires notifications on.
+            </p>
+          </div>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={prefs.dailyReminders}
+            aria-label="Daily reminder"
+            disabled={!pushOn || saveState === 'saving'}
+            onClick={() => savePref({ dailyReminders: !prefs.dailyReminders })}
+            className={`relative inline-flex h-6 w-11 items-center rounded-full border transition disabled:opacity-40 ${
+              prefs.dailyReminders ? 'border-accent/50 bg-accent' : 'border-line bg-surface'
+            }`}
+          >
+            <span
+              className={`inline-block h-4 w-4 transform rounded-full bg-white transition ${
+                prefs.dailyReminders ? 'translate-x-6' : 'translate-x-1'
+              }`}
+            />
+          </button>
         </div>
       </div>
     </section>

@@ -89,4 +89,29 @@ describe('PreferencesSection', () => {
       expect(setUser).toHaveBeenCalledWith(updated);
     });
   });
+
+  it('disables the daily-reminder switch while push is off', async () => {
+    render(<PreferencesSection />);
+    const sw = await screen.findByRole('switch', { name: 'Daily reminder' });
+    expect(sw).toBeDisabled();
+  });
+
+  it('enables the switch when push is on and saves dailyReminders on click', async () => {
+    const { getPushState } = await import('../../lib/push');
+    vi.mocked(getPushState).mockResolvedValue('on');
+    mockUpdateProfile.mockResolvedValue({
+      ...USER,
+      preferences: { ...DEFAULT_PREFERENCES, dailyReminders: false },
+    });
+
+    render(<PreferencesSection />);
+
+    const sw = await screen.findByRole('switch', { name: 'Daily reminder' });
+    await waitFor(() => expect(sw).toBeEnabled());
+
+    fireEvent.click(sw);
+    await waitFor(() => {
+      expect(mockUpdateProfile).toHaveBeenCalledWith({ preferences: { dailyReminders: false } });
+    });
+  });
 });
