@@ -141,6 +141,8 @@ export const DEFAULT_PREFERENCES: UserPreferences = {
   dateFormat: 'MEDIUM',
   numberFormat: 'GROUPED',
   currencyDisplay: 'SYMBOL',
+  dailyReminders: true,
+  lastDailyReminderAt: null,
 };
 
 export interface Currency {

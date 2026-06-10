@@ -19,4 +19,9 @@ export interface UserPreferences {
   dateFormat: DateFormat;
   numberFormat: NumberFormat;
   currencyDisplay: CurrencyDisplay;
+  /** Daily "did you log anything?" push nudge. Default on. */
+  dailyReminders: boolean;
+  /** Internal: local date (YYYY-MM-DD) the last daily reminder was sent, for
+   *  idempotency. Set server-side; null until first send. */
+  lastDailyReminderAt: string | null;
 }
