@@ -1,11 +1,12 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { DEFAULT_PREFERENCES } from '@finby/shared';
 import type { CurrencyDisplay, DateFormat, NumberFormat, UserPreferences } from '@finby/shared';
 import { Dropdown } from '@/components/ui/dropdown';
 import { Field } from '@/components/ui/field';
 import { NotifToggle } from '@/components/chat/notif-toggle';
+import { detectIosSafariTab } from '@/lib/ios';
 import { updateProfile } from '@/lib/settings-api';
 import { useAuth } from '@/lib/store';
 
@@ -36,6 +37,10 @@ export function PreferencesSection() {
 
   const [saveState, setSaveState] = useState<SaveState>('idle');
   const [pushOn, setPushOn] = useState(false);
+  const [iosTab, setIosTab] = useState(false);
+  useEffect(() => {
+    setIosTab(detectIosSafariTab());
+  }, []);
 
   async function savePref(patch: Partial<UserPreferences>) {
     setSaveState('saving');
@@ -106,6 +111,13 @@ export function PreferencesSection() {
           />
         </Field>
 
+        {iosTab ? (
+          <div className="rounded-xl border border-line bg-surface/60 p-3 text-xs text-muted">
+            To get reminders on iPhone, tap the Share icon and choose{' '}
+            <span className="font-medium text-ink">Add to Home Screen</span>, then open Finby from
+            your home screen.
+          </div>
+        ) : null}
         <div className="flex items-center justify-between gap-3 border-t border-line pt-4">
           <div>
             <p className="text-sm font-medium text-ink">Push notifications</p>
