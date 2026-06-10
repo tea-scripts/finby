@@ -77,6 +77,9 @@ export class RemindersService {
     if (day.hour !== REMINDER_HOUR) return;
     if (prefs.lastDailyReminderAt === day.date) return;
 
+    // We filter on `createdAt` (server-recorded time) rather than `transactionDate`
+    // because transactionDate is user-editable and can be back/forward-dated, whereas
+    // createdAt reliably reflects when the user was last active in the app today.
     const logged = await this.prisma.transaction.findFirst({
       where: { loggedByUserId: user.id, createdAt: { gte: new Date(day.startOfDayMs) } },
       select: { id: true },
@@ -89,7 +92,9 @@ export class RemindersService {
     await this.stamp(user.id, user.preferences, day.date);
   }
 
-  /** Record that we nudged this user today, preserving other preferences. */
+  /** Record that we nudged this user today, preserving other preferences.
+   *  Note: re-parsing `current` (passed at call-time) means a concurrent profile
+   *  update could theoretically be clobbered, but collision frequency is negligible. */
   private async stamp(userId: string, current: unknown, date: string): Promise<void> {
     const merged = { ...parsePreferences(current), lastDailyReminderAt: date };
     await this.prisma.user.update({
