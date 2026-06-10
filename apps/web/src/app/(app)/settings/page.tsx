@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { PlanCard } from '@/components/billing/PlanCard';
 import { ProfileSection } from '@/components/settings/profile-section';
 import { CurrenciesSection } from '@/components/settings/currencies-section';
@@ -8,8 +9,17 @@ import { PreferencesSection } from '@/components/settings/preferences-section';
 import { FeedbackSection } from '@/components/settings/feedback-section';
 import { MembersSection } from '@/components/settings/members-section';
 import { ReferSection } from '@/components/settings/refer-section';
+import { useAuth } from '@/lib/store';
 
 export default function SettingsPage() {
+  const router = useRouter();
+  const logout = useAuth((s) => s.logout);
+
+  async function onSignOut() {
+    await logout();
+    router.replace('/login');
+  }
+
   return (
     <div className="h-full overflow-y-auto pb-nav">
       <div className="mx-auto w-full max-w-3xl space-y-8 px-4 py-6 animate-fade-up">
@@ -49,6 +59,14 @@ export default function SettingsPage() {
             </Link>
           </div>
         </section>
+
+        <button
+          type="button"
+          onClick={onSignOut}
+          className="w-full rounded-2xl border border-line bg-surface/60 p-4 text-sm font-medium text-muted shadow-card transition hover:border-danger/50 hover:text-danger"
+        >
+          Sign out
+        </button>
       </div>
     </div>
   );
