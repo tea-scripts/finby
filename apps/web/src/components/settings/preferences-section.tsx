@@ -134,7 +134,7 @@ export function PreferencesSection() {
         </div>
 
         <div className="flex items-center justify-between gap-3 border-t border-line pt-4">
-          <div>
+          <div className="min-w-0">
             <p className="text-sm font-medium text-ink">Daily reminder</p>
             <p className="text-xs text-muted">
               A nudge at ~8pm if you haven&apos;t logged anything that day. Requires notifications on.
@@ -147,7 +147,7 @@ export function PreferencesSection() {
             aria-label="Daily reminder"
             disabled={!pushOn || saveState === 'saving'}
             onClick={() => savePref({ dailyReminders: !prefs.dailyReminders })}
-            className={`relative inline-flex h-6 w-11 items-center rounded-full border transition focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 disabled:opacity-50 ${
+            className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full border transition focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 disabled:opacity-50 ${
               reminderOn ? 'border-accent/50 bg-accent' : 'border-line bg-surface'
             }`}
           >
