@@ -264,4 +264,5 @@ export interface InvitePreview {
   email: string;
   role: WorkspaceMemberRole;
   state: 'valid' | 'expired' | 'revoked' | 'accepted';
+  hasAccount: boolean;
 }

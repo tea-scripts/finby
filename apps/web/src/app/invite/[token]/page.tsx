@@ -96,20 +96,17 @@ export default function InvitePage({ params }: { params: Promise<{ token: string
   if (joining) return stateMessage(`Joining ${preview.workspaceName}…`);
 
   const roleLabel = preview.role === 'CO_MANAGER' ? 'co-manager' : 'viewer';
+  const loginHref = `/login?next=${encodeURIComponent(`/invite/${token}`)}`;
 
   return (
     <AuthShell
       title={`Join ${preview.workspaceName}`}
       subtitle={`You were invited as a ${roleLabel} (${preview.email}).`}
       footer={
-        status === 'authed' ? null : (
+        status === 'authed' || preview.hasAccount ? null : (
           <>
             Already have an account?{' '}
-            {/* NOTE: login page does not currently honour ?next= — follow-up to add */}
-            <Link
-              href={`/login?next=${encodeURIComponent(`/invite/${token}`)}`}
-              className="font-medium text-accent hover:text-accent-hover"
-            >
+            <Link href={loginHref} className="font-medium text-accent hover:text-accent-hover">
               Log in
             </Link>{' '}
             to accept.
@@ -133,6 +130,19 @@ export default function InvitePage({ params }: { params: Promise<{ token: string
           >
             {busy ? 'Accepting…' : 'Accept invitation'}
           </button>
+        ) : preview.hasAccount ? (
+          <div className="space-y-3">
+            <p className="text-sm text-muted">
+              You already have a Finby account for{' '}
+              <span className="text-ink">{preview.email}</span>. Log in to accept this invitation.
+            </p>
+            <Link
+              href={loginHref}
+              className="block w-full rounded-lg bg-accent px-4 py-2.5 text-center text-sm font-medium text-white"
+            >
+              Log in to accept
+            </Link>
+          </div>
         ) : (
           <form onSubmit={onAcceptSignup} className="space-y-3" noValidate>
             <Input

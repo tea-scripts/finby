@@ -60,6 +60,20 @@ describe('InvitesService.preview', () => {
     const p = await service.preview('rawtoken');
     expect(p.state).toBe('expired');
   });
+
+  it('reports hasAccount=true when the invited email already has an account', async () => {
+    const { service } = build(); // default user.findUnique resolves a user
+    const p = await service.preview('rawtoken');
+    expect(p.hasAccount).toBe(true);
+  });
+
+  it('reports hasAccount=false when the invited email has no account', async () => {
+    const prisma = createPrismaMock();
+    prisma.user.findUnique.mockResolvedValue(null);
+    const { service } = build(prisma);
+    const p = await service.preview('rawtoken');
+    expect(p.hasAccount).toBe(false);
+  });
 });
 
 describe('InvitesService.accept (existing user)', () => {

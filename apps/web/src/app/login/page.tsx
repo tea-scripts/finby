@@ -32,7 +32,10 @@ export default function LoginPage() {
     setLoading(true);
     try {
       await login(email.trim(), password);
-      router.push('/chat');
+      // Honour a same-origin ?next= redirect (e.g. returning to an invite accept page).
+      const raw = new URLSearchParams(window.location.search).get('next');
+      const next = raw && raw.startsWith('/') && !raw.startsWith('//') ? raw : '/chat';
+      router.push(next);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'Something went wrong. Try again.');
       setLoading(false);

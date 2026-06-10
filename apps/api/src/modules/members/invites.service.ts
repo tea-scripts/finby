@@ -22,6 +22,8 @@ export interface InvitePreview {
   email: string;
   role: string;
   state: InviteState;
+  /** Whether the invited email already has a Finby account (→ log in to accept, not sign up). */
+  hasAccount: boolean;
 }
 
 @Injectable()
@@ -49,11 +51,16 @@ export class InvitesService {
 
   async preview(rawToken: string): Promise<InvitePreview> {
     const invite = await this.loadByToken(rawToken);
+    const existingUser = await this.prisma.user.findUnique({
+      where: { email: invite.email },
+      select: { id: true },
+    });
     return {
       workspaceName: invite.workspace.name,
       email: invite.email,
       role: invite.role,
       state: this.stateOf(invite),
+      hasAccount: Boolean(existingUser),
     };
   }
 
