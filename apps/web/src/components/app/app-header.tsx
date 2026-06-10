@@ -22,13 +22,13 @@ export function AppHeader() {
 
   return (
     <header className="sticky top-0 z-10 border-b border-line bg-canvas/80 backdrop-blur pt-safe">
-      <div className="flex w-full items-center justify-between px-4 py-3">
-        <div className="flex items-center gap-2">
+      <div className="flex w-full items-center justify-between gap-2 px-4 py-3">
+        <div className="flex min-w-0 items-center gap-2">
           <Logo />
           <TierBadge tier={tier} />
           <WorkspaceSwitcher />
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex shrink-0 items-center gap-3">
           {user && <span className="hidden text-sm text-muted sm:inline">{user.displayName}</span>}
           <NotifToggle />
           <button

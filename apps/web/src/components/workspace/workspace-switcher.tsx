@@ -23,7 +23,7 @@ export function WorkspaceSwitcher() {
       onChange={setActive}
       options={workspaces.map((w) => ({ value: w.workspaceId, label: w.name }))}
       aria-label="Active workspace"
-      className="w-44"
+      className="min-w-0 max-w-[40vw] sm:max-w-44"
     />
   );
 }

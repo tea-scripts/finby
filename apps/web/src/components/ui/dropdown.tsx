@@ -106,9 +106,9 @@ export function Dropdown({
         aria-label={ariaLabel}
         onClick={() => (open ? setOpen(false) : openMenu())}
         onKeyDown={onKeyDown}
-        className="flex w-full items-center justify-between gap-2 rounded-xl border border-line bg-canvas/60 px-3.5 py-2.5 text-left text-sm text-ink outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/30 disabled:cursor-not-allowed disabled:opacity-50"
+        className="flex w-full min-w-0 items-center justify-between gap-2 rounded-xl border border-line bg-canvas/60 px-3.5 py-2.5 text-left text-sm text-ink outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/30 disabled:cursor-not-allowed disabled:opacity-50"
       >
-        <span className={selected ? 'text-ink' : 'text-faint'}>
+        <span className={`truncate ${selected ? 'text-ink' : 'text-faint'}`}>
           {selected ? selected.label : placeholder}
         </span>
         <Chevron open={open} />
