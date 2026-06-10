@@ -26,7 +26,15 @@ beforeEach(() => {
 describe('useFormatters', () => {
   it('honours non-default preferences (ISO date, CODE + PLAIN money)', () => {
     state = {
-      user: { preferences: { dateFormat: 'ISO', currencyDisplay: 'CODE', numberFormat: 'PLAIN' } },
+      user: {
+        preferences: {
+          dateFormat: 'ISO',
+          currencyDisplay: 'CODE',
+          numberFormat: 'PLAIN',
+          dailyReminders: true,
+          lastDailyReminderAt: null,
+        },
+      },
     };
     const { result } = renderHook(() => useFormatters());
 

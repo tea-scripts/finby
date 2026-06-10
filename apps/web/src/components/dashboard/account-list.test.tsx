@@ -33,7 +33,15 @@ beforeEach(() => {
 describe('AccountList preference-aware money', () => {
   it('renders the CODE money form when the user prefers CODE display', () => {
     state = {
-      user: { preferences: { dateFormat: 'MEDIUM', currencyDisplay: 'CODE', numberFormat: 'GROUPED' } },
+      user: {
+        preferences: {
+          dateFormat: 'MEDIUM',
+          currencyDisplay: 'CODE',
+          numberFormat: 'GROUPED',
+          dailyReminders: true,
+          lastDailyReminderAt: null,
+        },
+      },
     };
 
     render(<AccountList state={loaded} />);
