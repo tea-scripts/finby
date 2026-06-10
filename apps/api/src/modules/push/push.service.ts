@@ -58,14 +58,28 @@ export class PushService {
     await this.prisma.pushSubscription.deleteMany({ where: { endpoint, workspaceId, userId } });
   }
 
-  /** Fan a notification out to every device a member has registered.
-   *  No-ops silently if VAPID is unconfigured; prunes dead subscriptions. */
+  /** Fan a notification out to a member's devices in one workspace. */
   async sendToUser(workspaceId: string, userId: string, payload: PushPayload): Promise<void> {
     if (!this.configured) return;
-
     const subs = await this.prisma.pushSubscription.findMany({ where: { workspaceId, userId } });
     if (subs.length === 0) return;
+    await this.deliver(subs, payload);
+  }
 
+  /** Fan a notification out to every device a user has, across all workspaces.
+   *  Used for user-level notifications (e.g. the daily reminder). */
+  async sendToUserDevices(userId: string, payload: PushPayload): Promise<void> {
+    if (!this.configured) return;
+    const subs = await this.prisma.pushSubscription.findMany({ where: { userId } });
+    if (subs.length === 0) return;
+    await this.deliver(subs, payload);
+  }
+
+  /** Send to a set of subscriptions; prunes dead (404/410) endpoints. */
+  private async deliver(
+    subs: Array<{ endpoint: string; p256dh: string; auth: string }>,
+    payload: PushPayload,
+  ): Promise<void> {
     const body = JSON.stringify(payload);
     await Promise.all(
       subs.map(async (sub) => {

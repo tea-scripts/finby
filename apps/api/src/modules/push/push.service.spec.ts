@@ -77,4 +77,28 @@ describe('PushService (configured)', () => {
     expect(sendNotification).toHaveBeenCalledTimes(2);
     expect(del).toHaveBeenCalledWith({ where: { endpoint: 'https://push.example/dead' } });
   });
+
+  it('sendToUserDevices addresses every device for a user (no workspace filter)', async () => {
+    const findMany = jest.fn().mockResolvedValue([
+      { endpoint: 'https://push.example/d1', p256dh: 'a', auth: 'b' },
+      { endpoint: 'https://push.example/d2', p256dh: 'c', auth: 'd' },
+    ]);
+    const prisma = { pushSubscription: { findMany } };
+    const service = new PushService(prisma as unknown as PrismaService, makeConfig(CONFIGURED));
+
+    await service.sendToUserDevices('u1', { title: 'Finby', body: 'hi', url: '/chat' });
+
+    expect(findMany).toHaveBeenCalledWith({ where: { userId: 'u1' } });
+    expect(sendNotification).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe('PushService (sendToUserDevices unconfigured)', () => {
+  it('sendToUserDevices no-ops when unconfigured', async () => {
+    const findMany = jest.fn();
+    const prisma = { pushSubscription: { findMany } };
+    const service = new PushService(prisma as unknown as PrismaService, makeConfig({}));
+    await service.sendToUserDevices('u1', { title: 'x', body: 'y' });
+    expect(findMany).not.toHaveBeenCalled();
+  });
 });
