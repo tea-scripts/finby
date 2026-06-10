@@ -21,6 +21,7 @@ export default function InvitePage({ params }: { params: Promise<{ token: string
   const [displayName, setDisplayName] = useState('');
   const [password, setPassword] = useState('');
   const [busy, setBusy] = useState(false);
+  const [joining, setJoining] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -31,6 +32,7 @@ export default function InvitePage({ params }: { params: Promise<{ token: string
 
   async function onAcceptExisting() {
     setBusy(true);
+    setJoining(true);
     setActionError(null);
     try {
       await acceptInvite(token);
@@ -38,6 +40,7 @@ export default function InvitePage({ params }: { params: Promise<{ token: string
       router.push('/settings');
     } catch (e) {
       setActionError(e instanceof Error ? e.message : 'Could not accept the invitation.');
+      setJoining(false);
     } finally {
       setBusy(false);
     }
@@ -49,6 +52,9 @@ export default function InvitePage({ params }: { params: Promise<{ token: string
     setActionError(null);
     try {
       const result = await acceptInviteSignup(token, { displayName: displayName.trim(), password });
+      // Switch to the "joining" view BEFORE authenticating, so the logged-in
+      // "Accept invitation" branch never flashes between auth + redirect.
+      setJoining(true);
       useAuth.setState({
         accessToken: result.accessToken,
         refreshToken: result.refreshToken,
@@ -84,6 +90,10 @@ export default function InvitePage({ params }: { params: Promise<{ token: string
           : 'This invitation has already been accepted.';
     return stateMessage(msg);
   }
+
+  // Accept/signup in flight (and redirecting): show a clean transition instead of
+  // briefly flashing the logged-in "Accept invitation" branch post-signup.
+  if (joining) return stateMessage(`Joining ${preview.workspaceName}…`);
 
   const roleLabel = preview.role === 'CO_MANAGER' ? 'co-manager' : 'viewer';
 
