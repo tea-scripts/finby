@@ -34,7 +34,14 @@ export function MembersSection() {
 
   async function refresh() {
     if (!wsId) return;
-    setMembers(await listMembers(wsId));
+    // Guard the initial load: a transient API failure (deploy window, network
+    // blip) must surface as an error state, not an uncaught promise rejection.
+    try {
+      setMembers(await listMembers(wsId));
+      setError(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not load members.');
+    }
     if (isOwner) {
       try { setInvites(await listInvites(wsId)); } catch { /* non-owner */ }
     }
