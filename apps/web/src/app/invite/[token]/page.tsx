@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { AuthShell } from '@/components/auth/auth-shell';
 import { Input } from '@/components/ui/input';
 import { PasswordInput } from '@/components/ui/password-input';
+import { PasswordStrength } from '@/components/ui/password-strength';
 import { useAuth } from '@/lib/store';
 import { acceptInvite, acceptInviteSignup, previewInvite } from '@/lib/members-api';
 import type { InvitePreview } from '@/lib/types';
@@ -137,13 +138,17 @@ export default function InvitePage({ params }: { params: Promise<{ token: string
               value={displayName}
               onChange={(e) => setDisplayName(e.target.value)}
             />
-            <PasswordInput
-              required
-              minLength={8}
-              placeholder="Create a password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-            />
+            <div>
+              <PasswordInput
+                required
+                minLength={8}
+                autoComplete="new-password"
+                placeholder="Create a password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+              />
+              <PasswordStrength value={password} />
+            </div>
             <button
               type="submit"
               disabled={busy}
