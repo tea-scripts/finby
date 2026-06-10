@@ -130,7 +130,7 @@ export function PreferencesSection() {
             aria-label="Daily reminder"
             disabled={!pushOn || saveState === 'saving'}
             onClick={() => savePref({ dailyReminders: !prefs.dailyReminders })}
-            className={`relative inline-flex h-6 w-11 items-center rounded-full border transition disabled:opacity-40 ${
+            className={`relative inline-flex h-6 w-11 items-center rounded-full border transition focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 disabled:opacity-50 ${
               prefs.dailyReminders ? 'border-accent/50 bg-accent' : 'border-line bg-surface'
             }`}
           >

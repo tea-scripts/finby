@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { disablePush, enablePush, getPushState, isPushSupported, type PushState } from '@/lib/push';
 import { useAuth } from '@/lib/store';
 
@@ -25,10 +25,15 @@ export function NotifToggle({ onStateChange }: { onStateChange?: (s: PushState) 
   const [state, setState] = useState<PushState>('off');
   const [busy, setBusy] = useState(false);
 
-  const apply = (s: PushState) => {
+  const onStateChangeRef = useRef(onStateChange);
+  useEffect(() => {
+    onStateChangeRef.current = onStateChange;
+  });
+
+  const apply = useCallback((s: PushState) => {
     setState(s);
-    onStateChange?.(s);
-  };
+    onStateChangeRef.current?.(s);
+  }, []);
 
   useEffect(() => {
     if (!isPushSupported()) {
@@ -38,8 +43,7 @@ export function NotifToggle({ onStateChange }: { onStateChange?: (s: PushState) 
     getPushState()
       .then(apply)
       .catch(() => undefined);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [apply]);
 
   if (state === 'unsupported' || !workspace) return null;
 

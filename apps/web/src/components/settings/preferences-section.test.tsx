@@ -109,6 +109,8 @@ describe('PreferencesSection', () => {
     const sw = await screen.findByRole('switch', { name: 'Daily reminder' });
     await waitFor(() => expect(sw).toBeEnabled());
 
+    expect(sw).toHaveAttribute('aria-checked', 'true');
+
     fireEvent.click(sw);
     await waitFor(() => {
       expect(mockUpdateProfile).toHaveBeenCalledWith({ preferences: { dailyReminders: false } });
