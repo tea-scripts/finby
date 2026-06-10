@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as webpush from 'web-push';
+import type { PushSubscription } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import type { Env } from '../../config/env.schema';
 import type { SubscribeInput } from './dto/push.schemas';
@@ -61,6 +62,7 @@ export class PushService {
   /** Fan a notification out to a member's devices in one workspace. */
   async sendToUser(workspaceId: string, userId: string, payload: PushPayload): Promise<void> {
     if (!this.configured) return;
+
     const subs = await this.prisma.pushSubscription.findMany({ where: { workspaceId, userId } });
     if (subs.length === 0) return;
     await this.deliver(subs, payload);
@@ -70,6 +72,7 @@ export class PushService {
    *  Used for user-level notifications (e.g. the daily reminder). */
   async sendToUserDevices(userId: string, payload: PushPayload): Promise<void> {
     if (!this.configured) return;
+
     const subs = await this.prisma.pushSubscription.findMany({ where: { userId } });
     if (subs.length === 0) return;
     await this.deliver(subs, payload);
@@ -77,11 +80,11 @@ export class PushService {
 
   /** Send to a set of subscriptions; prunes dead (404/410) endpoints. */
   private async deliver(
-    subs: Array<{ endpoint: string; p256dh: string; auth: string }>,
+    subs: PushSubscription[],
     payload: PushPayload,
   ): Promise<void> {
     const body = JSON.stringify(payload);
-    await Promise.all(
+    await Promise.allSettled(
       subs.map(async (sub) => {
         try {
           await webpush.sendNotification(

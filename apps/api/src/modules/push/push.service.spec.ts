@@ -91,6 +91,36 @@ describe('PushService (configured)', () => {
     expect(findMany).toHaveBeenCalledWith({ where: { userId: 'u1' } });
     expect(sendNotification).toHaveBeenCalledTimes(2);
   });
+
+  it('sendToUserDevices prunes a 410-gone subscription', async () => {
+    const subs = [
+      { endpoint: 'https://push.example/live', p256dh: 'a', auth: 'b' },
+      { endpoint: 'https://push.example/dead', p256dh: 'c', auth: 'd' },
+    ];
+    const findMany = jest.fn().mockResolvedValue(subs);
+    const del = jest.fn().mockResolvedValue({});
+    const prisma = { pushSubscription: { findMany, delete: del } };
+
+    sendNotification
+      .mockResolvedValueOnce(undefined)
+      .mockRejectedValueOnce(Object.assign(new Error('gone'), { statusCode: 410 }));
+
+    const service = new PushService(prisma as unknown as PrismaService, makeConfig(CONFIGURED));
+    await service.sendToUserDevices('u1', { title: 'Daily', body: 'Check in', url: '/chat' });
+
+    expect(sendNotification).toHaveBeenCalledTimes(2);
+    expect(del).toHaveBeenCalledWith({ where: { endpoint: 'https://push.example/dead' } });
+  });
+
+  it('sendToUserDevices no-ops sends when the user has no subscriptions', async () => {
+    const findMany = jest.fn().mockResolvedValue([]);
+    const prisma = { pushSubscription: { findMany } };
+    const service = new PushService(prisma as unknown as PrismaService, makeConfig(CONFIGURED));
+
+    await service.sendToUserDevices('u1', { title: 'Daily', body: 'Check in' });
+
+    expect(sendNotification).not.toHaveBeenCalled();
+  });
 });
 
 describe('PushService (sendToUserDevices unconfigured)', () => {
