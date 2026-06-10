@@ -4,6 +4,8 @@ import { use, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { AuthShell } from '@/components/auth/auth-shell';
+import { Input } from '@/components/ui/input';
+import { PasswordInput } from '@/components/ui/password-input';
 import { useAuth } from '@/lib/store';
 import { acceptInvite, acceptInviteSignup, previewInvite } from '@/lib/members-api';
 import type { InvitePreview } from '@/lib/types';
@@ -122,27 +124,25 @@ export default function InvitePage({ params }: { params: Promise<{ token: string
           </button>
         ) : (
           <form onSubmit={onAcceptSignup} className="space-y-3" noValidate>
-            <input
+            <Input
               value={preview.email}
               disabled
-              className="w-full rounded-lg border border-line bg-surface/40 px-3 py-2.5 text-sm text-muted"
+              aria-label="Invited email"
+              className="opacity-70"
             />
-            <input
+            <Input
               type="text"
               required
               placeholder="Your name"
               value={displayName}
               onChange={(e) => setDisplayName(e.target.value)}
-              className="w-full rounded-lg border border-line bg-surface px-3 py-2.5 text-sm text-ink"
             />
-            <input
-              type="password"
+            <PasswordInput
               required
               minLength={8}
               placeholder="Create a password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full rounded-lg border border-line bg-surface px-3 py-2.5 text-sm text-ink"
             />
             <button
               type="submit"
