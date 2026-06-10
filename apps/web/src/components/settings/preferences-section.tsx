@@ -42,6 +42,11 @@ export function PreferencesSection() {
     setIosTab(detectIosSafariTab());
   }, []);
 
+  // The reminder only fires when push is on AND the pref is enabled, so the
+  // switch reflects that effective state — not just the stored pref (which
+  // defaults to true and would otherwise read "on" before push is enabled).
+  const reminderOn = pushOn && prefs.dailyReminders;
+
   async function savePref(patch: Partial<UserPreferences>) {
     setSaveState('saving');
     try {
@@ -138,17 +143,17 @@ export function PreferencesSection() {
           <button
             type="button"
             role="switch"
-            aria-checked={prefs.dailyReminders}
+            aria-checked={reminderOn}
             aria-label="Daily reminder"
             disabled={!pushOn || saveState === 'saving'}
             onClick={() => savePref({ dailyReminders: !prefs.dailyReminders })}
             className={`relative inline-flex h-6 w-11 items-center rounded-full border transition focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 disabled:opacity-50 ${
-              prefs.dailyReminders ? 'border-accent/50 bg-accent' : 'border-line bg-surface'
+              reminderOn ? 'border-accent/50 bg-accent' : 'border-line bg-surface'
             }`}
           >
             <span
               className={`inline-block h-4 w-4 transform rounded-full bg-white transition ${
-                prefs.dailyReminders ? 'translate-x-6' : 'translate-x-1'
+                reminderOn ? 'translate-x-6' : 'translate-x-1'
               }`}
             />
           </button>

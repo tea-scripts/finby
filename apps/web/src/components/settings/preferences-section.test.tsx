@@ -90,10 +90,14 @@ describe('PreferencesSection', () => {
     });
   });
 
-  it('disables the daily-reminder switch while push is off', async () => {
+  it('disables the daily-reminder switch and shows it off while push is off', async () => {
     render(<PreferencesSection />);
     const sw = await screen.findByRole('switch', { name: 'Daily reminder' });
     expect(sw).toBeDisabled();
+    // Even though dailyReminders defaults to true, the switch must read "off"
+    // until push is enabled — otherwise it misleadingly implies reminders are
+    // active when no push subscription exists.
+    expect(sw).toHaveAttribute('aria-checked', 'false');
   });
 
   it('enables the switch when push is on and saves dailyReminders on click', async () => {
