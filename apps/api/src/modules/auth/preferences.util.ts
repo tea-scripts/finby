@@ -8,6 +8,8 @@ export const preferencesSchema = z
     dateFormat: z.enum(['MEDIUM', 'SHORT', 'ISO']),
     numberFormat: z.enum(['GROUPED', 'PLAIN']),
     currencyDisplay: z.enum(['SYMBOL', 'CODE']),
+    dailyReminders: z.boolean(),
+    lastDailyReminderAt: z.string().nullable(),
   })
   .partial();
 
