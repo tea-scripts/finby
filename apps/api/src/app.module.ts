@@ -25,6 +25,7 @@ import { FxModule } from './modules/fx/fx.module';
 import { MarketModule } from './modules/market/market.module';
 import { PortfolioModule } from './modules/portfolio/portfolio.module';
 import { PushModule } from './modules/push/push.module';
+import { RemindersModule } from './modules/reminders/reminders.module';
 import { MembersModule } from './modules/members/members.module';
 import { SettingsModule } from './modules/settings/settings.module';
 import { TransactionsModule } from './modules/transactions/transactions.module';
@@ -96,6 +97,7 @@ import { RedisModule } from './redis/redis.module';
     BillingModule,
     ExportModule,
     PushModule,
+    RemindersModule,
     ChatModule,
     SettingsModule,
     MembersModule,
