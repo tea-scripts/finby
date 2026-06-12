@@ -1,4 +1,5 @@
 import { Controller, Get, Query, UseGuards } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import type {
   EngagementMetrics,
   GrowthMetrics,
@@ -13,6 +14,10 @@ import { metricRangeSchema, type MetricRangeQuery } from './dto/admin.schemas';
 
 // @Public() bypasses the global *user* JwtAuthGuard; AdminJwtGuard re-secures
 // every route with an admin-scoped token. These routes are NOT unauthenticated.
+// Per-route throttle (60/min/IP) caps abuse: each call fans out to several Prisma
+// aggregations, and varying ?from/?to bypasses the range-keyed Redis cache — a
+// generous ceiling for a dashboard that loads 4 endpoints per page view.
+@Throttle({ global: { limit: 60, ttl: 60_000 } })
 @Public()
 @UseGuards(AdminJwtGuard)
 @Controller('admin/metrics')
