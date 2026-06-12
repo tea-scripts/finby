@@ -43,7 +43,9 @@ export class AdminAnalyticsService {
   /** Daily-bucketed count time series via raw SQL (date_trunc). */
   private async dailySeries(
     table: 'users' | 'transactions',
-    dateColumn: string,
+    // Literal-typed (not `string`) so a column name can never be threaded into
+    // Prisma.raw from a variable — keeps the raw SQL injection-safe by construction.
+    dateColumn: 'createdAt',
     from: Date,
     to: Date,
   ): Promise<TimeSeriesPoint[]> {
@@ -79,15 +81,15 @@ export class AdminAnalyticsService {
     return this.cached(this.rangeKey('growth', from, to), async () => {
       const now = new Date();
       const day = (n: number) => new Date(now.getTime() - n * 86_400_000);
-      const [totalUsers, totalWorkspaces, paidWorkspaces, signups, dau, wau, mau, active7, active30] =
+      // dau/wau/mau use 1/7/30-day cutoffs; the 7- and 30-day active counts are
+      // reused for activeLast{7,30}Pct (same window by definition — compute once).
+      const [totalUsers, totalWorkspaces, paidWorkspaces, signups, dau, wau, mau] =
         await Promise.all([
           this.prisma.user.count(),
           this.prisma.workspace.count(),
           this.prisma.workspace.count({ where: { tier: { not: 'FREE' } } }),
           this.dailySeries('users', 'createdAt', from, to),
           this.activeUserCount(day(1)),
-          this.activeUserCount(day(7)),
-          this.activeUserCount(day(30)),
           this.activeUserCount(day(7)),
           this.activeUserCount(day(30)),
         ]);
@@ -99,8 +101,8 @@ export class AdminAnalyticsService {
         dau,
         wau,
         mau,
-        activeLast7Pct: pct(active7),
-        activeLast30Pct: pct(active30),
+        activeLast7Pct: pct(wau),
+        activeLast30Pct: pct(mau),
         tierSplit: { free: totalWorkspaces - paidWorkspaces, paid: paidWorkspaces },
       };
     });
