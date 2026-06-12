@@ -33,7 +33,7 @@ services:
       - key: ALPHA_VANTAGE_API_URL
         value: https://www.alphavantage.co
       - key: FRANKFURTER_API_URL
-        value: https://api.frankfurter.app
+        value: https://api.frankfurter.dev/v1
       - key: JWT_ACCESS_TTL
         value: 15m
       - key: JWT_REFRESH_TTL

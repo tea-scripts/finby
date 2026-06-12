@@ -43,7 +43,7 @@ export const envSchema = z.object({
   ANTHROPIC_MODEL: z.string().default('claude-sonnet-4-6'),
 
   // FX / Frankfurter (Phase 2)
-  FRANKFURTER_API_URL: z.string().url().default('https://api.frankfurter.app'),
+  FRANKFURTER_API_URL: z.string().url().default('https://api.frankfurter.dev/v1'),
 
   // Market data / Alpha Vantage (Phase 4)
   ALPHA_VANTAGE_API_KEY: z.string().optional(),
