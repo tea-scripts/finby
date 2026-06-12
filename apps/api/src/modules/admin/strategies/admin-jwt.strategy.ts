@@ -1,3 +1,4 @@
+import { randomBytes } from 'node:crypto';
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
 import { ConfigService } from '@nestjs/config';
@@ -12,9 +13,13 @@ export class AdminJwtStrategy extends PassportStrategy(Strategy, 'admin-jwt') {
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       ignoreExpiration: false,
-      // Falls back to a random-ish constant when unset so the strategy still
-      // constructs; tokens can never be minted without the real secret anyway.
-      secretOrKey: config.get('ADMIN_JWT_SECRET', { infer: true }) ?? 'admin-secret-unset',
+      // When ADMIN_JWT_SECRET is unset (admin auth disabled), fall back to a
+      // per-boot random secret rather than a hardcoded constant. The strategy
+      // still constructs (so the API boots), but no token can ever validate —
+      // the fallback is never known to anyone and changes each boot. This keeps
+      // the signature layer fail-closed even if ADMIN_EMAILS is misconfigured.
+      secretOrKey:
+        config.get('ADMIN_JWT_SECRET', { infer: true }) ?? randomBytes(32).toString('hex'),
     });
   }
 
