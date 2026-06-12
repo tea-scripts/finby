@@ -22,6 +22,7 @@ Required JSON structure:
 
 Rules:
 - total must be a number, not a string
+- merchant must be the consumer-facing brand name when it is identifiable anywhere on the receipt (logo, item names, website/QR URLs, loyalty program) — NOT the franchise or holding corporation in the header (e.g. a receipt headed "CIAM HIGHWAY FOOD CORP" with jollibee.com.ph at the bottom is "Jollibee"). Put the legal/corporate name in notes if it differs
 - lineItems should only be populated if clearly visible on the receipt — empty array if not readable
 - If the receipt is not readable or is not a receipt, return { "error": "not_a_receipt" }
 - Never hallucinate amounts — if you cannot read a number clearly, omit it from lineItems but still extract the total if visible`;
