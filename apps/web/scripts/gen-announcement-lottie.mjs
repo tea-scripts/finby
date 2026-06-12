@@ -1,6 +1,6 @@
 /* global console */
-// Generates the cinematic announcement Lottie files into public/lottie.
-// Run: node apps/web/scripts/gen-announcement-lottie.mjs
+// Generates the cinematic announcement Lottie files (flame, bell, receipt)
+// into public/lottie. Run: node apps/web/scripts/gen-announcement-lottie.mjs
 // The emitted JSON is the committed artifact; this generator keeps it tunable.
 import { writeFileSync, mkdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -19,6 +19,11 @@ const BELL_DK = rgb(214, 158, 46);
 const RED = rgb(239, 68, 68);
 const WAVE = rgb(255, 209, 102);
 const SPARK = rgb(255, 196, 90);
+const PAPER = rgb(248, 250, 252);
+const INK_LINE = rgb(148, 163, 184);
+const BEAM = rgb(52, 211, 153);
+const CHECK_BG = rgb(16, 185, 129);
+const WHITE = rgb(255, 255, 255);
 
 const fill = (c, o = 100) => ({ ty: 'fl', c: { a: 0, k: c }, o: { a: 0, k: o }, r: 1, nm: 'fill' });
 const stroke = (c, w, o = 100) => ({
@@ -44,6 +49,9 @@ const trGroup = () => ({
   r: { a: 0, k: 0 }, o: { a: 0, k: 100 },
 });
 const ellipse = (size, pos = [0, 0]) => ({ ty: 'el', d: 1, s: { a: 0, k: size }, p: { a: 0, k: pos }, nm: 'el' });
+const rect = (size, pos = [0, 0], r = 0) => ({
+  ty: 'rc', d: 1, s: { a: 0, k: size }, p: { a: 0, k: pos }, r: { a: 0, k: r }, nm: 'rc',
+});
 const group = (items, nm = 'grp') => ({ ty: 'gr', nm, it: [...items, trGroup()] });
 
 // A flame silhouette (6 vertices). `lean` shifts the tip + body sideways and
@@ -187,6 +195,82 @@ function notifBell() {
   return comp('notif-bell', layers, 170);
 }
 
+// ── receipt-scan ─────────────────────────────────────────────────────────────
+function receiptScan() {
+  const layers = [];
+  let ind = 1;
+
+  // soft emerald glow behind the receipt, pulsing with each scan sweep
+  const EMERALD_GLOW = [0, 0.2, 0.9, 0.6, 1, 0.04, 0.5, 0.35];
+  layers.push(
+    layer(ind++, 'glow', [group([ellipse([176, 184]), grad(EMERALD_GLOW, [0, 0], [0, 92], 2, 40)])], {
+      p: { a: 0, k: [100, 104, 0] },
+      o: { a: 1, k: [ease(0, [28]), ease(34, [55]), ease(70, [28]), ease(104, [55]), ease(140, [28]), hold(170, [28])] },
+    }, 170),
+  );
+
+  // receipt paper — zigzag torn bottom edge, gentle bob + tilt
+  const zero = (n) => Array.from({ length: n }, () => [0, 0]);
+  const receiptShape = {
+    c: true,
+    v: [
+      [-38, -52], [38, -52], [38, 44], [28.5, 52], [19, 44], [9.5, 52],
+      [0, 44], [-9.5, 52], [-19, 44], [-28.5, 52], [-38, 44],
+    ],
+    i: zero(11),
+    o: zero(11),
+  };
+  const bob = {
+    p: { a: 1, k: [ease(0, [100, 104, 0]), ease(44, [100, 101, 0]), ease(96, [100, 106, 0]), ease(140, [100, 104, 0]), hold(170, [100, 104, 0])] },
+    r: { a: 1, k: [ease(0, [-1.5]), ease(70, [1.5]), ease(140, [-1.5]), hold(170, [-1.5])] },
+  };
+  layers.push(layer(ind++, 'paper', [group([path(receiptShape), fill(PAPER)])], bob, 170));
+
+  // printed lines (separate layer, same bob so they track the paper)
+  layers.push(
+    layer(ind++, 'lines', [
+      group([rect([52, 5], [0, -36], 2.5), fill(INK_LINE, 70)], 'line-0'),
+      group([rect([52, 5], [0, -22], 2.5), fill(INK_LINE, 55)], 'line-1'),
+      group([rect([52, 5], [0, -8], 2.5), fill(INK_LINE, 55)], 'line-2'),
+      group([rect([30, 5], [-11, 6], 2.5), fill(INK_LINE, 45)], 'line-3'),
+      group([rect([24, 6], [14, 26], 3), fill(BEAM, 80)], 'total'),
+    ], bob, 170),
+  );
+
+  // scan beam — bright bar with a soft halo, sweeping down the receipt twice
+  [0, 76].forEach((start, i) => {
+    layers.push(
+      layer(ind++, `beam-${i}`, [
+        group([ellipse([110, 26]), fill(BEAM, 28)], 'halo'),
+        group([rect([88, 5], [0, 0], 2.5), fill(BEAM)], 'bar'),
+      ], {
+        p: { a: 1, k: [ease(start, [100, 56, 0]), hold(start + 58, [100, 152, 0])] },
+        o: { a: 1, k: [hold(start, [0]), ease(start + 6, [95]), ease(start + 48, [95]), ease(start + 58, [0])] },
+      }, 170),
+    );
+  });
+
+  // check badge — pops in after the first sweep finishes (top-right, like the bell dot)
+  const checkMark = {
+    c: false,
+    v: [[-6.5, 0.5], [-2, 5], [6.5, -5]],
+    i: zero(3),
+    o: zero(3),
+  };
+  layers.push(
+    layer(ind++, 'check', [
+      group([ellipse([32, 32]), fill(CHECK_BG)], 'badge'),
+      group([path(checkMark), stroke(WHITE, 4)], 'tick'),
+    ], {
+      p: { a: 0, k: [138, 58, 0] },
+      s: { a: 1, k: [hold(0, [0, 0, 100]), hold(58, [0, 0, 100]), ease(68, [120, 120, 100]), ease(80, [100, 100, 100])] },
+    }, 170),
+  );
+
+  return comp('receipt-scan', layers, 170);
+}
+
 writeFileSync(join(OUT, 'streak-flame.json'), JSON.stringify(streakFlame()));
 writeFileSync(join(OUT, 'notif-bell.json'), JSON.stringify(notifBell()));
-console.log('wrote streak-flame.json and notif-bell.json to', OUT);
+writeFileSync(join(OUT, 'receipt-scan.json'), JSON.stringify(receiptScan()));
+console.log('wrote streak-flame.json, notif-bell.json and receipt-scan.json to', OUT);

@@ -71,4 +71,20 @@ export const ANNOUNCEMENTS: Announcement[] = [
     ],
     primary: { label: 'Turn on notifications', kind: 'enable-push' },
   },
+  {
+    id: 'receipt-scanning-2026-06',
+    mode: 'steps',
+    lottie: '/lottie/receipt-scan.json',
+    emoji: '🧾',
+    confetti: true,
+    hashtag: 'New',
+    title: 'Scan receipts, skip the typing',
+    body: 'Snap a photo of any receipt and Finby fills in the merchant, amount, date, and category for you. Available on Pro and up.',
+    steps: [
+      { label: 'Tap the camera in chat', caption: 'Or “Scan Receipt” on the Transactions screen.' },
+      { label: 'Snap your receipt', caption: 'We read the details — photos are never stored.' },
+      { label: 'Review and save', caption: 'Fix anything we misread, then one tap to log it.' },
+    ],
+    primary: { label: 'Got it', kind: 'dismiss' },
+  },
 ];

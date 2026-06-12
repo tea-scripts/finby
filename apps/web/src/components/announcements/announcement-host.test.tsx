@@ -86,8 +86,14 @@ describe('AnnouncementHost', () => {
     );
   });
 
-  it('renders nothing when every announcement is dismissed', () => {
+  it('shows the receipt-scanning announcement once streaks and notifications are dismissed', () => {
     setState(['streaks-2026-06', 'in-app-notifs-2026-06']);
+    render(<AnnouncementHost />);
+    expect(screen.getByRole('heading', { name: 'Scan receipts, skip the typing' })).toBeInTheDocument();
+  });
+
+  it('renders nothing when every announcement is dismissed', () => {
+    setState(['streaks-2026-06', 'in-app-notifs-2026-06', 'receipt-scanning-2026-06']);
     const { container } = render(<AnnouncementHost />);
     expect(container.firstChild).toBeNull();
   });
