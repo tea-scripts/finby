@@ -5,6 +5,7 @@ import { api } from '../lib/api';
 import { useAuthStore } from '../lib/auth-store';
 import { AdminShell } from './AdminShell';
 import { Button } from './ui/button';
+import { Dropdown } from './ui/dropdown';
 import { Input } from './ui/input';
 
 function shortDate(iso: string): string {
@@ -69,11 +70,21 @@ function UserRow({ user }: { user: AdminUserRow }) {
 
 const HEADERS = ['User', 'Joined', 'Last active', 'Plan', 'Subscribed'] as const;
 
-type PlanFilter = '' | 'free' | 'paid' | 'PRO' | 'PREMIUM' | 'FAMILY';
+type PlanFilter = '' | 'free' | 'PRO' | 'PREMIUM' | 'FAMILY';
 type SortOrder = 'newest' | 'oldest';
 
-const selectClass =
-  'rounded-xl border border-line bg-canvas/60 px-3 py-2.5 text-sm text-ink outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/30';
+const PLAN_OPTIONS = [
+  { value: '', label: 'All plans' },
+  { value: 'free', label: 'Free' },
+  { value: 'PRO', label: 'Pro' },
+  { value: 'PREMIUM', label: 'Premium' },
+  { value: 'FAMILY', label: 'Family' },
+];
+
+const SORT_OPTIONS = [
+  { value: 'newest', label: 'Newest first' },
+  { value: 'oldest', label: 'Oldest first' },
+];
 
 export function UsersTable() {
   const setToken = useAuthStore((s) => s.setToken);
@@ -146,34 +157,26 @@ export function UsersTable() {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
-          <select
+          <Dropdown
             aria-label="Filter by plan"
-            className={selectClass}
+            className="w-40"
             value={plan}
-            onChange={(e) => {
-              setPlan(e.target.value as PlanFilter);
+            options={PLAN_OPTIONS}
+            onChange={(v) => {
+              setPlan(v as PlanFilter);
               setPage(1);
             }}
-          >
-            <option value="">All plans</option>
-            <option value="free">Free</option>
-            <option value="paid">Paid</option>
-            <option value="PRO">Pro</option>
-            <option value="PREMIUM">Premium</option>
-            <option value="FAMILY">Family</option>
-          </select>
-          <select
+          />
+          <Dropdown
             aria-label="Sort"
-            className={selectClass}
+            className="w-40"
             value={sort}
-            onChange={(e) => {
-              setSort(e.target.value as SortOrder);
+            options={SORT_OPTIONS}
+            onChange={(v) => {
+              setSort(v as SortOrder);
               setPage(1);
             }}
-          >
-            <option value="newest">Newest first</option>
-            <option value="oldest">Oldest first</option>
-          </select>
+          />
         </div>
 
         <section className="overflow-hidden rounded-xl border border-line bg-surface shadow-card">
