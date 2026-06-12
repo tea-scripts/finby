@@ -132,8 +132,15 @@ export default function ChatPage() {
         if (a.type === 'TRANSACTION_CREATED') {
           track('transaction_logged', { tx_type: a.txType, currency: a.preview.currency });
           // Logging may have advanced the spending streak; the action carries
-          // the fresh value, so update the header badge in place (no refetch).
-          if (a.currentStreak != null) setUser({ currentStreak: a.currentStreak });
+          // the fresh value, so update it in place (no refetch). Best streak is
+          // by definition max(previousBest, newCurrent), so keep it in sync too —
+          // otherwise Settings' "Best" lags behind until the next /auth/me load.
+          if (a.currentStreak != null) {
+            setUser({
+              currentStreak: a.currentStreak,
+              longestStreak: Math.max(user?.longestStreak ?? 0, a.currentStreak),
+            });
+          }
         } else if (a.type === 'BUDGET_SET') {
           track('budget_set', { currency: a.preview.currency });
         }
