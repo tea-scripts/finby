@@ -56,3 +56,25 @@ export interface OpsMetrics {
   pastDueSubscriptions: number;
   sentryUrl: string | null; // link-out; null when unset
 }
+
+export interface AdminUserRow {
+  id: string;
+  displayName: string;
+  email: string;
+  emailVerified: boolean;
+  createdAt: string;        // ISO
+  lastLoginAt: string | null; // ISO
+  /** Subscription of the workspace this user OWNS; null = free / none. */
+  subscription: {
+    tier: string;
+    status: string;
+    startedAt: string; // ISO — Subscription.createdAt
+  } | null;
+}
+
+export interface AdminUsersPage {
+  users: AdminUserRow[];
+  total: number;    // total matching users (for pagination)
+  page: number;     // 1-based
+  pageSize: number; // 50
+}

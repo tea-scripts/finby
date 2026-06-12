@@ -19,3 +19,10 @@ export const metricRangeSchema = z.object({
   to: z.coerce.date().optional(),
 });
 export type MetricRangeQuery = z.infer<typeof metricRangeSchema>;
+
+// Users-list query: 1-based page plus optional case-insensitive search term.
+export const usersQuerySchema = z.object({
+  page: z.coerce.number().int().min(1).default(1),
+  search: z.string().trim().max(200).optional(),
+});
+export type UsersQuery = z.infer<typeof usersQuerySchema>;
