@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useState, type FormEvent } from 'react';
+import { useEffect, useState } from 'react';
 import type { AdminUserRow, AdminUsersPage } from '@finby/shared';
 import { api } from '../lib/api';
 import { useAuthStore } from '../lib/auth-store';
@@ -69,6 +69,12 @@ function UserRow({ user }: { user: AdminUserRow }) {
 
 const HEADERS = ['User', 'Joined', 'Last active', 'Plan', 'Subscribed'] as const;
 
+type PlanFilter = '' | 'free' | 'paid' | 'PRO' | 'PREMIUM' | 'FAMILY';
+type SortOrder = 'newest' | 'oldest';
+
+const selectClass =
+  'rounded-xl border border-line bg-canvas/60 px-3 py-2.5 text-sm text-ink outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/30';
+
 export function UsersTable() {
   const setToken = useAuthStore((s) => s.setToken);
   const [data, setData] = useState<AdminUsersPage | null>(null);
@@ -76,19 +82,34 @@ export function UsersTable() {
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
   const [query, setQuery] = useState('');
+  const [plan, setPlan] = useState<PlanFilter>('');
+  const [sort, setSort] = useState<SortOrder>('newest');
+
+  // Debounce the live input so we don't hammer the (throttled) endpoint per keystroke.
+  useEffect(() => {
+    const t = setTimeout(() => {
+      setQuery(search.trim());
+      setPage(1); // new filter → first page
+    }, 350);
+    return () => clearTimeout(t);
+  }, [search]);
 
   useEffect(() => {
+    // Guard against out-of-order responses: a slow earlier request must not
+    // overwrite the result of a newer one fired while typing.
+    let stale = false;
     api
-      .users(page, query)
-      .then(setData)
-      .catch(() => setErr(true));
-  }, [page, query]);
-
-  function onSubmit(e: FormEvent) {
-    e.preventDefault();
-    setQuery(search.trim());
-    setPage(1);
-  }
+      .users(page, query, plan, sort)
+      .then((d) => {
+        if (!stale) setData(d);
+      })
+      .catch(() => {
+        if (!stale) setErr(true);
+      });
+    return () => {
+      stale = true;
+    };
+  }, [page, query, plan, sort]);
 
   if (err)
     return (
@@ -118,16 +139,42 @@ export function UsersTable() {
       <div className="space-y-4">
         <h1 className="font-display text-xl font-bold tracking-tight text-ink">Users</h1>
 
-        <form onSubmit={onSubmit} className="flex max-w-md items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Input
+            className="min-w-[14rem] flex-1"
             placeholder="Search name or email…"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
-          <Button type="submit" variant="ghost" className="shrink-0">
-            Search
-          </Button>
-        </form>
+          <select
+            aria-label="Filter by plan"
+            className={selectClass}
+            value={plan}
+            onChange={(e) => {
+              setPlan(e.target.value as PlanFilter);
+              setPage(1);
+            }}
+          >
+            <option value="">All plans</option>
+            <option value="free">Free</option>
+            <option value="paid">Paid</option>
+            <option value="PRO">Pro</option>
+            <option value="PREMIUM">Premium</option>
+            <option value="FAMILY">Family</option>
+          </select>
+          <select
+            aria-label="Sort"
+            className={selectClass}
+            value={sort}
+            onChange={(e) => {
+              setSort(e.target.value as SortOrder);
+              setPage(1);
+            }}
+          >
+            <option value="newest">Newest first</option>
+            <option value="oldest">Oldest first</option>
+          </select>
+        </div>
 
         <section className="overflow-hidden rounded-xl border border-line bg-surface shadow-card">
           <div className="overflow-x-auto">
