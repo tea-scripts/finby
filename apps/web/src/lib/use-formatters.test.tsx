@@ -1,6 +1,6 @@
 import { renderHook } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { UserPreferences } from '@finby/shared';
+import { DEFAULT_PREFERENCES, type UserPreferences } from '@finby/shared';
 import { useFormatters } from './use-formatters';
 
 // ── Mock the auth store ──────────────────────────────────────────────────────
@@ -28,11 +28,10 @@ describe('useFormatters', () => {
     state = {
       user: {
         preferences: {
+          ...DEFAULT_PREFERENCES,
           dateFormat: 'ISO',
           currencyDisplay: 'CODE',
           numberFormat: 'PLAIN',
-          dailyReminders: true,
-          lastDailyReminderAt: null,
         },
       },
     };
