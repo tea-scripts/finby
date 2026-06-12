@@ -19,3 +19,13 @@ export const metricRangeSchema = z.object({
   to: z.coerce.date().optional(),
 });
 export type MetricRangeQuery = z.infer<typeof metricRangeSchema>;
+
+// Users-list query: 1-based page, optional case-insensitive search term,
+// optional plan filter (owned-workspace tier), and joined-date sort direction.
+export const usersQuerySchema = z.object({
+  page: z.coerce.number().int().min(1).default(1),
+  search: z.string().trim().max(200).optional(),
+  plan: z.enum(['free', 'paid', 'PRO', 'PREMIUM', 'FAMILY']).optional(),
+  sort: z.enum(['newest', 'oldest']).default('newest'),
+});
+export type UsersQuery = z.infer<typeof usersQuerySchema>;
