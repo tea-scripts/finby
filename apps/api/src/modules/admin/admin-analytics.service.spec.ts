@@ -75,3 +75,34 @@ describe('AdminAnalyticsService.engagement', () => {
     ]);
   });
 });
+
+describe('AdminAnalyticsService.revenue', () => {
+  it('computes MRR from active paid subs and breaks down by tier/provider/status', async () => {
+    const { svc, prisma } = makeService();
+    // groupBy is called 3×: by tier (active paid), by provider, by status.
+    (prisma.subscription.groupBy as jest.Mock)
+      .mockResolvedValueOnce([
+        { tier: 'PRO', _count: { _all: 2 } },     // 2 × 499
+        { tier: 'PREMIUM', _count: { _all: 1 } },  // 1 × 999
+      ])
+      .mockResolvedValueOnce([
+        { billingProvider: 'STRIPE', _count: { _all: 2 } },
+        { billingProvider: 'PAYSTACK', _count: { _all: 1 } },
+      ])
+      .mockResolvedValueOnce([
+        { status: 'ACTIVE', _count: { _all: 3 } },
+        { status: 'PAST_DUE', _count: { _all: 1 } },
+      ]);
+    (prisma.subscription.count as jest.Mock).mockResolvedValue(0); // trials
+    (prisma.$queryRaw as jest.Mock).mockResolvedValue([]); // new/churn series
+
+    const res = await svc.revenue({});
+    expect(res.mrrMinor).toBe(2 * 499 + 1 * 999); // 1997
+    expect(res.currency).toBe('USD');
+    expect(res.paidByTier).toEqual([
+      { tier: 'PRO', count: 2 },
+      { tier: 'PREMIUM', count: 1 },
+    ]);
+    expect(res.statusBreakdown).toContainEqual({ status: 'PAST_DUE', count: 1 });
+  });
+});

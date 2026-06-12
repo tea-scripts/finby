@@ -4,8 +4,10 @@ import { Prisma } from '@prisma/client';
 import type {
   EngagementMetrics,
   GrowthMetrics,
+  RevenueMetrics,
   TimeSeriesPoint,
 } from '@finby/shared';
+import { TIER_PRICING, type SubscriptionTier } from '@finby/shared';
 import { PrismaService } from '../../prisma/prisma.service';
 import { RedisService } from '../../redis/redis.service';
 import type { Env } from '../../config/env.schema';
@@ -160,5 +162,60 @@ export class AdminAnalyticsService {
         featureAdoption: { budgets, portfolio, alerts },
       };
     });
+  }
+
+  async revenue(q: MetricRangeQuery): Promise<RevenueMetrics> {
+    const { from, to } = this.resolveRange(q);
+    return this.cached(this.rangeKey('revenue', from, to), async () => {
+      const activePaid = { status: 'ACTIVE' as const, tier: { not: 'FREE' as const } };
+      const [byTier, byProvider, byStatus, trials, newPaidPerDay, churnPerDay] = await Promise.all([
+        this.prisma.subscription.groupBy({ by: ['tier'], where: activePaid, _count: { _all: true } }),
+        this.prisma.subscription.groupBy({ by: ['billingProvider'], where: activePaid, _count: { _all: true } }),
+        this.prisma.subscription.groupBy({ by: ['status'], _count: { _all: true } }),
+        this.prisma.subscription.count({ where: { status: 'TRIALING' } }),
+        this.subscriptionSeries('createdAt', from, to, true),
+        this.subscriptionSeries('canceledAt', from, to, false),
+      ]);
+
+      let mrrMinor = 0;
+      const paidByTier = byTier.map((g) => {
+        const tier = g.tier as Exclude<SubscriptionTier, 'FREE'>;
+        const count = g._count._all;
+        const price = TIER_PRICING[tier];
+        if (price) mrrMinor += price.amountMinor * count; // all monthly
+        return { tier: g.tier, count };
+      });
+
+      return {
+        mrrMinor,
+        currency: 'USD' as const,
+        paidByTier,
+        paidByProvider: byProvider.map((g) => ({ provider: g.billingProvider, count: g._count._all })),
+        statusBreakdown: byStatus.map((g) => ({ status: g.status, count: g._count._all })),
+        trials,
+        newPaidPerDay,
+        churnPerDay,
+      };
+    });
+  }
+
+  /** Daily count of subscriptions by a date column (paid-only for new, any for churn). */
+  private async subscriptionSeries(
+    dateColumn: 'createdAt' | 'canceledAt',
+    from: Date,
+    to: Date,
+    paidOnly: boolean,
+  ): Promise<TimeSeriesPoint[]> {
+    const col = dateColumn === 'createdAt' ? '"createdAt"' : '"canceledAt"';
+    const tierFilter = paidOnly ? Prisma.sql`AND "tier" <> 'FREE'` : Prisma.empty;
+    const rows = await this.prisma.$queryRaw<{ date: string; value: bigint }[]>(Prisma.sql`
+      SELECT to_char(date_trunc('day', ${Prisma.raw(col)}), 'YYYY-MM-DD') AS date,
+             count(*)::bigint AS value
+      FROM "subscriptions"
+      WHERE ${Prisma.raw(col)} >= ${from} AND ${Prisma.raw(col)} <= ${to} ${tierFilter}
+      GROUP BY 1
+      ORDER BY 1
+    `);
+    return rows.map((r) => ({ date: r.date, value: Number(r.value) }));
   }
 }
