@@ -9,6 +9,10 @@ import { isAllowedAdmin, parseAllowlist } from './admin.allowlist';
 import type { AdminTokenPayload } from './admin.types';
 import type { AdminEnrollInput, AdminLoginInput } from './dto/admin.schemas';
 
+// Accept the previous/current/next 30s TOTP step (±30s) to tolerate normal clock
+// drift between an admin's authenticator device and the server (RFC 6238 §5.2).
+authenticator.options = { window: 1 };
+
 export interface AdminLoginResult {
   accessToken: string;
   email: string;
