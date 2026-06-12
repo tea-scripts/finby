@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
-import type { UserPreferences } from '@finby/shared';
+import { DEFAULT_PREFERENCES, type UserPreferences } from '@finby/shared';
 import { AccountList } from './account-list';
 import type { SectionState } from '@/lib/dashboard-api';
 import type { AccountView } from '@/lib/types';
@@ -34,13 +34,7 @@ describe('AccountList preference-aware money', () => {
   it('renders the CODE money form when the user prefers CODE display', () => {
     state = {
       user: {
-        preferences: {
-          dateFormat: 'MEDIUM',
-          currencyDisplay: 'CODE',
-          numberFormat: 'GROUPED',
-          dailyReminders: true,
-          lastDailyReminderAt: null,
-        },
+        preferences: { ...DEFAULT_PREFERENCES, currencyDisplay: 'CODE' },
       },
     };
 

@@ -27,6 +27,8 @@ beforeEach(() => {
       timezone: 'UTC',
       accountNumber: 'ACC-001',
       preferences: { ...DEFAULT_PREFERENCES },
+      currentStreak: 0,
+      longestStreak: 0,
     },
     workspace: {
       id: 'w1',
