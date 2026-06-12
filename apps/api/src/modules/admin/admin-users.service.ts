@@ -7,6 +7,33 @@ import type { UsersQuery } from './dto/admin.schemas';
 const PAGE_SIZE = 50;
 
 /**
+ * Plan filter over the workspace the user OWNS (mirrors the table's plan
+ * column, which is derived from owned workspaces).
+ *
+ * `free` deliberately means "no owned paid workspace": it matches users who
+ * own only FREE workspaces AND users who own no workspace at all — both
+ * render as "Free" in the users table, so the filter matches what the
+ * column displays.
+ */
+function planWhere(plan: UsersQuery['plan']): Prisma.UserWhereInput | undefined {
+  if (!plan) return undefined;
+  if (plan === 'free') {
+    return {
+      NOT: {
+        workspaceMemberships: {
+          some: { role: 'OWNER', workspace: { tier: { not: 'FREE' } } },
+        },
+      },
+    };
+  }
+  return {
+    workspaceMemberships: {
+      some: { role: 'OWNER', workspace: { tier: plan === 'paid' ? { not: 'FREE' } : plan } },
+    },
+  };
+}
+
+/**
  * Paginated user directory for the admin dashboard. Deliberately uncached:
  * page/search parameterization would explode cache keys, volume is tiny
  * (admin-only, throttled), and a user-admin view should reflect live state.
@@ -16,7 +43,7 @@ export class AdminUsersService {
   constructor(private readonly prisma: PrismaService) {}
 
   async list(q: UsersQuery): Promise<AdminUsersPage> {
-    const where: Prisma.UserWhereInput | undefined = q.search
+    const searchWhere: Prisma.UserWhereInput | undefined = q.search
       ? {
           OR: [
             { displayName: { contains: q.search, mode: 'insensitive' } },
@@ -25,11 +52,19 @@ export class AdminUsersService {
         }
       : undefined;
 
+    // Both filters must apply when both params are present.
+    const conditions = [searchWhere, planWhere(q.plan)].filter(
+      (c): c is Prisma.UserWhereInput => c !== undefined,
+    );
+    const where: Prisma.UserWhereInput | undefined =
+      conditions.length > 1 ? { AND: conditions } : conditions[0];
+
     const [total, users] = await Promise.all([
       this.prisma.user.count({ where }),
       this.prisma.user.findMany({
         where,
-        orderBy: { createdAt: 'desc' },
+        // Tolerates a missing sort (treated as newest) so pre-parse callers stay valid.
+        orderBy: { createdAt: q.sort === 'oldest' ? 'asc' : 'desc' },
         skip: (q.page - 1) * PAGE_SIZE,
         take: PAGE_SIZE,
         select: {

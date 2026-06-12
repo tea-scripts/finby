@@ -39,8 +39,10 @@ export const api = {
   revenue: () => request<import('@finby/shared').RevenueMetrics>('/admin/metrics/revenue'),
   streaks: () => request<import('@finby/shared').StreakLeaderboards>('/admin/metrics/streaks'),
   ops: () => request<import('@finby/shared').OpsMetrics>('/admin/metrics/ops'),
-  users: (page = 1, search = '') =>
+  users: (page = 1, search = '', plan = '', sort = 'newest') =>
     request<import('@finby/shared').AdminUsersPage>(
-      `/admin/users?page=${page}${search ? `&search=${encodeURIComponent(search)}` : ''}`,
+      `/admin/users?page=${page}&sort=${sort}` +
+        (search ? `&search=${encodeURIComponent(search)}` : '') +
+        (plan ? `&plan=${encodeURIComponent(plan)}` : ''),
     ),
 };

@@ -36,7 +36,7 @@ describe('AdminUsersService.list', () => {
       },
     ]);
 
-    const res = await svc.list({ page: 1 });
+    const res = await svc.list({ page: 1, sort: 'newest' });
     expect(res.users[0]?.subscription).toEqual({
       tier: 'PRO',
       status: 'ACTIVE',
@@ -54,7 +54,7 @@ describe('AdminUsersService.list', () => {
       },
     ]);
 
-    const res = await svc.list({ page: 1 });
+    const res = await svc.list({ page: 1, sort: 'newest' });
     expect(res.users[0]?.subscription).toBeNull();
   });
 
@@ -63,7 +63,7 @@ describe('AdminUsersService.list', () => {
     (prisma.user.count as jest.Mock).mockResolvedValue(123);
     (prisma.user.findMany as jest.Mock).mockResolvedValue([]);
 
-    const res = await svc.list({ page: 2, search: 'ai' });
+    const res = await svc.list({ page: 2, search: 'ai', sort: 'newest' });
 
     expect(prisma.user.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -89,9 +89,87 @@ describe('AdminUsersService.list', () => {
       { ...baseUser, lastLoginAt: null, workspaceMemberships: [] },
     ]);
 
-    const res = await svc.list({ page: 1 });
+    const res = await svc.list({ page: 1, sort: 'newest' });
     expect(res.users[0]?.createdAt).toBe('2026-01-02T03:04:05.000Z');
     expect(res.users[0]?.lastLoginAt).toBeNull();
     expect(res.users[0]?.subscription).toBeNull();
+  });
+
+  it('filters plan=PRO by OWNER membership in a PRO-tier workspace', async () => {
+    const { svc, prisma } = makeService();
+
+    await svc.list({ page: 1, sort: 'newest', plan: 'PRO' });
+
+    const expectedWhere = {
+      workspaceMemberships: { some: { role: 'OWNER', workspace: { tier: 'PRO' } } },
+    };
+    expect(prisma.user.count).toHaveBeenCalledWith({ where: expectedWhere });
+    expect(prisma.user.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: expectedWhere }),
+    );
+  });
+
+  it('filters plan=free as users with no owned paid workspace', async () => {
+    const { svc, prisma } = makeService();
+
+    await svc.list({ page: 1, sort: 'newest', plan: 'free' });
+
+    const expectedWhere = {
+      NOT: {
+        workspaceMemberships: {
+          some: { role: 'OWNER', workspace: { tier: { not: 'FREE' } } },
+        },
+      },
+    };
+    expect(prisma.user.count).toHaveBeenCalledWith({ where: expectedWhere });
+    expect(prisma.user.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: expectedWhere }),
+    );
+  });
+
+  it('combines search and plan=paid filters with AND', async () => {
+    const { svc, prisma } = makeService();
+
+    await svc.list({ page: 1, sort: 'newest', search: 'x', plan: 'paid' });
+
+    const expectedWhere = {
+      AND: [
+        {
+          OR: [
+            { displayName: { contains: 'x', mode: 'insensitive' } },
+            { email: { contains: 'x', mode: 'insensitive' } },
+          ],
+        },
+        {
+          workspaceMemberships: {
+            some: { role: 'OWNER', workspace: { tier: { not: 'FREE' } } },
+          },
+        },
+      ],
+    };
+    expect(prisma.user.count).toHaveBeenCalledWith({ where: expectedWhere });
+    expect(prisma.user.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: expectedWhere }),
+    );
+  });
+
+  it('sorts oldest-first when sort=oldest', async () => {
+    const { svc, prisma } = makeService();
+
+    await svc.list({ page: 1, sort: 'oldest' });
+
+    expect(prisma.user.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ orderBy: { createdAt: 'asc' } }),
+    );
+  });
+
+  it('defaults to newest-first sort', async () => {
+    const { svc, prisma } = makeService();
+
+    await svc.list({ page: 1, sort: 'newest' });
+
+    expect(prisma.user.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ orderBy: { createdAt: 'desc' } }),
+    );
   });
 });
