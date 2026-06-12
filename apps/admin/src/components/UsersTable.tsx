@@ -112,7 +112,10 @@ export function UsersTable() {
     api
       .users(page, query, plan, sort)
       .then((d) => {
-        if (!stale) setData(d);
+        if (!stale) {
+          setData(d);
+          setErr(false); // a fresh success clears any earlier transient failure
+        }
       })
       .catch(() => {
         if (!stale) setErr(true);
