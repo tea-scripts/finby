@@ -10,8 +10,13 @@ export interface LlmToolCall {
   input: Record<string, unknown>;
 }
 
+/** Image formats accepted by the vision API (HEIC is not supported — callers
+ *  must transcode or degrade gracefully before reaching the provider). */
+export type LlmImageMediaType = 'image/jpeg' | 'image/png' | 'image/webp' | 'image/gif';
+
 export type LlmContentBlock =
   | { type: 'text'; text: string }
+  | { type: 'image'; source: { base64: string; mediaType: LlmImageMediaType } }
   | { type: 'tool_use'; id: string; name: string; input: Record<string, unknown> }
   | { type: 'tool_result'; toolUseId: string; content: string; isError?: boolean };
 
@@ -32,6 +37,9 @@ export interface LlmCreateParams {
   messages: LlmMessage[];
   tools?: LlmToolDef[];
   maxTokens?: number;
+  /** Override the env-configured model for this call (e.g. receipt extraction
+   *  must always use claude-sonnet-4-6 regardless of the chat default). */
+  model?: string;
 }
 
 /** Provider-agnostic LLM port. The ONLY Anthropic-specific code is claude.provider.ts. */
