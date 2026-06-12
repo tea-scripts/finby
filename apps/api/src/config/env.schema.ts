@@ -131,6 +131,16 @@ export const envSchema = z.object({
       path: ['ADMIN_JWT_SECRET'],
     });
   }
+
+  // ADMIN_WEB_URL is added to the CORS allowlist; when admin auth is enabled it must be
+  // a real public origin, not the localhost default (same rationale as WEB_URL above).
+  if (env.ADMIN_EMAILS.trim() !== '' && /localhost|127\.0\.0\.1/.test(env.ADMIN_WEB_URL)) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: `[PRODUCTION] ADMIN_WEB_URL must be a public origin when admin auth is enabled (got "${env.ADMIN_WEB_URL}"). Refusing to start.`,
+      path: ['ADMIN_WEB_URL'],
+    });
+  }
 });
 
 export type Env = z.infer<typeof envSchema>;
