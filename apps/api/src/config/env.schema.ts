@@ -36,6 +36,7 @@ export const envSchema = z.object({
   ADMIN_JWT_TTL: z.string().default('8h'), // one workday session; re-login (with TOTP) after.
   ADMIN_TOTP_ISSUER: z.string().default('Finby Admin'),
   ADMIN_SENTRY_URL: z.string().url().optional(), // dashboard link shown in the ops panel
+  ADMIN_WEB_URL: z.string().url().default('http://localhost:3002'), // admin app origin (CORS allowlist)
 
   // LLM / Anthropic (Phase 2)
   ANTHROPIC_API_KEY: z.string().optional(),
@@ -117,6 +118,17 @@ export const envSchema = z.object({
       code: z.ZodIssueCode.custom,
       message: `[PRODUCTION] WEB_URL must be a public origin, not the localhost default (got "${env.WEB_URL}"). Refusing to start.`,
       path: ['WEB_URL'],
+    });
+  }
+
+  // Admin auth: if an allowlist is configured in production, the signing secret is
+  // mandatory. Without it the admin token signature degrades to a per-boot random
+  // (login silently never works, and a defense layer is lost).
+  if (env.ADMIN_EMAILS.trim() !== '' && (!env.ADMIN_JWT_SECRET || env.ADMIN_JWT_SECRET.trim() === '')) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: `[PRODUCTION] ADMIN_JWT_SECRET is required when ADMIN_EMAILS is set (admin auth enabled). Refusing to start.`,
+      path: ['ADMIN_JWT_SECRET'],
     });
   }
 });

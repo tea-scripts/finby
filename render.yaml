@@ -42,10 +42,18 @@ services:
         value: "10" # 0.5 vCPU starter box: 12 rounds ×2 hashes/register caps signup throughput. 10 is OWASP-acceptable.
       - key: VAPID_SUBJECT
         value: mailto:support@finby.app
+      - key: ADMIN_JWT_TTL
+        value: 8h
+      - key: ADMIN_TOTP_ISSUER
+        value: Finby Admin
+      - key: ADMIN_WEB_URL
+        value: https://admin.finby.app
       # --- generated once by Render ---
       - key: JWT_ACCESS_SECRET
         generateValue: true
       - key: JWT_REFRESH_SECRET
+        generateValue: true
+      - key: ADMIN_JWT_SECRET
         generateValue: true
       # --- wired from the Key Value instance below ---
       - key: REDIS_URL
@@ -76,6 +84,11 @@ services:
       - key: VAPID_PUBLIC_KEY
         sync: false
       - key: VAPID_PRIVATE_KEY
+        sync: false
+      # --- admin secrets: paste in the Render dashboard ---
+      - key: ADMIN_EMAILS          # comma-separated allowlist
+        sync: false
+      - key: ADMIN_SENTRY_URL      # optional: Sentry dashboard link for the ops panel
         sync: false
 
   - name: finby-redis

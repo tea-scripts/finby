@@ -19,7 +19,10 @@ async function bootstrap(): Promise<void> {
   // Allow the web app's browser origin to call the API (tokens travel in the
   // Authorization header, not cookies, but credentials are enabled for safety).
   app.enableCors({
-    origin: process.env.WEB_URL ?? 'http://localhost:3000',
+    origin: [
+      process.env.WEB_URL ?? 'http://localhost:3000',
+      process.env.ADMIN_WEB_URL ?? 'http://localhost:3002',
+    ],
     credentials: true,
   });
   // Hosts (Render, Railway, Fly…) inject PORT; fall back to API_PORT then 3001.
