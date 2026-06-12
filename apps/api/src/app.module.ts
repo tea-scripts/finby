@@ -11,6 +11,7 @@ import { AppController } from './app.controller';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { ConfigModule } from './config/config.module';
 import { AccountsModule } from './modules/accounts/accounts.module';
+import { AdminModule } from './modules/admin/admin.module';
 import { AlertsModule } from './modules/alerts/alerts.module';
 import { AnalyticsModule } from './modules/analytics/analytics.module';
 import { AuthModule } from './modules/auth/auth.module';
@@ -85,6 +86,7 @@ import { RedisModule } from './redis/redis.module';
     PrismaModule,
     RedisModule,
     AuthModule,
+    AdminModule,
     FxModule,
     MarketModule,
     AccountsModule,
