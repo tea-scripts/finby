@@ -20,7 +20,14 @@ export function LoginForm() {
     setError(null);
     setBusy(true);
     try {
-      const { accessToken } = await api.login({ email, password, totp });
+      // Send `totp` only when filled — an empty string fails the API's 6-digit
+      // validation (422) and would skip the enrollment-on-401 path below. First
+      // login (no code yet) must omit it so the API returns 401 → enroll.
+      const { accessToken } = await api.login({
+        email,
+        password,
+        totp: totp.trim() || undefined,
+      });
       setToken(accessToken);
       router.push('/');
     } catch (err) {
