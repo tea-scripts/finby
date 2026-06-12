@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { ReceiptScanner } from '@/components/receipts/ReceiptScanner';
 import { EditTransactionModal } from '@/components/transactions/edit-transaction-modal';
 import { TransactionFilters } from '@/components/transactions/transaction-filters';
 import { TransactionRow } from '@/components/transactions/transaction-row';
@@ -34,6 +35,25 @@ export default function TransactionsPage() {
   const [error, setError] = useState<string | null>(null);
   const [categories, setCategories] = useState<Category[]>([]);
   const [editing, setEditing] = useState<Transaction | null>(null);
+  const [scannerOpen, setScannerOpen] = useState(false);
+  const [toast, setToast] = useState<string | null>(null);
+  const toastTimer = useRef<number | null>(null);
+
+  useEffect(
+    () => () => {
+      if (toastTimer.current !== null) window.clearTimeout(toastTimer.current);
+    },
+    [],
+  );
+
+  // A confirmed receipt scan logged a new transaction: reload page 1 (a fresh
+  // filters object retriggers the load effect) and surface a brief toast.
+  function handleReceiptLogged() {
+    setFilters((f) => ({ ...f }));
+    setToast('Receipt logged — transaction added.');
+    if (toastTimer.current !== null) window.clearTimeout(toastTimer.current);
+    toastTimer.current = window.setTimeout(() => setToast(null), 3000);
+  }
 
   // Categories for the filter + edit pickers (load once).
   useEffect(() => {
@@ -85,7 +105,12 @@ export default function TransactionsPage() {
   return (
     <div className="h-full overflow-y-auto pb-nav">
       <div className="mx-auto w-full max-w-3xl space-y-5 px-4 py-6 animate-fade-up">
-        <h1 className="font-display text-2xl font-bold text-ink">Transactions</h1>
+        <div className="flex items-center justify-between gap-3">
+          <h1 className="font-display text-2xl font-bold text-ink">Transactions</h1>
+          <Button variant="ghost" onClick={() => setScannerOpen(true)}>
+            Scan Receipt
+          </Button>
+        </div>
 
         <TransactionFilters filters={filters} categories={categories} onChange={setFilters} />
 
@@ -120,6 +145,21 @@ export default function TransactionsPage() {
           </div>
         )}
       </div>
+
+      {toast && (
+        <div
+          role="status"
+          className="fixed bottom-24 left-1/2 z-50 -translate-x-1/2 rounded-full border border-line bg-surface px-4 py-2 text-sm text-ink shadow-card"
+        >
+          {toast}
+        </div>
+      )}
+
+      <ReceiptScanner
+        open={scannerOpen}
+        onClose={() => setScannerOpen(false)}
+        onLogged={handleReceiptLogged}
+      />
 
       {editing && workspace && (
         <EditTransactionModal

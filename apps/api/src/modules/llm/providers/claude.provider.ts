@@ -27,7 +27,7 @@ export class ClaudeProvider implements LlmProvider {
 
   async createMessage(params: LlmCreateParams): Promise<LlmResponse> {
     const message = await this.client.messages.create({
-      model: this.model,
+      model: params.model ?? this.model,
       max_tokens: params.maxTokens ?? 1024,
       system: params.system,
       messages: params.messages.map((m) => toMessageParam(m)),
@@ -53,6 +53,16 @@ function toMessageParam(message: LlmMessage): Anthropic.MessageParam {
   const blocks: Anthropic.ContentBlockParam[] = message.content.map((block) => {
     if (block.type === 'text') {
       return { type: 'text', text: block.text };
+    }
+    if (block.type === 'image') {
+      return {
+        type: 'image',
+        source: {
+          type: 'base64',
+          media_type: block.source.mediaType,
+          data: block.source.base64,
+        },
+      };
     }
     if (block.type === 'tool_use') {
       return { type: 'tool_use', id: block.id, name: block.name, input: block.input };

@@ -1,5 +1,6 @@
 import { useAuth } from './store';
 import type {
+  ChatMessageView,
   ChatResult,
   ConversationListResult,
   ConversationSummary,
@@ -32,6 +33,19 @@ export function listMessages(
 ): Promise<MessagesResult> {
   return authed<MessagesResult>(
     `/workspaces/${workspaceId}/conversations/${conversationId}/messages`,
+  );
+}
+
+/** Persist a pre-composed assistant bubble (e.g. after a receipt-scan log)
+ *  without running the chat AI pipeline. */
+export function appendAssistantNote(
+  workspaceId: string,
+  conversationId: string,
+  content: string,
+): Promise<ChatMessageView> {
+  return authed<ChatMessageView>(
+    `/workspaces/${workspaceId}/conversations/${conversationId}/notes`,
+    { method: 'POST', body: JSON.stringify({ content }) },
   );
 }
 

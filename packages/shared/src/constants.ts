@@ -42,6 +42,9 @@ export interface TierLimits {
   maxMembers: number;
   dataExport: boolean;
   proactiveCoaching: boolean;
+  receiptScanning: boolean;
+  /** Daily receipt-scan cap for tiers with receiptScanning (0 when disabled). */
+  receiptScansPerDay: number;
 }
 
 /**
@@ -89,6 +92,8 @@ export const TIER_LIMITS: Record<SubscriptionTier, TierLimits> = {
     maxMembers: 1,
     dataExport: false,
     proactiveCoaching: false,
+    receiptScanning: false,
+    receiptScansPerDay: 0,
   },
   PRO: {
     chatMessagesPerDay: null,
@@ -104,6 +109,8 @@ export const TIER_LIMITS: Record<SubscriptionTier, TierLimits> = {
     maxMembers: 1,
     dataExport: true,
     proactiveCoaching: false,
+    receiptScanning: true,
+    receiptScansPerDay: 20,
   },
   PREMIUM: {
     chatMessagesPerDay: null,
@@ -119,6 +126,8 @@ export const TIER_LIMITS: Record<SubscriptionTier, TierLimits> = {
     maxMembers: 1,
     dataExport: true,
     proactiveCoaching: true,
+    receiptScanning: true,
+    receiptScansPerDay: 50,
   },
   FAMILY: {
     chatMessagesPerDay: null,
@@ -134,6 +143,8 @@ export const TIER_LIMITS: Record<SubscriptionTier, TierLimits> = {
     maxMembers: 5,
     dataExport: true,
     proactiveCoaching: true,
+    receiptScanning: true,
+    receiptScansPerDay: 50,
   },
 };
 

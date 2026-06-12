@@ -3,6 +3,7 @@ import type { Conversation } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import type { ListMessagesQuery } from './dto/chat.schemas';
 import type { ChatMessageView } from './chat.types';
+import { estimateTokens } from './memory/token-counter.util';
 
 @Injectable()
 export class ConversationsService {
@@ -50,6 +51,38 @@ export class ConversationsService {
       throw new NotFoundException('Conversation not found.');
     }
     return conversation;
+  }
+
+  /**
+   * Persist a pre-composed ASSISTANT message (e.g. the receipt-scan
+   * confirmation bubble) without invoking the LLM pipeline. Keeps the
+   * conversational record intact for flows that log outside of chat.
+   */
+  async appendAssistantNote(
+    workspaceId: string,
+    userId: string,
+    conversationId: string,
+    content: string,
+  ): Promise<ChatMessageView> {
+    await this.requireConversation(workspaceId, userId, conversationId);
+
+    const message = await this.prisma.conversationMessage.create({
+      data: { conversationId, role: 'ASSISTANT', content, tokenCount: estimateTokens(content) },
+    });
+    const messageCount = await this.prisma.conversationMessage.count({
+      where: { conversationId },
+    });
+    await this.prisma.conversation.update({
+      where: { id: conversationId },
+      data: { messageCount, updatedAt: new Date() },
+    });
+
+    return {
+      id: message.id,
+      role: message.role,
+      content: message.content,
+      createdAt: message.createdAt.toISOString(),
+    };
   }
 
   async listMessages(
