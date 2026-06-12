@@ -22,7 +22,7 @@ export interface EngagementMetrics {
   conversations: number;
   chatMessages: number;
   streakDistribution: { bucket: string; users: number }[]; // e.g. "0","1-6","7-29","30+"
-  featureAdoption: { budgets: number; portfolio: number; alerts: number }; // % of workspaces
+  featureAdoption: { budgets: number; portfolio: number; alerts: number }; // distinct workspaces using each feature
 }
 
 export interface RevenueMetrics {
