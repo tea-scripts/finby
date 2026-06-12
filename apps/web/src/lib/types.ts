@@ -187,6 +187,20 @@ export interface TransactionListResult {
   hasMore: boolean;
 }
 
+/** Body for POST transactions (manual logging, e.g. confirmed receipt scans). */
+export interface CreateTransactionInput {
+  type: 'EXPENSE' | 'INCOME' | 'TRANSFER';
+  amountOriginal: string;
+  currencyOriginal: string;
+  categoryId?: string;
+  accountId?: string;
+  toAccountId?: string;
+  merchant?: string;
+  description?: string;
+  transactionDate?: string;
+  tags?: string[];
+}
+
 /** Fields editable via PATCH transactions/:id. */
 export interface TransactionPatch {
   categoryId?: string | null;
@@ -205,6 +219,31 @@ export interface TransactionQuery {
   fromDate?: string;
   toDate?: string;
   currency?: string;
+}
+
+// ── Receipts ─────────────────────────────────────────────────────────────────
+
+export interface ReceiptLineItem {
+  name: string;
+  amount: number;
+}
+
+/** POST /workspaces/:id/receipts/extract */
+export interface ReceiptExtraction {
+  merchant: string;
+  total: number;
+  currency: string;
+  /** YYYY-MM-DD */
+  date: string;
+  category: string;
+  lineItems: ReceiptLineItem[];
+  confidence: number;
+  isMixedCategories: boolean;
+  /** total > 100 OR mixed categories — show the line items for review. */
+  showLineItems: boolean;
+  /** Set when confidence < 0.5 — surface a verify warning. */
+  lowConfidence?: boolean;
+  notes: string | null;
 }
 
 // ── Billing / Subscription ───────────────────────────────────────────────────

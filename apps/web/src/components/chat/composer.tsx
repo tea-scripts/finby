@@ -1,18 +1,22 @@
 'use client';
 
 import { useState, type FormEvent, type KeyboardEvent } from 'react';
+import { Camera } from '@phosphor-icons/react';
 import { Button } from '@/components/ui/button';
 
 /** Chat input. Enter sends, Shift+Enter inserts a newline.
- *  Typing the `/clear` command starts a fresh chat instead of sending. */
+ *  Typing the `/clear` command starts a fresh chat instead of sending.
+ *  When `onScanReceipt` is provided, a camera button opens the receipt scanner. */
 export function Composer({
   disabled,
   onSend,
   onClearCommand,
+  onScanReceipt,
 }: {
   disabled: boolean;
   onSend: (content: string) => void;
   onClearCommand: () => void;
+  onScanReceipt?: () => void;
 }) {
   const [value, setValue] = useState('');
 
@@ -46,6 +50,17 @@ export function Composer({
       onSubmit={onSubmit}
       className="flex items-end gap-2 rounded-2xl border border-line bg-surface/80 p-2 shadow-card backdrop-blur"
     >
+      {onScanReceipt && (
+        <button
+          type="button"
+          aria-label="Scan a receipt"
+          onClick={onScanReceipt}
+          disabled={disabled}
+          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-muted transition hover:bg-surface-2 hover:text-ink disabled:opacity-50"
+        >
+          <Camera size={22} />
+        </button>
+      )}
       <textarea
         rows={1}
         value={value}

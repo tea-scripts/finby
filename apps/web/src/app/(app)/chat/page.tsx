@@ -6,6 +6,7 @@ import { Composer } from '@/components/chat/composer';
 import { ConfirmationCard } from '@/components/chat/confirmation-card';
 import { MessageBubble } from '@/components/chat/message-bubble';
 import { TypingDots } from '@/components/chat/typing-dots';
+import { ReceiptScanner } from '@/components/receipts/ReceiptScanner';
 import { UpgradeModal } from '@/components/billing/UpgradeModal';
 import { Button } from '@/components/ui/button';
 import { Lottie } from '@/components/ui/lottie';
@@ -13,6 +14,7 @@ import { Modal } from '@/components/ui/modal';
 import { ApiError } from '@/lib/api-client';
 import { dayKey, dayLabel } from '@/lib/format';
 import {
+  appendAssistantNote,
   createConversation,
   listConversations,
   listMessages,
@@ -20,7 +22,12 @@ import {
 } from '@/lib/chat-api';
 import { useAuth } from '@/lib/store';
 import { track } from '@/lib/analytics';
-import type { ChatAction, PendingConfirmation } from '@/lib/types';
+import type {
+  ChatAction,
+  PendingConfirmation,
+  ReceiptExtraction,
+  Transaction,
+} from '@/lib/types';
 
 interface UiMessage {
   id: string;
@@ -45,6 +52,7 @@ export default function ChatPage() {
   const workspace = useAuth((s) => s.workspace);
   const user = useAuth((s) => s.user);
   const setUser = useAuth((s) => s.setUser);
+  const refreshUser = useAuth((s) => s.refreshUser);
 
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [messages, setMessages] = useState<UiMessage[]>([]);
@@ -54,6 +62,7 @@ export default function ChatPage() {
   const [upgradeOpen, setUpgradeOpen] = useState(false);
   const [clearOpen, setClearOpen] = useState(false);
   const [clearing, setClearing] = useState(false);
+  const [scannerOpen, setScannerOpen] = useState(false);
 
   const initialized = useRef(false);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -150,6 +159,45 @@ export default function ChatPage() {
     } finally {
       setSending(false);
     }
+  }
+
+  // A receipt logged from the chat entry point keeps the conversational feel:
+  // a pre-composed assistant bubble is persisted (no LLM call) and appended
+  // locally. If persistence fails, the bubble still shows for this session.
+  async function handleReceiptLogged(tx: Transaction, extraction: ReceiptExtraction) {
+    track('transaction_logged', {
+      tx_type: 'EXPENSE',
+      currency: tx.currencyOriginal,
+      source: 'receipt_scan',
+    });
+    // The log may have advanced the spending streak; the generic transactions
+    // endpoint doesn't return it, so refresh the user in the background.
+    void refreshUser();
+    const content = `Got it — logged ${tx.amountOriginal} ${tx.currencyOriginal} at ${
+      tx.merchant ?? extraction.merchant
+    } under ${tx.category?.name ?? 'Uncategorized'} from your receipt 🧾`;
+
+    if (workspace && conversationId) {
+      try {
+        const message = await appendAssistantNote(workspace.id, conversationId, content);
+        setMessages((m) => [
+          ...m,
+          {
+            id: message.id,
+            role: message.role,
+            content: message.content,
+            createdAt: message.createdAt,
+          },
+        ]);
+        return;
+      } catch {
+        /* fall through to the local-only bubble */
+      }
+    }
+    setMessages((m) => [
+      ...m,
+      { id: genId(), role: 'ASSISTANT', content, createdAt: new Date().toISOString() },
+    ]);
   }
 
   // `/clear` and the "New chat" button both land here. Nothing to clear on an
@@ -277,9 +325,20 @@ export default function ChatPage() {
               )}
             </div>
           )}
-          <Composer disabled={sending} onSend={handleSend} onClearCommand={requestClear} />
+          <Composer
+            disabled={sending}
+            onSend={handleSend}
+            onClearCommand={requestClear}
+            onScanReceipt={() => setScannerOpen(true)}
+          />
         </div>
       </div>
+
+      <ReceiptScanner
+        open={scannerOpen}
+        onClose={() => setScannerOpen(false)}
+        onLogged={(tx, extraction) => void handleReceiptLogged(tx, extraction)}
+      />
 
       <UpgradeModal open={upgradeOpen} onClose={() => setUpgradeOpen(false)} source="chat_limit" />
 

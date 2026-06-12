@@ -1,6 +1,7 @@
 import { useAuth } from './store';
 import type {
   Category,
+  CreateTransactionInput,
   Transaction,
   TransactionListResult,
   TransactionPatch,
@@ -24,6 +25,16 @@ export function listTransactions(
   if (query.toDate) q.set('toDate', query.toDate);
   if (query.currency) q.set('currency', query.currency);
   return authed<TransactionListResult>(`/workspaces/${workspaceId}/transactions?${q}`);
+}
+
+export function createTransaction(
+  workspaceId: string,
+  input: CreateTransactionInput,
+): Promise<Transaction> {
+  return authed<Transaction>(`/workspaces/${workspaceId}/transactions`, {
+    method: 'POST',
+    body: JSON.stringify(input),
+  });
 }
 
 export function updateTransaction(

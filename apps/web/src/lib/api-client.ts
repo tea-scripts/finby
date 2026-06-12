@@ -20,7 +20,9 @@ export async function apiFetch<T>(path: string, init: RequestInit = {}): Promise
     res = await fetch(`${API_BASE}${path}`, {
       ...init,
       headers: {
-        'Content-Type': 'application/json',
+        // FormData bodies (file uploads) must let the browser set the
+        // multipart Content-Type with its boundary — never force JSON there.
+        ...(init.body instanceof FormData ? {} : { 'Content-Type': 'application/json' }),
         ...(init.headers ?? {}),
       },
     });
