@@ -20,12 +20,14 @@ import type { AuthUser } from '../auth/auth.types';
 import { ConversationsService } from './conversations.service';
 import { ChatService } from './chat.service';
 import {
+  assistantNoteSchema,
   listMessagesQuerySchema,
   sendMessageSchema,
+  type AssistantNoteInput,
   type ListMessagesQuery,
   type SendMessageInput,
 } from './dto/chat.schemas';
-import type { ChatResult } from './chat.types';
+import type { ChatMessageView, ChatResult } from './chat.types';
 
 @Controller('workspaces/:workspaceId/conversations')
 @UseGuards(WorkspaceMemberGuard)
@@ -53,6 +55,25 @@ export class ConversationsController {
     @Query(new ZodValidationPipe(listMessagesQuerySchema)) query: ListMessagesQuery,
   ) {
     return this.conversations.listMessages(workspace.id, user.userId, conversationId, query);
+  }
+
+  /** Persists a pre-composed assistant note (e.g. after a receipt-scan log)
+   *  WITHOUT running the chat AI pipeline — no LLM call, no tools. */
+  @Post(':conversationId/notes')
+  @Roles('OWNER', 'CO_MANAGER')
+  @UseGuards(RolesGuard)
+  appendNote(
+    @Workspace() workspace: WorkspaceContext,
+    @CurrentUser() user: AuthUser,
+    @Param('conversationId') conversationId: string,
+    @Body(new ZodValidationPipe(assistantNoteSchema)) body: AssistantNoteInput,
+  ): Promise<ChatMessageView> {
+    return this.conversations.appendAssistantNote(
+      workspace.id,
+      user.userId,
+      conversationId,
+      body.content,
+    );
   }
 
   @Post(':conversationId/messages')
