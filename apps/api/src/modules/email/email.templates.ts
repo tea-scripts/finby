@@ -3,14 +3,18 @@
 // progressive enhancement via background-image gradients — clients that strip it
 // (e.g. Outlook) fall back to the solid dark background-color, so it always reads
 // as the dark brand.
-const SHELL = (body: string): string => `<!doctype html>
+const SHELL = (
+  body: string,
+  // Defaults to the user-facing footer; internal notifications override the first line.
+  footerNote = "You're receiving this because you have a Finby account.",
+): string => `<!doctype html>
 <html>
 <body style="margin:0;padding:0;background-color:#06101f;">
 <div style="background-color:#06101f;background-image:linear-gradient(rgba(29,110,245,0.07) 1px,transparent 1px),linear-gradient(90deg,rgba(29,110,245,0.07) 1px,transparent 1px);background-size:44px 44px;padding:40px 20px;font-family:-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
   <div style="max-width:460px;margin:0 auto;">
     <div style="font-size:24px;font-weight:700;color:#1d6ef5;margin-bottom:22px;">Finby</div>
     <div style="background-color:#0b1626;border:1px solid #1c2c46;border-radius:16px;padding:30px;">${body}</div>
-    <p style="color:#5b6f8c;font-size:12px;line-height:1.5;margin:22px 0 0;">You're receiving this because you have a Finby account.</p>
+    <p style="color:#5b6f8c;font-size:12px;line-height:1.5;margin:22px 0 0;">${footerNote}</p>
     <p style="color:#3f536e;font-size:12px;margin:6px 0 0;">Stop tracking. Start talking.</p>
   </div>
 </div>
@@ -75,6 +79,29 @@ export function passwordResetEmail(resetUrl: string): { subject: string; html: s
       <p style="margin:0 0 22px;line-height:1.5;color:#8da3c0;">Tap below to choose a new password.</p>
       ${button(resetUrl, 'Reset password')}
       <p style="color:#5b6f8c;font-size:13px;line-height:1.5;margin:22px 0 0;">This link expires in 1 hour. If you didn't request this, ignore this email — your password is unchanged.</p>`),
+  };
+}
+
+export function feedbackNotificationEmail(
+  submitterEmail: string,
+  rating: number,
+  comment: string | null,
+  submittedAtLabel: string,
+): { subject: string; html: string } {
+  const filled = Math.max(0, Math.min(5, rating));
+  const stars = '★'.repeat(filled) + '☆'.repeat(5 - filled);
+  const commentBlock = comment
+    ? `<div style="background-color:#06101f;border:1px solid #1c2c46;border-radius:10px;padding:14px 16px;margin:0 0 18px;color:#e8eef7;line-height:1.5;font-style:italic;">"${esc(comment)}"</div>`
+    : `<p style="margin:0 0 18px;line-height:1.5;color:#5b6f8c;font-style:italic;">No comment left.</p>`;
+  return {
+    subject: `New ${rating}★ Finby review${comment ? '' : ' (no comment)'}`,
+    html: SHELL(
+      `<h1 style="font-size:20px;margin:0 0 12px;color:#e8eef7;">New review submitted</h1>
+      <p style="margin:0 0 16px;font-size:22px;letter-spacing:4px;color:#1d6ef5;">${stars}</p>
+      ${commentBlock}
+      <p style="margin:0;line-height:1.6;color:#8da3c0;font-size:13px;">From <strong style="color:#e8eef7;">${esc(submitterEmail)}</strong><br/>${esc(submittedAtLabel)}</p>`,
+      'Internal notification — a user submitted a review in Finby.',
+    ),
   };
 }
 

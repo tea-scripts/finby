@@ -16,6 +16,6 @@ export class FeedbackController {
     @CurrentUser() user: AuthUser,
     @Body(new ZodValidationPipe(createFeedbackSchema)) body: CreateFeedbackInput,
   ): Promise<FeedbackView> {
-    return this.feedback.create(user.userId, body);
+    return this.feedback.create(user.userId, user.email, body);
   }
 }
