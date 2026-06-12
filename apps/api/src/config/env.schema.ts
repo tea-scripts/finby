@@ -29,6 +29,13 @@ export const envSchema = z.object({
   JWT_REFRESH_TTL: z.string().default('7d'),
   BCRYPT_ROUNDS: z.coerce.number().int().min(4).max(15).default(12),
 
+  // Admin dashboard (super-admin analytics). Optional so the API boots without it;
+  // admin routes return 401 until ADMIN_EMAILS + ADMIN_JWT_SECRET are set.
+  ADMIN_EMAILS: z.string().default(''), // comma-separated allowlist, lowercased at use
+  ADMIN_JWT_SECRET: z.string().min(16).optional(),
+  ADMIN_JWT_TTL: z.string().default('8h'), // one workday session; re-login (with TOTP) after.
+  ADMIN_TOTP_ISSUER: z.string().default('Finby Admin'),
+
   // LLM / Anthropic (Phase 2)
   ANTHROPIC_API_KEY: z.string().optional(),
   ANTHROPIC_MODEL: z.string().default('claude-sonnet-4-6'),

@@ -796,3 +796,18 @@ model Feedback {
   @@index([createdAt])
   @@map("feedback")
 }
+
+// ============================================================
+// ADMIN TOTP SECRETS
+// Second-factor material for super-admins. A row here does NOT grant admin
+// access — the ADMIN_EMAILS allowlist (a deploy-time secret) does. This only
+// stores the enrolled TOTP secret, keyed by the admin's lowercased email.
+// ============================================================
+
+model AdminTotpSecret {
+  email      String   @id // lowercased admin email
+  secret     String   // base32 TOTP secret
+  enrolledAt DateTime @default(now())
+
+  @@map("admin_totp_secrets")
+}
