@@ -145,6 +145,13 @@ model User {
   updatedAt         DateTime @updatedAt
   lastLoginAt       DateTime?
 
+  // Spending streak (consecutive local days with >=1 logged transaction).
+  // lastStreakDate is a YYYY-MM-DD local-date string — matches the
+  // preferences.lastDailyReminderAt convention (set server-side).
+  currentStreak     Int      @default(0)
+  longestStreak     Int      @default(0)
+  lastStreakDate    String?
+
   // Relations
   workspaceMemberships  WorkspaceMember[]
   refreshTokens         RefreshToken[]

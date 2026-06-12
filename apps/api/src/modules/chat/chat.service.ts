@@ -369,7 +369,7 @@ export class ChatService {
     const account = accountName ? await this.accounts.findByName(workspace.id, accountName) : null;
 
     try {
-      const { transaction: tx, budgetChange } = await this.transactions.create({
+      const { transaction: tx, budgetChange, currentStreak } = await this.transactions.create({
         workspaceId: workspace.id,
         loggedByUserId: userId,
         baseCurrency: workspace.baseCurrency,
@@ -395,6 +395,7 @@ export class ChatService {
           merchant: tx.merchant,
           category: tx.category?.name ?? null,
         },
+        currentStreak: currentStreak ?? null,
       };
       return {
         toolResult: JSON.stringify({
@@ -463,7 +464,7 @@ export class ChatService {
     }
 
     try {
-      const { transaction: tx } = await this.transactions.create({
+      const { transaction: tx, currentStreak } = await this.transactions.create({
         workspaceId: workspace.id,
         loggedByUserId: userId,
         baseCurrency: workspace.baseCurrency,
@@ -482,6 +483,7 @@ export class ChatService {
         transactionId: tx.id,
         txType: 'TRANSFER',
         preview: { amount: tx.amountOriginal, currency: tx.currencyOriginal, merchant: null, category: null },
+        currentStreak: currentStreak ?? null,
       };
       return {
         toolResult: JSON.stringify({

@@ -5,6 +5,7 @@ import { AccountList } from '@/components/dashboard/account-list';
 import { BudgetList } from '@/components/dashboard/budget-list';
 import { MonthSummary } from '@/components/dashboard/month-summary';
 import { RecentTransactions } from '@/components/dashboard/recent-transactions';
+import { StreakBadge } from '@/components/streak/StreakBadge';
 import { ApiError } from '@/lib/api-client';
 import {
   getSummary,
@@ -25,6 +26,7 @@ function errMsg(e: unknown): string {
 
 export default function DashboardPage() {
   const workspace = useAuth((s) => s.workspace);
+  const user = useAuth((s) => s.user);
 
   const [summary, setSummary] = useState<SectionState<SummaryResult>>(LOADING);
   const [budgets, setBudgets] = useState<SectionState<BudgetView[]>>(LOADING);
@@ -57,7 +59,10 @@ export default function DashboardPage() {
   return (
     <div className="h-full overflow-y-auto pb-nav">
       <div className="mx-auto w-full max-w-3xl space-y-5 px-4 py-6 animate-fade-up">
-        <h1 className="font-display text-2xl font-bold text-ink">Dashboard</h1>
+        <div className="flex items-center justify-between gap-3">
+          <h1 className="font-display text-2xl font-bold text-ink">Dashboard</h1>
+          <StreakBadge streak={user?.currentStreak ?? 0} size="md" showZero />
+        </div>
         <MonthSummary state={summary} />
         <div className="grid gap-5 lg:grid-cols-2">
           <BudgetList state={budgets} />

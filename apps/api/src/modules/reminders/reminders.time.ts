@@ -38,3 +38,12 @@ export function localDayInfo(now: Date, timeZone: string): LocalDayInfo {
 
   return { hour, date: `${parts.year}-${parts.month}-${parts.day}`, startOfDayMs };
 }
+
+/** The calendar day before a YYYY-MM-DD date string, as YYYY-MM-DD.
+ *  Pure calendar arithmetic in UTC (the string is timezone-agnostic), so no
+ *  date library and no DST concerns. */
+export function previousLocalDate(date: string): string {
+  const [y, m, d] = date.split('-').map(Number);
+  const prev = new Date(Date.UTC(y!, m! - 1, d! - 1));
+  return prev.toISOString().slice(0, 10);
+}

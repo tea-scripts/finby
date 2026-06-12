@@ -14,10 +14,16 @@ import type {
 
 /**
  * Normalize a user from the API/persisted state so consumers can always rely
- * on `preferences` being present (older sessions predate this field).
+ * on `preferences` and streak counts being present (older sessions predate
+ * these fields).
  */
 function normalizeUser(user: ApiUser): ApiUser {
-  return { ...user, preferences: user.preferences ?? DEFAULT_PREFERENCES };
+  return {
+    ...user,
+    preferences: user.preferences ?? DEFAULT_PREFERENCES,
+    currentStreak: user.currentStreak ?? 0,
+    longestStreak: user.longestStreak ?? 0,
+  };
 }
 
 /**

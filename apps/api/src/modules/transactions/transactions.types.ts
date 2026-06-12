@@ -51,4 +51,7 @@ export interface TransactionListResult {
 export interface CreateTransactionResult {
   transaction: TransactionView;
   budgetChange: BudgetSpendChange | null;
+  /** The logger's spending streak after this transaction, or null if the
+   *  streak update failed (it never blocks the transaction itself). */
+  currentStreak: number | null;
 }

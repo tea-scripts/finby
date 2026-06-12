@@ -143,6 +143,7 @@ export const DEFAULT_PREFERENCES: UserPreferences = {
   currencyDisplay: 'SYMBOL',
   dailyReminders: true,
   lastDailyReminderAt: null,
+  dismissedAnnouncements: [],
 };
 
 export interface Currency {

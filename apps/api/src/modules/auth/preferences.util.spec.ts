@@ -13,3 +13,19 @@ describe('parsePreferences (reminder fields)', () => {
     expect(result.lastDailyReminderAt).toBeNull();
   });
 });
+
+describe('parsePreferences (dismissedAnnouncements)', () => {
+  it('defaults dismissedAnnouncements to an empty array', () => {
+    expect(parsePreferences({}).dismissedAnnouncements).toEqual([]);
+  });
+
+  it('preserves a list of dismissed announcement ids', () => {
+    const result = parsePreferences({ dismissedAnnouncements: ['streaks-2026-06'] });
+    expect(result.dismissedAnnouncements).toEqual(['streaks-2026-06']);
+  });
+
+  it('ignores a malformed dismissedAnnouncements value, falling back to default', () => {
+    const result = parsePreferences({ dismissedAnnouncements: 'not-an-array' });
+    expect(result.dismissedAnnouncements).toEqual([]);
+  });
+});

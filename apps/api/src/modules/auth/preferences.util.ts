@@ -10,6 +10,7 @@ export const preferencesSchema = z
     currencyDisplay: z.enum(['SYMBOL', 'CODE']),
     dailyReminders: z.boolean(),
     lastDailyReminderAt: z.string().nullable(),
+    dismissedAnnouncements: z.array(z.string()),
   })
   .partial();
 

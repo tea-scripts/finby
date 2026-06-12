@@ -4,6 +4,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { FxService } from '../fx/fx.service';
 import { BudgetsService } from '../budgets/budgets.service';
 import { AlertsService } from '../alerts/alerts.service';
+import { StreaksService } from '../streaks/streaks.service';
 import { TransactionsService } from './transactions.service';
 
 function buildBudgets() {
@@ -12,6 +13,10 @@ function buildBudgets() {
 
 function buildAlerts() {
   return { generateBudgetAlert: jest.fn().mockResolvedValue(null) };
+}
+
+function buildStreaks() {
+  return { onTransactionLogged: jest.fn().mockResolvedValue(1) };
 }
 
 function buildPrisma() {
@@ -82,7 +87,7 @@ describe('TransactionsService.create', () => {
     prisma.account.findFirst.mockResolvedValue({ id: 'a1', workspaceId: 'w1', currency: 'USD', name: 'Wise USD' });
     prisma.transaction.create.mockResolvedValue(txRow());
     const fx = buildFx({ amountBase: '50' });
-    const service = new TransactionsService(prisma as unknown as PrismaService, fx as unknown as FxService, buildBudgets() as unknown as BudgetsService, buildAlerts() as unknown as AlertsService);
+    const service = new TransactionsService(prisma as unknown as PrismaService, fx as unknown as FxService, buildBudgets() as unknown as BudgetsService, buildAlerts() as unknown as AlertsService, buildStreaks() as unknown as StreaksService);
 
     const { transaction: view } = await service.create({
       ...baseParams,
@@ -103,7 +108,7 @@ describe('TransactionsService.create', () => {
     prisma.account.findFirst.mockResolvedValue({ id: 'a1', workspaceId: 'w1', currency: 'USD', name: 'Wise' });
     prisma.transaction.create.mockResolvedValue(txRow({ type: 'INCOME' }));
     const fx = buildFx();
-    const service = new TransactionsService(prisma as unknown as PrismaService, fx as unknown as FxService, buildBudgets() as unknown as BudgetsService, buildAlerts() as unknown as AlertsService);
+    const service = new TransactionsService(prisma as unknown as PrismaService, fx as unknown as FxService, buildBudgets() as unknown as BudgetsService, buildAlerts() as unknown as AlertsService, buildStreaks() as unknown as StreaksService);
 
     await service.create({ ...baseParams, type: 'INCOME', accountId: 'a1' });
 
@@ -119,7 +124,7 @@ describe('TransactionsService.create', () => {
       .mockResolvedValueOnce({ id: 'a2', workspaceId: 'w1', currency: 'PHP', name: 'BDO Peso' });
     prisma.transaction.create.mockResolvedValue(txRow({ type: 'TRANSFER', toAccountId: 'a2' }));
     const fx = buildFx({ convertAmount: '2860' });
-    const service = new TransactionsService(prisma as unknown as PrismaService, fx as unknown as FxService, buildBudgets() as unknown as BudgetsService, buildAlerts() as unknown as AlertsService);
+    const service = new TransactionsService(prisma as unknown as PrismaService, fx as unknown as FxService, buildBudgets() as unknown as BudgetsService, buildAlerts() as unknown as AlertsService, buildStreaks() as unknown as StreaksService);
 
     await service.create({ ...baseParams, type: 'TRANSFER', accountId: 'a1', toAccountId: 'a2' });
 
@@ -135,7 +140,7 @@ describe('TransactionsService.create', () => {
     const prisma = buildPrisma();
     prisma.transaction.create.mockResolvedValue(txRow({ fromAccount: null, fromAccountId: null }));
     const fx = buildFx();
-    const service = new TransactionsService(prisma as unknown as PrismaService, fx as unknown as FxService, buildBudgets() as unknown as BudgetsService, buildAlerts() as unknown as AlertsService);
+    const service = new TransactionsService(prisma as unknown as PrismaService, fx as unknown as FxService, buildBudgets() as unknown as BudgetsService, buildAlerts() as unknown as AlertsService, buildStreaks() as unknown as StreaksService);
 
     const { transaction: view } = await service.create({ ...baseParams, type: 'EXPENSE' });
 
@@ -147,7 +152,7 @@ describe('TransactionsService.create', () => {
     const prisma = buildPrisma();
     prisma.account.findFirst.mockResolvedValue({ id: 'a1', workspaceId: 'w1', currency: 'PHP', name: 'BDO' });
     const fx = buildFx();
-    const service = new TransactionsService(prisma as unknown as PrismaService, fx as unknown as FxService, buildBudgets() as unknown as BudgetsService, buildAlerts() as unknown as AlertsService);
+    const service = new TransactionsService(prisma as unknown as PrismaService, fx as unknown as FxService, buildBudgets() as unknown as BudgetsService, buildAlerts() as unknown as AlertsService, buildStreaks() as unknown as StreaksService);
 
     await expect(
       service.create({ ...baseParams, type: 'EXPENSE', currencyOriginal: 'USD', accountId: 'a1' }),
@@ -159,7 +164,7 @@ describe('TransactionsService.create', () => {
     const prisma = buildPrisma();
     prisma.account.findFirst.mockResolvedValue(null);
     const fx = buildFx();
-    const service = new TransactionsService(prisma as unknown as PrismaService, fx as unknown as FxService, buildBudgets() as unknown as BudgetsService, buildAlerts() as unknown as AlertsService);
+    const service = new TransactionsService(prisma as unknown as PrismaService, fx as unknown as FxService, buildBudgets() as unknown as BudgetsService, buildAlerts() as unknown as AlertsService, buildStreaks() as unknown as StreaksService);
 
     await expect(
       service.create({ ...baseParams, type: 'EXPENSE', accountId: 'missing' }),
@@ -172,7 +177,7 @@ describe('TransactionsService.void', () => {
     const prisma = buildPrisma();
     prisma.transaction.findFirst.mockResolvedValue(txRow());
     const fx = buildFx();
-    const service = new TransactionsService(prisma as unknown as PrismaService, fx as unknown as FxService, buildBudgets() as unknown as BudgetsService, buildAlerts() as unknown as AlertsService);
+    const service = new TransactionsService(prisma as unknown as PrismaService, fx as unknown as FxService, buildBudgets() as unknown as BudgetsService, buildAlerts() as unknown as AlertsService, buildStreaks() as unknown as StreaksService);
 
     const result = await service.void('w1', 't1');
 
@@ -189,7 +194,7 @@ describe('TransactionsService.void', () => {
     const prisma = buildPrisma();
     prisma.transaction.findFirst.mockResolvedValue(txRow({ status: 'VOID' }));
     const fx = buildFx();
-    const service = new TransactionsService(prisma as unknown as PrismaService, fx as unknown as FxService, buildBudgets() as unknown as BudgetsService, buildAlerts() as unknown as AlertsService);
+    const service = new TransactionsService(prisma as unknown as PrismaService, fx as unknown as FxService, buildBudgets() as unknown as BudgetsService, buildAlerts() as unknown as AlertsService, buildStreaks() as unknown as StreaksService);
 
     await service.void('w1', 't1');
     expect(prisma.account.update).not.toHaveBeenCalled();
@@ -203,7 +208,7 @@ describe('TransactionsService.update', () => {
     prisma.transaction.update.mockResolvedValue(txRow({ categoryId: 'c-new', category: { id: 'c-new', name: 'Dining' } }));
     const fx = buildFx();
     const budgets = buildBudgets();
-    const service = new TransactionsService(prisma as unknown as PrismaService, fx as unknown as FxService, budgets as unknown as BudgetsService, buildAlerts() as unknown as AlertsService);
+    const service = new TransactionsService(prisma as unknown as PrismaService, fx as unknown as FxService, budgets as unknown as BudgetsService, buildAlerts() as unknown as AlertsService, buildStreaks() as unknown as StreaksService);
 
     await service.update('w1', 't1', { categoryId: 'c-new' } as never);
 
@@ -226,7 +231,7 @@ describe('TransactionsService.update', () => {
     prisma.transaction.update.mockResolvedValue(txRow({ categoryId: 'c-old', merchant: 'Starbucks' }));
     const fx = buildFx();
     const budgets = buildBudgets();
-    const service = new TransactionsService(prisma as unknown as PrismaService, fx as unknown as FxService, budgets as unknown as BudgetsService, buildAlerts() as unknown as AlertsService);
+    const service = new TransactionsService(prisma as unknown as PrismaService, fx as unknown as FxService, budgets as unknown as BudgetsService, buildAlerts() as unknown as AlertsService, buildStreaks() as unknown as StreaksService);
 
     await service.update('w1', 't1', { merchant: 'Starbucks' } as never);
 
@@ -239,7 +244,7 @@ describe('TransactionsService.update', () => {
     prisma.transaction.update.mockResolvedValue(txRow({ type: 'INCOME', categoryId: 'c-new' }));
     const fx = buildFx();
     const budgets = buildBudgets();
-    const service = new TransactionsService(prisma as unknown as PrismaService, fx as unknown as FxService, budgets as unknown as BudgetsService, buildAlerts() as unknown as AlertsService);
+    const service = new TransactionsService(prisma as unknown as PrismaService, fx as unknown as FxService, budgets as unknown as BudgetsService, buildAlerts() as unknown as AlertsService, buildStreaks() as unknown as StreaksService);
 
     await service.update('w1', 't1', { categoryId: 'c-new' } as never);
 
@@ -250,7 +255,7 @@ describe('TransactionsService.update', () => {
     const prisma = buildPrisma();
     prisma.transaction.findFirst.mockResolvedValue(null);
     const fx = buildFx();
-    const service = new TransactionsService(prisma as unknown as PrismaService, fx as unknown as FxService, buildBudgets() as unknown as BudgetsService, buildAlerts() as unknown as AlertsService);
+    const service = new TransactionsService(prisma as unknown as PrismaService, fx as unknown as FxService, buildBudgets() as unknown as BudgetsService, buildAlerts() as unknown as AlertsService, buildStreaks() as unknown as StreaksService);
 
     await expect(service.update('w1', 'missing', { categoryId: 'c-new' } as never)).rejects.toBeInstanceOf(NotFoundException);
   });
@@ -261,7 +266,7 @@ describe('TransactionsService.findLatestForCorrection', () => {
     const prisma = buildPrisma();
     prisma.transaction.findFirst.mockResolvedValue(txRow());
     const fx = buildFx();
-    const service = new TransactionsService(prisma as unknown as PrismaService, fx as unknown as FxService, buildBudgets() as unknown as BudgetsService, buildAlerts() as unknown as AlertsService);
+    const service = new TransactionsService(prisma as unknown as PrismaService, fx as unknown as FxService, buildBudgets() as unknown as BudgetsService, buildAlerts() as unknown as AlertsService, buildStreaks() as unknown as StreaksService);
 
     const view = await service.findLatestForCorrection('w1', { type: 'EXPENSE', merchant: 'SM' });
 
@@ -279,7 +284,7 @@ describe('TransactionsService.findLatestForCorrection', () => {
     const prisma = buildPrisma();
     prisma.transaction.findFirst.mockResolvedValue(null);
     const fx = buildFx();
-    const service = new TransactionsService(prisma as unknown as PrismaService, fx as unknown as FxService, buildBudgets() as unknown as BudgetsService, buildAlerts() as unknown as AlertsService);
+    const service = new TransactionsService(prisma as unknown as PrismaService, fx as unknown as FxService, buildBudgets() as unknown as BudgetsService, buildAlerts() as unknown as AlertsService, buildStreaks() as unknown as StreaksService);
 
     expect(await service.findLatestForCorrection('w1', {})).toBeNull();
   });
@@ -290,7 +295,7 @@ describe('TransactionsService.list', () => {
     const prisma = buildPrisma();
     prisma.transaction.findMany.mockResolvedValue([]);
     const fx = buildFx();
-    const service = new TransactionsService(prisma as unknown as PrismaService, fx as unknown as FxService, buildBudgets() as unknown as BudgetsService, buildAlerts() as unknown as AlertsService);
+    const service = new TransactionsService(prisma as unknown as PrismaService, fx as unknown as FxService, buildBudgets() as unknown as BudgetsService, buildAlerts() as unknown as AlertsService, buildStreaks() as unknown as StreaksService);
 
     await service.list('w1', 'FREE', { limit: 20, fromDate: '2000-01-01', tags: [] } as never);
 
@@ -308,7 +313,7 @@ describe('TransactionsService.list', () => {
     const prisma = buildPrisma();
     prisma.transaction.findMany.mockResolvedValue([]);
     const fx = buildFx();
-    const service = new TransactionsService(prisma as unknown as PrismaService, fx as unknown as FxService, buildBudgets() as unknown as BudgetsService, buildAlerts() as unknown as AlertsService);
+    const service = new TransactionsService(prisma as unknown as PrismaService, fx as unknown as FxService, buildBudgets() as unknown as BudgetsService, buildAlerts() as unknown as AlertsService, buildStreaks() as unknown as StreaksService);
 
     await service.list('w1', 'PRO', { limit: 20, tags: [] } as never);
 

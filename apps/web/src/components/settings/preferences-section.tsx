@@ -34,6 +34,8 @@ export function PreferencesSection() {
   const user = useAuth((s) => s.user);
   const setUser = useAuth((s) => s.setUser);
   const prefs: UserPreferences = user?.preferences ?? DEFAULT_PREFERENCES;
+  const currentStreak = user?.currentStreak ?? 0;
+  const longestStreak = user?.longestStreak ?? 0;
 
   const [saveState, setSaveState] = useState<SaveState>('idle');
   const [pushOn, setPushOn] = useState(false);
@@ -157,6 +159,15 @@ export function PreferencesSection() {
               }`}
             />
           </button>
+        </div>
+
+        <div className="border-t border-line pt-4">
+          <p className="text-sm font-medium text-ink">
+            🔥 Current streak: {currentStreak} {currentStreak === 1 ? 'day' : 'days'}
+          </p>
+          <p className="text-xs text-muted">
+            Best: {longestStreak} {longestStreak === 1 ? 'day' : 'days'}
+          </p>
         </div>
       </div>
     </section>

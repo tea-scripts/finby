@@ -11,6 +11,7 @@ interface MockUser {
   displayName: string;
   timezone: string;
   preferences: unknown;
+  currentStreak: number;
 }
 
 /**
@@ -19,14 +20,26 @@ interface MockUser {
  * timestamp is >= where.createdAt.gte, exercising the actual date-window filter.
  * When absent, falls back to the legacy loggedUserIds Set behaviour.
  */
+/** Optional spending-summary fixture for the "active today" path. */
+interface SummaryFixture {
+  /** Expense total + count the aggregate returns. count 0 => no summary. */
+  total?: string;
+  count?: number;
+  currency?: string;
+  topCategoryName?: string | null;
+}
+
 function setup(opts: {
   users: MockUser[];
   loggedUserIds?: string[];
   lastTxnAt?: Record<string, Date>;
+  summary?: SummaryFixture;
 }) {
   const sendToUserDevices = jest.fn().mockResolvedValue(undefined);
   const update = jest.fn().mockResolvedValue({});
   const logged = new Set(opts.loggedUserIds ?? []);
+  const summary = opts.summary ?? {};
+  const currency = summary.currency ?? 'USD';
 
   const prisma = {
     pushSubscription: {
@@ -40,18 +53,33 @@ function setup(opts: {
       findFirst: jest.fn(
         ({ where }: { where: { loggedByUserId: string; createdAt?: { gte?: Date } } }) => {
           const userId = where.loggedByUserId;
+          const active = { currencyBase: currency };
 
           if (opts.lastTxnAt) {
             const txnDate = opts.lastTxnAt[userId];
             const gte = where.createdAt?.gte;
             if (!txnDate) return Promise.resolve(null);
-            if (gte && txnDate >= gte) return Promise.resolve({ id: 't1' });
+            if (gte && txnDate >= gte) return Promise.resolve(active);
             return Promise.resolve(null);
           }
 
           // Legacy path: treat presence in the set as "has a transaction today"
-          return Promise.resolve(logged.has(userId) ? { id: 't1' } : null);
+          return Promise.resolve(logged.has(userId) ? active : null);
         },
+      ),
+      aggregate: jest.fn().mockResolvedValue({
+        _sum: { amountBase: summary.total ?? null },
+        _count: summary.count ?? 0,
+      }),
+      groupBy: jest
+        .fn()
+        .mockResolvedValue(
+          summary.topCategoryName ? [{ categoryId: 'c1', _sum: { amountBase: summary.total } }] : [],
+        ),
+    },
+    category: {
+      findUnique: jest.fn().mockResolvedValue(
+        summary.topCategoryName ? { name: summary.topCategoryName } : null,
       ),
     },
   } as unknown as PrismaService;
@@ -66,6 +94,7 @@ const baseUser: MockUser = {
   displayName: 'Tea',
   timezone: 'UTC',
   preferences: DEFAULT_PREFERENCES,
+  currentStreak: 0,
 };
 
 describe('RemindersService.sendDailyReminders', () => {
@@ -92,14 +121,58 @@ describe('RemindersService.sendDailyReminders', () => {
     expect(sendToUserDevices).not.toHaveBeenCalled();
   });
 
-  it('skips users who already logged a transaction today', async () => {
+  it('sends a daily summary (to /dashboard) to a user who logged today', async () => {
     const { service, sendToUserDevices, update } = setup({
       users: [baseUser],
       loggedUserIds: ['u1'],
+      summary: { total: '42.5', count: 3, currency: 'USD', topCategoryName: 'Groceries' },
     });
     await service.sendDailyReminders(AT_8PM_UTC);
-    expect(sendToUserDevices).not.toHaveBeenCalled();
-    expect(update).not.toHaveBeenCalled();
+
+    expect(sendToUserDevices).toHaveBeenCalledTimes(1);
+    expect(sendToUserDevices).toHaveBeenCalledWith(
+      'u1',
+      expect.objectContaining({ url: '/dashboard' }),
+    );
+    const payload = sendToUserDevices.mock.calls[0]![1] as { body: string };
+    expect(payload.body).toContain('$42.5');
+    expect(payload.body).toContain('Groceries');
+    // Still stamps so the summary only fires once per day.
+    expect(update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: 'u1' },
+        data: expect.objectContaining({
+          preferences: expect.objectContaining({ lastDailyReminderAt: '2026-06-10' }),
+        }),
+      }),
+    );
+  });
+
+  it('includes the streak in the summary body when streak >= 2', async () => {
+    const streaker: MockUser = { ...baseUser, currentStreak: 6 };
+    const { service, sendToUserDevices } = setup({
+      users: [streaker],
+      loggedUserIds: ['u1'],
+      summary: { total: '100', count: 2, currency: 'USD', topCategoryName: 'Food' },
+    });
+    await service.sendDailyReminders(AT_8PM_UTC);
+
+    const payload = sendToUserDevices.mock.calls[0]![1] as { body: string };
+    expect(payload.body).toContain('🔥 6-day streak');
+  });
+
+  it('falls back to the reminder nudge when the day has no summarisable spend', async () => {
+    // Active today (findFirst matches) but the expense aggregate is empty
+    // (e.g. only income logged) -> getDailySummary returns null -> reminder path.
+    const { service, sendToUserDevices } = setup({
+      users: [baseUser],
+      loggedUserIds: ['u1'],
+      summary: { count: 0 },
+    });
+    await service.sendDailyReminders(AT_8PM_UTC);
+
+    expect(sendToUserDevices).toHaveBeenCalledTimes(1);
+    expect(sendToUserDevices).toHaveBeenCalledWith('u1', expect.objectContaining({ url: '/chat' }));
   });
 
   it('skips users who turned daily reminders off', async () => {
@@ -143,14 +216,19 @@ describe('RemindersService.sendDailyReminders', () => {
     expect(sendToUserDevices).toHaveBeenCalledWith('u1', expect.objectContaining({ url: '/chat' }));
   });
 
-  it('does not nudge a user who logged after local midnight today', async () => {
-    // Same UTC user, transaction at 08:00 UTC today is AFTER midnight -> no nudge.
+  it('sends a summary (not a nudge) to a user who logged after local midnight today', async () => {
+    // Same UTC user, transaction at 08:00 UTC today is AFTER midnight -> active -> summary.
     const { service, sendToUserDevices } = setup({
       users: [baseUser],
       lastTxnAt: { u1: new Date('2026-06-10T08:00:00Z') },
+      summary: { total: '10', count: 1, currency: 'USD', topCategoryName: null },
     });
     await service.sendDailyReminders(AT_8PM_UTC);
-    expect(sendToUserDevices).not.toHaveBeenCalled();
+    expect(sendToUserDevices).toHaveBeenCalledTimes(1);
+    expect(sendToUserDevices).toHaveBeenCalledWith(
+      'u1',
+      expect.objectContaining({ url: '/dashboard' }),
+    );
   });
 
   it('multi-user mix: nudges only the inactive user and stamps only them', async () => {

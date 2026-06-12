@@ -44,6 +44,7 @@ function genId(): string {
 export default function ChatPage() {
   const workspace = useAuth((s) => s.workspace);
   const user = useAuth((s) => s.user);
+  const setUser = useAuth((s) => s.setUser);
 
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [messages, setMessages] = useState<UiMessage[]>([]);
@@ -130,6 +131,9 @@ export default function ChatPage() {
       for (const a of result.actions) {
         if (a.type === 'TRANSACTION_CREATED') {
           track('transaction_logged', { tx_type: a.txType, currency: a.preview.currency });
+          // Logging may have advanced the spending streak; the action carries
+          // the fresh value, so update the header badge in place (no refetch).
+          if (a.currentStreak != null) setUser({ currentStreak: a.currentStreak });
         } else if (a.type === 'BUDGET_SET') {
           track('budget_set', { currency: a.preview.currency });
         }

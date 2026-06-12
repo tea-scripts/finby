@@ -10,6 +10,9 @@ export interface ApiUser {
   timezone: string;
   accountNumber: string | null;
   preferences: UserPreferences;
+  /** Consecutive local days with at least one logged transaction. */
+  currentStreak: number;
+  longestStreak: number;
 }
 
 export interface ApiWorkspace {
@@ -62,6 +65,8 @@ export interface TransactionCreatedAction {
   transactionId: string;
   txType: 'EXPENSE' | 'INCOME' | 'TRANSFER';
   preview: ChatActionPreview;
+  /** The logger's spending streak after this transaction (null if unavailable). */
+  currentStreak: number | null;
 }
 
 export interface BudgetSetAction {

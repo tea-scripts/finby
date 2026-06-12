@@ -77,6 +77,8 @@ export class AuthService {
             timezone: true,
             accountNumber: true,
             preferences: true,
+            currentStreak: true,
+            longestStreak: true,
           },
         });
 
@@ -162,6 +164,8 @@ export class AuthService {
             timezone: true,
             accountNumber: true,
             preferences: true,
+            currentStreak: true,
+            longestStreak: true,
           },
         });
 
@@ -363,6 +367,8 @@ export class AuthService {
         timezone: true,
         accountNumber: true,
         preferences: true,
+        currentStreak: true,
+        longestStreak: true,
       },
     });
     if (!user) {
@@ -404,6 +410,8 @@ export class AuthService {
         timezone: true,
         accountNumber: true,
         preferences: true,
+        currentStreak: true,
+        longestStreak: true,
       },
     });
 
@@ -477,6 +485,8 @@ export class AuthService {
     timezone: string;
     accountNumber: string | null;
     preferences: Prisma.JsonValue;
+    currentStreak: number;
+    longestStreak: number;
   }): AuthUserView {
     return {
       id: user.id,
@@ -486,6 +496,8 @@ export class AuthService {
       timezone: user.timezone,
       accountNumber: user.accountNumber,
       preferences: parsePreferences(user.preferences),
+      currentStreak: user.currentStreak,
+      longestStreak: user.longestStreak,
     };
   }
 

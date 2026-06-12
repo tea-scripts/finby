@@ -2,6 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import { useEffect, useState, type ReactNode } from 'react';
+import { AnnouncementHost } from '@/components/announcements/announcement-host';
 import { AppHeader } from '@/components/app/app-header';
 import { AppNav } from '@/components/app/app-nav';
 import { InstallBanner } from '@/components/app/install-banner';
@@ -45,6 +46,7 @@ export default function AppLayout({ children }: { children: ReactNode }) {
           <main className="min-h-0 flex-1 overflow-hidden">{children}</main>
         </div>
         <AppNav variant="bar" />
+        <AnnouncementHost />
       </div>
     );
 

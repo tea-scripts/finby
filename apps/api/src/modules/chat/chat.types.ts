@@ -10,6 +10,8 @@ export interface TransactionCreatedAction {
   transactionId: string;
   txType: 'EXPENSE' | 'INCOME' | 'TRANSFER';
   preview: ChatActionPreview;
+  /** The logger's spending streak after this transaction (null if unavailable). */
+  currentStreak: number | null;
 }
 
 export interface BudgetSetAction {

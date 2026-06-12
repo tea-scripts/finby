@@ -25,6 +25,9 @@ export interface AuthUserView {
   timezone: string;
   accountNumber: string | null;
   preferences: UserPreferences;
+  /** Consecutive local days with at least one logged transaction. */
+  currentStreak: number;
+  longestStreak: number;
 }
 
 export interface AuthWorkspaceView {

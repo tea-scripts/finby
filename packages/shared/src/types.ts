@@ -24,4 +24,7 @@ export interface UserPreferences {
   /** Internal: local date (YYYY-MM-DD) the last daily reminder was sent, for
    *  idempotency. Set server-side; null until first send. */
   lastDailyReminderAt: string | null;
+  /** Ids of in-app announcements the user has permanently dismissed ("Got it").
+   *  An announcement re-appears until its id lands here. */
+  dismissedAnnouncements: string[];
 }

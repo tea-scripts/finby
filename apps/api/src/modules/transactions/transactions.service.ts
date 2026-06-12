@@ -6,6 +6,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { FxService } from '../fx/fx.service';
 import { BudgetsService } from '../budgets/budgets.service';
 import { AlertsService } from '../alerts/alerts.service';
+import { StreaksService } from '../streaks/streaks.service';
 import type { BudgetSpendChange } from '../budgets/budgets.types';
 import type { ListTransactionsQuery, UpdateTransactionInput } from './dto/transactions.schemas';
 import type {
@@ -33,6 +34,7 @@ export class TransactionsService {
     private readonly fx: FxService,
     private readonly budgets: BudgetsService,
     private readonly alerts: AlertsService,
+    private readonly streaks: StreaksService,
   ) {}
 
   async create(params: CreateTransactionParams): Promise<CreateTransactionResult> {
@@ -141,7 +143,19 @@ export class TransactionsService {
       }
     }
 
-    return { transaction: this.toView(created), budgetChange };
+    // Update the spending streak and surface it in the result so callers (chat)
+    // can reflect it immediately. A streak failure must never fail the
+    // transaction, so it's caught and reported as a null streak.
+    let currentStreak: number | null = null;
+    try {
+      currentStreak = await this.streaks.onTransactionLogged(params.loggedByUserId);
+    } catch (error) {
+      this.logger.error(
+        `Streak update failed: ${error instanceof Error ? error.message : String(error)}`,
+      );
+    }
+
+    return { transaction: this.toView(created), budgetChange, currentStreak };
   }
 
   async list(

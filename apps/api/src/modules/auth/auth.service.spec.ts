@@ -139,6 +139,7 @@ describe('AuthService', () => {
         currencyDisplay: 'SYMBOL',
         dailyReminders: true,
         lastDailyReminderAt: null,
+        dismissedAnnouncements: [],
       });
       expect(result.workspace.tier).toBe('FREE');
       expect(result.workspace.preferredCurrencies).toEqual(['USD']);
@@ -229,6 +230,7 @@ describe('AuthService', () => {
         currencyDisplay: 'CODE',
         dailyReminders: true,
         lastDailyReminderAt: null,
+        dismissedAnnouncements: [],
       });
       expect(prisma.user.update).toHaveBeenCalledTimes(1);
     });
@@ -418,7 +420,7 @@ describe('AuthService', () => {
       await expect(service.getMe('u1')).resolves.toEqual({
         id: 'u1', displayName: 'Tea', email: 'a@b.com', emailVerified: true, timezone: 'UTC',
         accountNumber: '1234567890',
-        preferences: { dateFormat: 'MEDIUM', numberFormat: 'GROUPED', currencyDisplay: 'SYMBOL', dailyReminders: true, lastDailyReminderAt: null },
+        preferences: { dateFormat: 'MEDIUM', numberFormat: 'GROUPED', currencyDisplay: 'SYMBOL', dailyReminders: true, lastDailyReminderAt: null, dismissedAnnouncements: [] },
       });
     });
     it('returns the stored preferences when present', async () => {
@@ -432,7 +434,7 @@ describe('AuthService', () => {
       await expect(service.getMe('u1')).resolves.toEqual({
         id: 'u1', displayName: 'Tea', email: 'a@b.com', emailVerified: true, timezone: 'UTC',
         accountNumber: '1234567890',
-        preferences: { dateFormat: 'ISO', numberFormat: 'PLAIN', currencyDisplay: 'CODE', dailyReminders: true, lastDailyReminderAt: null },
+        preferences: { dateFormat: 'ISO', numberFormat: 'PLAIN', currencyDisplay: 'CODE', dailyReminders: true, lastDailyReminderAt: null, dismissedAnnouncements: [] },
       });
     });
     it('throws UnauthorizedException when the user is missing', async () => {
@@ -507,6 +509,7 @@ describe('AuthService', () => {
         currencyDisplay: 'SYMBOL',
         dailyReminders: true,
         lastDailyReminderAt: null,
+        dismissedAnnouncements: [],
       });
       expect(result.preferences).toEqual({
         dateFormat: 'SHORT',
@@ -514,6 +517,7 @@ describe('AuthService', () => {
         currencyDisplay: 'SYMBOL',
         dailyReminders: true,
         lastDailyReminderAt: null,
+        dismissedAnnouncements: [],
       });
     });
 
@@ -596,7 +600,7 @@ describe('AuthService', () => {
   });
 
   describe('parsePreferences', () => {
-    const defaults = { dateFormat: 'MEDIUM', numberFormat: 'GROUPED', currencyDisplay: 'SYMBOL', dailyReminders: true, lastDailyReminderAt: null };
+    const defaults = { dateFormat: 'MEDIUM', numberFormat: 'GROUPED', currencyDisplay: 'SYMBOL', dailyReminders: true, lastDailyReminderAt: null, dismissedAnnouncements: [] };
 
     it('returns defaults for null', () => {
       expect(parsePreferences(null)).toEqual(defaults);
@@ -611,7 +615,7 @@ describe('AuthService', () => {
     it('returns the provided values for a full valid object', () => {
       expect(
         parsePreferences({ dateFormat: 'ISO', numberFormat: 'PLAIN', currencyDisplay: 'CODE' }),
-      ).toEqual({ dateFormat: 'ISO', numberFormat: 'PLAIN', currencyDisplay: 'CODE', dailyReminders: true, lastDailyReminderAt: null });
+      ).toEqual({ dateFormat: 'ISO', numberFormat: 'PLAIN', currencyDisplay: 'CODE', dailyReminders: true, lastDailyReminderAt: null, dismissedAnnouncements: [] });
     });
 
     it('fills missing keys with defaults for a partial object', () => {
@@ -621,6 +625,7 @@ describe('AuthService', () => {
         currencyDisplay: 'SYMBOL',
         dailyReminders: true,
         lastDailyReminderAt: null,
+        dismissedAnnouncements: [],
       });
     });
   });

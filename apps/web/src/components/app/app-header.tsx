@@ -2,6 +2,7 @@
 
 import { NotifToggle } from '@/components/chat/notif-toggle';
 import { Logo } from '@/components/logo';
+import { StreakBadge } from '@/components/streak/StreakBadge';
 import { TierBadge } from '@/components/ui/tier-badge';
 import { WorkspaceSwitcher } from '@/components/workspace/workspace-switcher';
 import { useAuth } from '@/lib/store';
@@ -22,6 +23,7 @@ export function AppHeader() {
         </div>
         <div className="flex shrink-0 items-center gap-3">
           {user && <span className="hidden text-sm text-muted sm:inline">{user.displayName}</span>}
+          <StreakBadge streak={user?.currentStreak ?? 0} size="sm" showZero />
           <NotifToggle />
         </div>
       </div>

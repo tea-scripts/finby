@@ -14,6 +14,8 @@ const USER: ApiUser = {
   accountNumber: 'FB-100000042',
   preferences: DEFAULT_PREFERENCES,
   emailVerified: true,
+  currentStreak: 7,
+  longestStreak: 12,
 };
 
 const WORKSPACE = { id: 'w1', tier: 'FREE' };
@@ -65,6 +67,12 @@ describe('PreferencesSection', () => {
     await waitFor(() => {
       expect(screen.getByRole('button', { name: /enable notifications/i })).toBeInTheDocument();
     });
+  });
+
+  it('shows the current and best streak from the user', () => {
+    render(<PreferencesSection />);
+    expect(screen.getByText(/Current streak: 7 days/)).toBeInTheDocument();
+    expect(screen.getByText(/Best: 12 days/)).toBeInTheDocument();
   });
 
   it('changing the date format saves { preferences: { dateFormat } } then setUser', async () => {

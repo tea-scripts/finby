@@ -14,6 +14,8 @@ const USER: ApiUser = {
   accountNumber: 'FB-100000042',
   preferences: DEFAULT_PREFERENCES,
   emailVerified: true,
+  currentStreak: 0,
+  longestStreak: 0,
 };
 
 const setUser = vi.fn();
