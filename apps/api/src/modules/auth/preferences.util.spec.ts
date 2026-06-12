@@ -14,6 +14,17 @@ describe('parsePreferences (reminder fields)', () => {
   });
 });
 
+describe('parsePreferences (lastReengagedAt)', () => {
+  it('defaults lastReengagedAt to null', () => {
+    expect(parsePreferences({}).lastReengagedAt).toBeNull();
+  });
+
+  it('preserves a stored lastReengagedAt timestamp', () => {
+    const result = parsePreferences({ lastReengagedAt: '2026-06-10T19:00:00.000Z' });
+    expect(result.lastReengagedAt).toBe('2026-06-10T19:00:00.000Z');
+  });
+});
+
 describe('parsePreferences (dismissedAnnouncements)', () => {
   it('defaults dismissedAnnouncements to an empty array', () => {
     expect(parsePreferences({}).dismissedAnnouncements).toEqual([]);

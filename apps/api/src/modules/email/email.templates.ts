@@ -72,6 +72,20 @@ export function renewalReminderEmail(
   };
 }
 
+export function reengagementEmail(name: string, openUrl: string): { subject: string; html: string } {
+  return {
+    subject: 'Pick up where you left off 👋',
+    html: SHELL(
+      `<h1 style="font-size:20px;margin:0 0 12px;color:#e8eef7;">Hey ${esc(name)} 👋</h1>
+      <p style="margin:0 0 10px;line-height:1.5;color:#8da3c0;">Your Finby has been quiet lately. Whenever you're ready, just say what you spent — <em style="color:#e8eef7;">"spent 12 on lunch"</em> — and you're caught up.</p>
+      <p style="margin:0 0 22px;line-height:1.5;color:#8da3c0;">New since you've been away: snap a photo of a receipt and Finby logs it for you. No typing.</p>
+      ${button(openUrl, 'Open Finby')}
+      <p style="color:#5b6f8c;font-size:13px;line-height:1.5;margin:22px 0 0;">Your data is exactly where you left it.</p>`,
+      "You're receiving this because reminders are on for your Finby account — you can turn them off any time in Settings.",
+    ),
+  };
+}
+
 export function passwordResetEmail(resetUrl: string): { subject: string; html: string } {
   return {
     subject: 'Reset your Finby password',

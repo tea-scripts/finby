@@ -34,6 +34,18 @@ describe('EmailService', () => {
   });
 });
 
+describe('EmailService.sendReengagement', () => {
+  it('sends the we-miss-you email with the open URL and name', async () => {
+    const { service, send } = build();
+    await service.sendReengagement('a@x.com', 'Tea', 'https://chat.finby.app/chat');
+    expect(send).toHaveBeenCalledTimes(1);
+    const msg = send.mock.calls[0][0];
+    expect(msg.to).toBe('a@x.com');
+    expect(msg.html).toContain('https://chat.finby.app/chat');
+    expect(msg.html).toContain('Tea');
+  });
+});
+
 describe('EmailService.sendMemberInvite', () => {
   it('sends an invite email containing the accept URL and inviter/workspace names', async () => {
     const { service, send } = build();

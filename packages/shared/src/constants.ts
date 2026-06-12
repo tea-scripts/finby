@@ -155,6 +155,7 @@ export const DEFAULT_PREFERENCES: UserPreferences = {
   dailyReminders: true,
   lastDailyReminderAt: null,
   dismissedAnnouncements: [],
+  lastReengagedAt: null,
 };
 
 export interface Currency {

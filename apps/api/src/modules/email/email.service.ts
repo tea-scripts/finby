@@ -5,6 +5,7 @@ import {
   feedbackNotificationEmail,
   memberInviteEmail,
   passwordResetEmail,
+  reengagementEmail,
   renewalReminderEmail,
   verificationEmail,
   welcomeEmail,
@@ -26,6 +27,11 @@ export class EmailService {
 
   async sendPasswordReset(to: string, resetUrl: string): Promise<void> {
     const { subject, html } = passwordResetEmail(resetUrl);
+    await this.provider.send({ to, subject, html });
+  }
+
+  async sendReengagement(to: string, name: string, openUrl: string): Promise<void> {
+    const { subject, html } = reengagementEmail(name, openUrl);
     await this.provider.send({ to, subject, html });
   }
 

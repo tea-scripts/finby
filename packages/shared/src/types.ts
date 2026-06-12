@@ -27,4 +27,7 @@ export interface UserPreferences {
   /** Ids of in-app announcements the user has permanently dismissed ("Got it").
    *  An announcement re-appears until its id lands here. */
   dismissedAnnouncements: string[];
+  /** Internal: ISO timestamp of the last "we miss you" re-engagement nudge
+   *  (push or email). Set server-side; null until first send. */
+  lastReengagedAt: string | null;
 }
