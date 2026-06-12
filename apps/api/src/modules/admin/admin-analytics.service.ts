@@ -6,6 +6,8 @@ import type {
   GrowthMetrics,
   OpsMetrics,
   RevenueMetrics,
+  StreakLeader,
+  StreakLeaderboards,
   TimeSeriesPoint,
 } from '@finby/shared';
 import { TIER_PRICING, type SubscriptionTier } from '@finby/shared';
@@ -197,6 +199,19 @@ export class AdminAnalyticsService {
         newPaidPerDay,
         churnPerDay,
       };
+    });
+  }
+
+  async streaks(): Promise<StreakLeaderboards> {
+    return this.cached('admin:metrics:streaks', async () => {
+      const select = { displayName: true, email: true, currentStreak: true, longestStreak: true } as const;
+      const [byCurrent, byLongest] = await Promise.all([
+        this.prisma.user.findMany({ orderBy: { currentStreak: 'desc' }, take: 25, select }),
+        this.prisma.user.findMany({ orderBy: { longestStreak: 'desc' }, take: 25, select }),
+      ]);
+      const rank = (rows: Omit<StreakLeader, 'rank'>[]): StreakLeader[] =>
+        rows.map((r, i) => ({ rank: i + 1, ...r }));
+      return { current: rank(byCurrent), longest: rank(byLongest) };
     });
   }
 

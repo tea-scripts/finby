@@ -37,5 +37,6 @@ export const api = {
   growth: () => request<import('@finby/shared').GrowthMetrics>('/admin/metrics/growth'),
   engagement: () => request<import('@finby/shared').EngagementMetrics>('/admin/metrics/engagement'),
   revenue: () => request<import('@finby/shared').RevenueMetrics>('/admin/metrics/revenue'),
+  streaks: () => request<import('@finby/shared').StreakLeaderboards>('/admin/metrics/streaks'),
   ops: () => request<import('@finby/shared').OpsMetrics>('/admin/metrics/ops'),
 };

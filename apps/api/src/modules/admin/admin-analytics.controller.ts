@@ -5,6 +5,7 @@ import type {
   GrowthMetrics,
   OpsMetrics,
   RevenueMetrics,
+  StreakLeaderboards,
 } from '@finby/shared';
 import { Public } from '../../common/decorators/public.decorator';
 import { ZodValidationPipe } from '../../common/pipes/zod-validation.pipe';
@@ -37,6 +38,11 @@ export class AdminAnalyticsController {
   @Get('revenue')
   revenue(@Query(new ZodValidationPipe(metricRangeSchema)) q: MetricRangeQuery): Promise<RevenueMetrics> {
     return this.analytics.revenue(q);
+  }
+
+  @Get('streaks')
+  streaks(): Promise<StreakLeaderboards> {
+    return this.analytics.streaks();
   }
 
   @Get('ops')

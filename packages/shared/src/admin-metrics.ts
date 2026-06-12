@@ -36,6 +36,19 @@ export interface RevenueMetrics {
   churnPerDay: TimeSeriesPoint[];
 }
 
+export interface StreakLeader {
+  rank: number;
+  displayName: string;
+  email: string;
+  currentStreak: number;
+  longestStreak: number;
+}
+
+export interface StreakLeaderboards {
+  current: StreakLeader[]; // top 25 by current streak (desc)
+  longest: StreakLeader[]; // top 25 by longest streak (desc)
+}
+
 export interface OpsMetrics {
   feedbackTotal: number;
   feedbackAvgRating: number | null;

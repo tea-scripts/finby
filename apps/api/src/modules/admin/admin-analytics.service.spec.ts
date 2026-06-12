@@ -107,6 +107,26 @@ describe('AdminAnalyticsService.revenue', () => {
   });
 });
 
+describe('AdminAnalyticsService.streaks', () => {
+  it('returns top-by-current and top-by-longest with 1-based ranks', async () => {
+    const { svc, prisma } = makeService();
+    (prisma.user.findMany as jest.Mock)
+      .mockResolvedValueOnce([
+        { displayName: 'Aisha', email: 'a@x.com', currentStreak: 24, longestStreak: 31 },
+        { displayName: 'John', email: 'j@x.com', currentStreak: 18, longestStreak: 18 },
+      ])
+      .mockResolvedValueOnce([
+        { displayName: 'Maria', email: 'm@x.com', currentStreak: 12, longestStreak: 40 },
+        { displayName: 'Aisha', email: 'a@x.com', currentStreak: 24, longestStreak: 31 },
+      ]);
+
+    const res = await svc.streaks();
+    expect(res.current[0]).toEqual({ rank: 1, displayName: 'Aisha', email: 'a@x.com', currentStreak: 24, longestStreak: 31 });
+    expect(res.current[1]?.rank).toBe(2);
+    expect(res.longest[0]).toEqual({ rank: 1, displayName: 'Maria', email: 'm@x.com', currentStreak: 12, longestStreak: 40 });
+  });
+});
+
 describe('AdminAnalyticsService.ops', () => {
   it('aggregates feedback, past-due count, and the Sentry link-out', async () => {
     const { svc, prisma } = makeService({}); // default config.get returns undefined → sentryUrl null
