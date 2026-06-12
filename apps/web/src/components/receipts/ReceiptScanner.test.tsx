@@ -107,7 +107,7 @@ describe('ReceiptScanner', () => {
 
     selectFile();
 
-    expect(await screen.findByText('Walmart')).toBeInTheDocument();
+    expect(await screen.findByLabelText('Merchant')).toHaveValue('Walmart');
     expect(screen.getByRole('button', { name: 'Log Transaction' })).toBeInTheDocument();
     // Nothing is logged until the user confirms.
     expect(mockCreate).not.toHaveBeenCalled();

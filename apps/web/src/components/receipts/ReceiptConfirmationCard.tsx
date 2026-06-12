@@ -10,6 +10,8 @@ import type { Category, ReceiptExtraction } from '@/lib/types';
 export interface ReceiptConfirmInput {
   /** The (possibly user-corrected) total as a decimal string. */
   total: string;
+  /** The (possibly user-corrected) merchant name — '' when cleared. */
+  merchant: string;
   categoryId: string | null;
 }
 
@@ -23,9 +25,10 @@ function resolveCategoryId(categories: Category[], name: string): string {
 }
 
 /**
- * Review step between extraction and logging. The total is editable (vision
- * confidence is imperfect) and the category can be corrected — nothing is
- * logged until the user explicitly confirms.
+ * Review step between extraction and logging. The total and merchant are
+ * editable (vision confidence is imperfect, and receipts often print the
+ * franchise corporation instead of the brand people remember) and the
+ * category can be corrected — nothing is logged until the user confirms.
  */
 export function ReceiptConfirmationCard({
   extraction,
@@ -41,6 +44,7 @@ export function ReceiptConfirmationCard({
   onCancel: () => void;
 }) {
   const [total, setTotal] = useState(String(extraction.total));
+  const [merchant, setMerchant] = useState(extraction.merchant);
   const [categoryId, setCategoryId] = useState(() =>
     resolveCategoryId(categories, extraction.category),
   );
@@ -54,15 +58,23 @@ export function ReceiptConfirmationCard({
 
   return (
     <div className="space-y-4">
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <p className="truncate font-display text-base font-semibold text-ink">
-            {extraction.merchant}
-          </p>
-          <p className="text-xs text-muted">{extraction.date}</p>
-        </div>
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-xs text-muted">{extraction.date}</p>
         <p className="shrink-0 font-mono text-sm text-muted">{extraction.currency}</p>
       </div>
+
+      <Field
+        label="Merchant"
+        htmlFor="receipt-merchant"
+        hint="Receipts often show the franchise company — rename it to what you'll remember."
+      >
+        <Input
+          id="receipt-merchant"
+          value={merchant}
+          onChange={(e) => setMerchant(e.target.value)}
+          placeholder="Where was this?"
+        />
+      </Field>
 
       <Field label={`Total (${extraction.currency})`} htmlFor="receipt-total">
         <Input
@@ -113,7 +125,13 @@ export function ReceiptConfirmationCard({
           Cancel
         </Button>
         <Button
-          onClick={() => onConfirm({ total: total.trim(), categoryId: categoryId || null })}
+          onClick={() =>
+            onConfirm({
+              total: total.trim(),
+              merchant: merchant.trim(),
+              categoryId: categoryId || null,
+            })
+          }
           loading={confirming}
           disabled={!totalValid}
         >

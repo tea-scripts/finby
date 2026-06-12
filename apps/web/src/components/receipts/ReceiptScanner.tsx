@@ -91,7 +91,9 @@ export function ReceiptScanner({
         amountOriginal: input.total,
         currencyOriginal: extraction.currency,
         ...(input.categoryId ? { categoryId: input.categoryId } : {}),
-        merchant: extraction.merchant,
+        // The user may have renamed the merchant (receipts often print the
+        // franchise corporation, not the brand). '' means they cleared it.
+        ...(input.merchant ? { merchant: input.merchant } : {}),
         ...(extraction.notes ? { description: extraction.notes } : {}),
         transactionDate: extraction.date,
       });

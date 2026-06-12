@@ -44,7 +44,7 @@ function setup(overrides: Partial<ReceiptExtraction> = {}) {
 describe('ReceiptConfirmationCard', () => {
   it('renders merchant, total, date and category', () => {
     setup();
-    expect(screen.getByText('Walmart')).toBeInTheDocument();
+    expect(screen.getByLabelText('Merchant')).toHaveValue('Walmart');
     expect(screen.getByLabelText(/total/i)).toHaveValue(42.5);
     expect(screen.getByText('2026-06-10')).toBeInTheDocument();
     // The extracted category is resolved against workspace categories.
@@ -83,7 +83,11 @@ describe('ReceiptConfirmationCard', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Category' }));
     fireEvent.click(screen.getByRole('option', { name: 'Dining' }));
     fireEvent.click(screen.getByRole('button', { name: 'Log Transaction' }));
-    expect(onConfirm).toHaveBeenCalledWith({ total: '42.5', categoryId: 'cat-dining' });
+    expect(onConfirm).toHaveBeenCalledWith({
+      total: '42.5',
+      merchant: 'Walmart',
+      categoryId: 'cat-dining',
+    });
   });
 
   it('lets the user edit the total and passes the corrected value through', () => {
@@ -91,7 +95,24 @@ describe('ReceiptConfirmationCard', () => {
     const totalInput = screen.getByLabelText(/total/i);
     fireEvent.change(totalInput, { target: { value: '45.99' } });
     fireEvent.click(screen.getByRole('button', { name: 'Log Transaction' }));
-    expect(onConfirm).toHaveBeenCalledWith({ total: '45.99', categoryId: 'cat-groceries' });
+    expect(onConfirm).toHaveBeenCalledWith({
+      total: '45.99',
+      merchant: 'Walmart',
+      categoryId: 'cat-groceries',
+    });
+  });
+
+  it('lets the user rename the merchant (franchise corp → brand) before confirming', () => {
+    const { onConfirm } = setup({ merchant: 'CIAM HIGHWAY FOOD CORP' });
+    const merchantInput = screen.getByLabelText('Merchant');
+    expect(merchantInput).toHaveValue('CIAM HIGHWAY FOOD CORP');
+    fireEvent.change(merchantInput, { target: { value: 'Jollibee' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Log Transaction' }));
+    expect(onConfirm).toHaveBeenCalledWith({
+      total: '42.5',
+      merchant: 'Jollibee',
+      categoryId: 'cat-groceries',
+    });
   });
 
   it('disables Log Transaction while the total is invalid', () => {
