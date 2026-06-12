@@ -7,6 +7,7 @@ import { Button } from './ui/button';
 
 const NAV = [
   { href: '/', label: 'Dashboard' },
+  { href: '/users', label: 'Users' },
   { href: '/streaks', label: 'Streaks' },
 ] as const;
 
