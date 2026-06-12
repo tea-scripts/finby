@@ -44,3 +44,34 @@ describe('AdminAnalyticsService.growth', () => {
     expect(res.signups).toEqual([{ date: '2026-06-10', value: 3 }]);
   });
 });
+
+describe('AdminAnalyticsService.engagement', () => {
+  it('computes totals, chat counts, and feature adoption %', async () => {
+    const { svc, prisma } = makeService();
+    (prisma.transaction.count as jest.Mock).mockResolvedValue(500);
+    (prisma.conversation.count as jest.Mock).mockResolvedValue(40);
+    (prisma.conversationMessage.count as jest.Mock).mockResolvedValue(900);
+    (prisma.workspace.count as jest.Mock).mockResolvedValue(100); // total workspaces
+    // distinct workspaces using each feature
+    (prisma.budget.findMany as jest.Mock).mockResolvedValue([{ workspaceId: 'w1' }, { workspaceId: 'w2' }]);
+    (prisma.portfolioHolding.findMany as jest.Mock).mockResolvedValue([{ workspaceId: 'w1' }]);
+    (prisma.alert.findMany as jest.Mock).mockResolvedValue([]);
+    // streak buckets from raw users
+    (prisma.user.findMany as jest.Mock).mockResolvedValue([
+      { currentStreak: 0 }, { currentStreak: 3 }, { currentStreak: 10 }, { currentStreak: 40 },
+    ]);
+    (prisma.$queryRaw as jest.Mock).mockResolvedValue([]);
+
+    const res = await svc.engagement({});
+    expect(res.totalTransactions).toBe(500);
+    expect(res.conversations).toBe(40);
+    expect(res.chatMessages).toBe(900);
+    expect(res.featureAdoption).toEqual({ budgets: 2, portfolio: 1, alerts: 0 });
+    expect(res.streakDistribution).toEqual([
+      { bucket: '0', users: 1 },
+      { bucket: '1-6', users: 1 },
+      { bucket: '7-29', users: 1 },
+      { bucket: '30+', users: 1 },
+    ]);
+  });
+});

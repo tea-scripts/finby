@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Prisma } from '@prisma/client';
 import type {
+  EngagementMetrics,
   GrowthMetrics,
   TimeSeriesPoint,
 } from '@finby/shared';
@@ -104,6 +105,59 @@ export class AdminAnalyticsService {
         activeLast7Pct: pct(wau),
         activeLast30Pct: pct(mau),
         tierSplit: { free: totalWorkspaces - paidWorkspaces, paid: paidWorkspaces },
+      };
+    });
+  }
+
+  private bucketStreak(streak: number): '0' | '1-6' | '7-29' | '30+' {
+    if (streak <= 0) return '0';
+    if (streak < 7) return '1-6';
+    if (streak < 30) return '7-29';
+    return '30+';
+  }
+
+  /** Count distinct workspaceIds that have ≥1 row in a feature table. */
+  private async distinctWorkspaces(
+    rows: Promise<{ workspaceId: string }[]>,
+  ): Promise<number> {
+    const set = new Set((await rows).map((r) => r.workspaceId));
+    return set.size;
+  }
+
+  async engagement(q: MetricRangeQuery): Promise<EngagementMetrics> {
+    const { from, to } = this.resolveRange(q);
+    return this.cached(this.rangeKey('engagement', from, to), async () => {
+      const now = new Date();
+      const [totalTransactions, transactionsPerDay, conversations, chatMessages, users, budgets, portfolio, alerts, mau] =
+        await Promise.all([
+          this.prisma.transaction.count(),
+          this.dailySeries('transactions', 'createdAt', from, to),
+          this.prisma.conversation.count(),
+          this.prisma.conversationMessage.count(),
+          this.prisma.user.findMany({ select: { currentStreak: true } }),
+          this.distinctWorkspaces(
+            this.prisma.budget.findMany({ distinct: ['workspaceId'], select: { workspaceId: true } }),
+          ),
+          this.distinctWorkspaces(
+            this.prisma.portfolioHolding.findMany({ distinct: ['workspaceId'], select: { workspaceId: true } }),
+          ),
+          this.distinctWorkspaces(
+            this.prisma.alert.findMany({ distinct: ['workspaceId'], select: { workspaceId: true } }),
+          ),
+          this.activeUserCount(new Date(now.getTime() - 30 * 86_400_000)),
+        ]);
+
+      const buckets: Record<'0' | '1-6' | '7-29' | '30+', number> = { '0': 0, '1-6': 0, '7-29': 0, '30+': 0 };
+      for (const u of users) buckets[this.bucketStreak(u.currentStreak)] += 1;
+
+      return {
+        totalTransactions,
+        transactionsPerDay,
+        avgTransactionsPerActiveUser: mau === 0 ? 0 : Math.round((totalTransactions / mau) * 10) / 10,
+        conversations,
+        chatMessages,
+        streakDistribution: (['0', '1-6', '7-29', '30+'] as const).map((b) => ({ bucket: b, users: buckets[b] })),
+        featureAdoption: { budgets, portfolio, alerts },
       };
     });
   }
