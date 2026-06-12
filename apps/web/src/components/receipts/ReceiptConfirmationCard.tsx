@@ -120,8 +120,10 @@ export function ReceiptConfirmationCard({
 
       {extraction.notes && <p className="text-xs text-faint">{extraction.notes}</p>}
 
-      <div className="flex justify-end gap-2 pt-1">
-        <Button variant="ghost" onClick={onCancel} disabled={confirming}>
+      {/* flex-1 halves keep both buttons a fixed size, so the spinner that
+          appears while confirming can't shift or overlap them. */}
+      <div className="flex gap-2 pt-1">
+        <Button variant="ghost" onClick={onCancel} disabled={confirming} className="flex-1">
           Cancel
         </Button>
         <Button
@@ -134,6 +136,7 @@ export function ReceiptConfirmationCard({
           }
           loading={confirming}
           disabled={!totalValid}
+          className="flex-1"
         >
           Log Transaction
         </Button>
