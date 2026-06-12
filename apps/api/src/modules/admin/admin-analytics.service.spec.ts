@@ -106,3 +106,22 @@ describe('AdminAnalyticsService.revenue', () => {
     expect(res.statusBreakdown).toContainEqual({ status: 'PAST_DUE', count: 1 });
   });
 });
+
+describe('AdminAnalyticsService.ops', () => {
+  it('aggregates feedback, past-due count, and the Sentry link-out', async () => {
+    const { svc, prisma } = makeService({}); // default config.get returns undefined → sentryUrl null
+    (prisma.feedback.count as jest.Mock).mockResolvedValue(12);
+    (prisma.feedback.aggregate as jest.Mock).mockResolvedValue({ _avg: { rating: 4.25 } });
+    (prisma.feedback.findMany as jest.Mock).mockResolvedValue([
+      { rating: 5, comment: 'great', createdAt: new Date('2026-06-11T00:00:00Z') },
+    ]);
+    (prisma.subscription.count as jest.Mock).mockResolvedValue(3); // past due
+
+    const res = await svc.ops();
+    expect(res.feedbackTotal).toBe(12);
+    expect(res.feedbackAvgRating).toBe(4.25);
+    expect(res.pastDueSubscriptions).toBe(3);
+    expect(res.recentFeedback[0]?.comment).toBe('great');
+    expect(res.sentryUrl).toBeNull();
+  });
+});

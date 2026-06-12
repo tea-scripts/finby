@@ -35,6 +35,7 @@ export const envSchema = z.object({
   ADMIN_JWT_SECRET: z.string().min(16).optional(),
   ADMIN_JWT_TTL: z.string().default('8h'), // one workday session; re-login (with TOTP) after.
   ADMIN_TOTP_ISSUER: z.string().default('Finby Admin'),
+  ADMIN_SENTRY_URL: z.string().url().optional(), // dashboard link shown in the ops panel
 
   // LLM / Anthropic (Phase 2)
   ANTHROPIC_API_KEY: z.string().optional(),

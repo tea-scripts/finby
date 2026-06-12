@@ -4,6 +4,7 @@ import { Prisma } from '@prisma/client';
 import type {
   EngagementMetrics,
   GrowthMetrics,
+  OpsMetrics,
   RevenueMetrics,
   TimeSeriesPoint,
 } from '@finby/shared';
@@ -195,6 +196,34 @@ export class AdminAnalyticsService {
         trials,
         newPaidPerDay,
         churnPerDay,
+      };
+    });
+  }
+
+  async ops(): Promise<OpsMetrics> {
+    return this.cached('admin:metrics:ops', async () => {
+      const [feedbackTotal, avg, recent, pastDueSubscriptions] = await Promise.all([
+        this.prisma.feedback.count(),
+        this.prisma.feedback.aggregate({ _avg: { rating: true } }),
+        this.prisma.feedback.findMany({
+          orderBy: { createdAt: 'desc' },
+          take: 20,
+          select: { rating: true, comment: true, createdAt: true },
+        }),
+        this.prisma.subscription.count({ where: { status: 'PAST_DUE' } }),
+      ]);
+      // SENTRY_DSN is a DSN, not a dashboard URL; expose an explicit project URL if set.
+      const sentryUrl = this.config.get('ADMIN_SENTRY_URL', { infer: true }) ?? null;
+      return {
+        feedbackTotal,
+        feedbackAvgRating: avg._avg.rating ?? null,
+        recentFeedback: recent.map((f) => ({
+          rating: f.rating,
+          comment: f.comment,
+          createdAt: f.createdAt.toISOString(),
+        })),
+        pastDueSubscriptions,
+        sentryUrl,
       };
     });
   }
