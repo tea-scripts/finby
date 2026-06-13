@@ -112,6 +112,20 @@ enum BillingProvider {
   LEMONSQUEEZY
 }
 
+enum SupportTicketCategory {
+  BUG
+  BILLING
+  ACCOUNT
+  FEATURE_REQUEST
+  OTHER
+}
+
+enum SupportTicketStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+}
+
 // ============================================================
 // USERS
 // Represents an authenticated individual.
@@ -156,6 +170,7 @@ model User {
   workspaceMemberships  WorkspaceMember[]
   refreshTokens         RefreshToken[]
   feedback              Feedback[]
+  supportTickets        SupportTicket[]
 
   @@index([email])
   @@map("users")
@@ -795,6 +810,33 @@ model Feedback {
   @@index([userId])
   @@index([createdAt])
   @@map("feedback")
+}
+
+// ============================================================
+// SUPPORT TICKETS
+// User-submitted support requests. Persisted for the record + admin
+// triage; the team is emailed on creation and the user is emailed when
+// a ticket is resolved. Email remains the reply channel (no in-app thread).
+// ============================================================
+
+model SupportTicket {
+  id        String                @id @default(cuid())
+  userId    String
+  user      User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  category  SupportTicketCategory
+  subject   String                // 1–160 chars (enforced in the DTO)
+  message   String                @db.Text
+
+  status    SupportTicketStatus   @default(OPEN)
+  resolvedAt DateTime?
+
+  createdAt DateTime              @default(now())
+  updatedAt DateTime              @updatedAt
+
+  @@index([userId])
+  @@index([status, createdAt])
+  @@map("support_tickets")
 }
 
 // ============================================================
