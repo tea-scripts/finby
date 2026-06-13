@@ -26,24 +26,42 @@ function ticket(overrides: Partial<SupportTicketView> = {}): SupportTicketView {
   };
 }
 
+function openModal() {
+  fireEvent.click(screen.getByRole('button', { name: /contact support/i }));
+}
+
 beforeEach(() => {
   vi.clearAllMocks();
   mockList.mockResolvedValue([]);
 });
 
 describe('SupportSection', () => {
-  it('lists the user’s existing tickets with a status label', async () => {
+  it('keeps the form behind a button and opens it in a modal on demand', async () => {
+    render(<SupportSection />);
+
+    // Closed by default — no form fields in the page.
+    expect(screen.queryByLabelText('Subject')).toBeNull();
+
+    openModal();
+    expect(await screen.findByLabelText('Subject')).toBeInTheDocument();
+    expect(screen.getByLabelText('Message')).toBeInTheDocument();
+  });
+
+  it('lists the user’s existing tickets inside the modal', async () => {
     mockList.mockResolvedValue([ticket({ status: 'RESOLVED' })]);
     render(<SupportSection />);
+
+    openModal();
     expect(await screen.findByText('App crashes')).toBeInTheDocument();
     expect(screen.getByText('Resolved')).toBeInTheDocument();
   });
 
-  it('submits a ticket and shows it in the list', async () => {
+  it('submits a ticket from the modal and shows it in the list', async () => {
     mockList.mockResolvedValue([]);
     mockCreate.mockResolvedValue(ticket({ id: 't2', subject: 'My issue', message: 'details' }));
     render(<SupportSection />);
 
+    openModal();
     fireEvent.change(await screen.findByLabelText('Subject'), { target: { value: 'My issue' } });
     fireEvent.change(screen.getByLabelText('Message'), { target: { value: 'details' } });
     fireEvent.click(screen.getByRole('button', { name: /submit/i }));
@@ -63,6 +81,7 @@ describe('SupportSection', () => {
     mockCreate.mockRejectedValue(new Error('boom'));
     render(<SupportSection />);
 
+    openModal();
     fireEvent.change(await screen.findByLabelText('Subject'), { target: { value: 'X' } });
     fireEvent.change(screen.getByLabelText('Message'), { target: { value: 'Y' } });
     fireEvent.click(screen.getByRole('button', { name: /submit/i }));
