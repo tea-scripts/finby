@@ -315,10 +315,21 @@ export default function ChatPage() {
                     </span>
                   </div>
                 )}
-                <MessageBubble role={m.role} content={m.content} createdAt={m.createdAt}>
-                  {m.actions?.map((a, idx) => (
-                    <ActionCard key={a.type === 'TRANSACTION_CREATED' ? a.transactionId : `budget-${idx}`} action={a} />
-                  ))}
+                <MessageBubble
+                  role={m.role}
+                  content={m.content}
+                  createdAt={m.createdAt}
+                  lead={
+                    m.actions && m.actions.length > 0
+                      ? m.actions.map((a, idx) => (
+                          <ActionCard
+                            key={a.type === 'TRANSACTION_CREATED' ? a.transactionId : `budget-${idx}`}
+                            action={a}
+                          />
+                        ))
+                      : undefined
+                  }
+                >
                   {m.confirmations?.map((c) => (
                     <ConfirmationCard
                       key={c.confirmationId}
