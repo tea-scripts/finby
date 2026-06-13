@@ -7,8 +7,10 @@ import {
   Param,
   Post,
   Query,
+  Res,
   UseGuards,
 } from '@nestjs/common';
+import type { Response } from 'express';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { Workspace } from '../../common/decorators/workspace.decorator';
@@ -27,7 +29,7 @@ import {
   type ListMessagesQuery,
   type SendMessageInput,
 } from './dto/chat.schemas';
-import type { ChatMessageView, ChatResult } from './chat.types';
+import type { ChatMessageView, ChatResult, ChatStreamEvent } from './chat.types';
 
 @Controller('workspaces/:workspaceId/conversations')
 @UseGuards(WorkspaceMemberGuard)
@@ -87,5 +89,47 @@ export class ConversationsController {
     @Body(new ZodValidationPipe(sendMessageSchema)) body: SendMessageInput,
   ): Promise<ChatResult> {
     return this.chat.handleMessage(workspace, user.userId, conversationId, body.content);
+  }
+
+  @Post(':conversationId/messages/stream')
+  @Roles('OWNER', 'CO_MANAGER')
+  @UseGuards(RolesGuard)
+  async stream(
+    @Workspace() workspace: WorkspaceContext,
+    @CurrentUser() user: AuthUser,
+    @Param('conversationId') conversationId: string,
+    @Body(new ZodValidationPipe(sendMessageSchema)) body: SendMessageInput,
+    @Res() res: Response,
+  ): Promise<void> {
+    const gen = this.chat.streamMessage(workspace, user.userId, conversationId, body.content);
+
+    // Peek the first event BEFORE touching the response. Pre-stream failures
+    // (rate-limit 429, LLM-unreachable 503) throw here with the response
+    // untouched, so the global HttpExceptionFilter emits a proper JSON status.
+    const first = await gen.next();
+
+    res.writeHead(200, {
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache, no-transform',
+      Connection: 'keep-alive',
+      'X-Accel-Buffering': 'no',
+    });
+
+    const heartbeat = setInterval(() => res.write(':ping\n\n'), 15000);
+    const frame = (event: ChatStreamEvent): string =>
+      `event: ${event.type}\ndata: ${JSON.stringify(event)}\n\n`;
+
+    try {
+      if (!first.done) res.write(frame(first.value));
+      for await (const event of gen) res.write(frame(event));
+    } catch {
+      // Headers are already sent — deliver failures as an in-stream error event.
+      res.write(
+        `event: error\ndata: ${JSON.stringify({ code: 'STREAM_FAILED', message: 'The response was interrupted. Please try again.' })}\n\n`,
+      );
+    } finally {
+      clearInterval(heartbeat);
+      res.end();
+    }
   }
 }
