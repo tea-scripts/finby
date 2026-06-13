@@ -149,7 +149,12 @@ export default function ChatPage() {
         },
         onPending: (c) => patch((msg) => ({ ...msg, confirmations: [...(msg.confirmations ?? []), c] })),
         onDone: (message) =>
-          patch((msg) => ({ ...msg, id: message.id, createdAt: message.createdAt })),
+          patch((msg) => ({
+            ...msg,
+            id: message.id,
+            createdAt: message.createdAt,
+            content: msg.content || message.content,
+          })),
         onError: (e) => {
           // Tools may have already committed and streamed their action cards;
           // keep them and ensure the bubble isn't left empty.
