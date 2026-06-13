@@ -82,7 +82,9 @@ describe('AccountsSection', () => {
 
     fireEvent.click(await screen.findByRole('button', { name: /add account/i }));
     fireEvent.change(screen.getByLabelText(/^name/i), { target: { value: 'GCash' } });
-    fireEvent.change(screen.getByLabelText(/account type/i), { target: { value: 'EWALLET' } });
+    // Account type is our custom Dropdown (not a native <select>): open + pick.
+    fireEvent.click(screen.getByRole('button', { name: /account type/i }));
+    fireEvent.click(screen.getByRole('option', { name: 'E-wallet' }));
     fireEvent.click(screen.getByRole('button', { name: /^Add$/ }));
 
     await waitFor(() => {

@@ -3,6 +3,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { ACCOUNT_TYPES, ACCOUNT_TYPE_LABELS, type AccountType } from '@finby/shared';
 import { Button } from '@/components/ui/button';
+import { Dropdown } from '@/components/ui/dropdown';
+import { Input } from '@/components/ui/input';
 import { listAccounts } from '@/lib/dashboard-api';
 import { createAccount, updateAccount } from '@/lib/accounts-api';
 import { useAuth } from '@/lib/store';
@@ -164,11 +166,10 @@ function AccountRow({
     <li className={`flex items-center justify-between gap-3 py-2.5 ${account.isArchived ? 'opacity-60' : ''}`}>
       <div className="min-w-0 flex-1">
         {editing ? (
-          <input
+          <Input
             aria-label="Edit name"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            className="w-full rounded-lg border border-line bg-surface px-2 py-1 text-sm text-ink"
           />
         ) : (
           <p className="truncate text-sm text-ink">
@@ -287,56 +288,42 @@ function AddAccountForm({
       <div className="grid gap-3 sm:grid-cols-2">
         <label className="space-y-1">
           <span className="text-xs text-muted">Name</span>
-          <input
+          <Input
             aria-label="Name"
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder="e.g. BDO Savings"
-            className="w-full rounded-lg border border-line bg-surface-2 px-3 py-2 text-sm text-ink"
           />
         </label>
 
-        <label className="space-y-1">
+        <div className="space-y-1">
           <span className="text-xs text-muted">Account type</span>
-          <select
+          <Dropdown
             aria-label="Account type"
             value={accountType}
-            onChange={(e) => setAccountType(e.target.value as AccountType)}
-            className="w-full rounded-lg border border-line bg-surface-2 px-3 py-2 text-sm text-ink"
-          >
-            {ACCOUNT_TYPES.map((t) => (
-              <option key={t} value={t}>
-                {ACCOUNT_TYPE_LABELS[t]}
-              </option>
-            ))}
-          </select>
-        </label>
+            onChange={(v) => setAccountType(v as AccountType)}
+            options={ACCOUNT_TYPES.map((t) => ({ value: t, label: ACCOUNT_TYPE_LABELS[t] }))}
+          />
+        </div>
 
-        <label className="space-y-1">
+        <div className="space-y-1">
           <span className="text-xs text-muted">Currency</span>
-          <select
+          <Dropdown
             aria-label="Currency"
             value={currency}
-            onChange={(e) => setCurrency(e.target.value)}
-            className="w-full rounded-lg border border-line bg-surface-2 px-3 py-2 text-sm text-ink"
-          >
-            {currencyOptions.map((c) => (
-              <option key={c} value={c}>
-                {c}
-              </option>
-            ))}
-          </select>
-        </label>
+            onChange={setCurrency}
+            options={currencyOptions.map((c) => ({ value: c, label: c }))}
+          />
+        </div>
 
         <label className="space-y-1">
           <span className="text-xs text-muted">Opening balance (optional)</span>
-          <input
+          <Input
             aria-label="Opening balance"
             inputMode="decimal"
             value={openingBalance}
             onChange={(e) => setOpeningBalance(e.target.value)}
             placeholder="0"
-            className="w-full rounded-lg border border-line bg-surface-2 px-3 py-2 text-sm text-ink"
           />
         </label>
       </div>
