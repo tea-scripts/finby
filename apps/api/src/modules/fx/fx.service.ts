@@ -1,6 +1,7 @@
 import {
   Inject,
   Injectable,
+  Logger,
   ServiceUnavailableException,
   UnprocessableEntityException,
 } from '@nestjs/common';
@@ -25,6 +26,7 @@ interface CachedRate {
 
 @Injectable()
 export class FxService {
+  private readonly logger = new Logger(FxService.name);
   private readonly providers: FxRateProvider[];
 
   constructor(
@@ -154,6 +156,9 @@ export class FxService {
           return { rate: result.rate, date: result.date, source: provider.name };
         }
       } catch (error) {
+        this.logger.warn(
+          `FX provider ${provider.name} failed: ${error instanceof Error ? error.message : String(error)}`,
+        );
         transientError = error; // provider is down — try the next one
       }
     }
