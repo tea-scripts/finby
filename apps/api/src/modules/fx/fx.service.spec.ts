@@ -114,6 +114,22 @@ describe('FxService provider fallback', () => {
     expect(fetchSpy).toHaveBeenCalledTimes(2);
   });
 
+  it('falls through to Frankfurter when ExchangeRate-API is down (throws)', async () => {
+    const { service } = buildService();
+    const fetchSpy = jest.spyOn(global, 'fetch').mockImplementation((input: unknown) => {
+      const url = String(input);
+      if (url.includes('open.er-api.com')) {
+        return Promise.resolve({ ok: false, status: 503, json: async () => ({}) } as unknown as Response);
+      }
+      return Promise.resolve({ ok: true, status: 200, json: async () => ({ date: '2026-06-02', rates: { EUR: 0.9 } }) } as unknown as Response);
+    });
+
+    const rate = await service.getRate('USD', 'EUR');
+    expect(rate.rate).toBe('0.9');
+    expect(rate.source).toBe('frankfurter');
+    expect(fetchSpy).toHaveBeenCalledTimes(2);
+  });
+
   it('throws Unprocessable when no provider can price the pair', async () => {
     const { service } = buildService();
     jest
