@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Star } from '@phosphor-icons/react';
 import { Modal } from '@/components/ui/modal';
 import { Button } from '@/components/ui/button';
+import { Textarea } from '@/components/ui/textarea';
 import { submitFeedback } from '@/lib/feedback-api';
 import { track } from '@/lib/analytics';
 
@@ -98,13 +99,14 @@ export function FeedbackSection() {
               ))}
             </div>
 
-            <textarea
+            <Textarea
+              aria-label="Review comment"
               value={comment}
               onChange={(e) => setComment(e.target.value)}
               maxLength={2000}
               rows={4}
               placeholder="Anything you'd like us to know? (optional)"
-              className="w-full resize-none rounded-xl border border-line bg-surface-2 px-3.5 py-2.5 text-sm text-ink placeholder:text-faint focus:border-accent/50 focus:outline-none"
+              className="resize-none"
             />
 
             {status === 'error' && (

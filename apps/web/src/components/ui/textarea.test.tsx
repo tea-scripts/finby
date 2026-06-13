@@ -14,4 +14,9 @@ describe('Textarea', () => {
     const { container } = render(<Textarea className="extra" />);
     expect(container.querySelector('textarea')?.className).toContain('extra');
   });
+
+  it('renders at >=16px on mobile (text-base) so iOS does not zoom on focus', () => {
+    const { container } = render(<Textarea />);
+    expect(container.querySelector('textarea')?.className).toContain('text-base');
+  });
 });

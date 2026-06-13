@@ -33,4 +33,9 @@ describe('Input', () => {
     const input = container.querySelector('input');
     expect(input?.getAttribute('type')).toBe('date');
   });
+
+  it('renders at >=16px on mobile (text-base) so iOS does not zoom on focus', () => {
+    const { container } = render(<Input />);
+    expect(container.querySelector('input')?.className).toContain('text-base');
+  });
 });
