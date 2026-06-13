@@ -45,6 +45,8 @@ export interface TierLimits {
   receiptScanning: boolean;
   /** Daily receipt-scan cap for tiers with receiptScanning (0 when disabled). */
   receiptScansPerDay: number;
+  /** Voice-to-text chat input (STT). Excluded from FREE; each new tier must opt in. */
+  voiceInput: boolean;
 }
 
 /**
@@ -94,6 +96,7 @@ export const TIER_LIMITS: Record<SubscriptionTier, TierLimits> = {
     proactiveCoaching: false,
     receiptScanning: false,
     receiptScansPerDay: 0,
+    voiceInput: false,
   },
   PRO: {
     chatMessagesPerDay: null,
@@ -111,6 +114,7 @@ export const TIER_LIMITS: Record<SubscriptionTier, TierLimits> = {
     proactiveCoaching: false,
     receiptScanning: true,
     receiptScansPerDay: 20,
+    voiceInput: true,
   },
   PREMIUM: {
     chatMessagesPerDay: null,
@@ -128,6 +132,7 @@ export const TIER_LIMITS: Record<SubscriptionTier, TierLimits> = {
     proactiveCoaching: true,
     receiptScanning: true,
     receiptScansPerDay: 50,
+    voiceInput: true,
   },
   FAMILY: {
     chatMessagesPerDay: null,
@@ -145,6 +150,7 @@ export const TIER_LIMITS: Record<SubscriptionTier, TierLimits> = {
     proactiveCoaching: true,
     receiptScanning: true,
     receiptScansPerDay: 50,
+    voiceInput: true,
   },
 };
 
