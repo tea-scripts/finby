@@ -32,6 +32,9 @@ export type CreateTransactionInput = z.infer<typeof createTransactionSchema>;
 
 export const updateTransactionSchema = z.object({
   categoryId: z.string().nullable().optional(),
+  // Re-attribute the transaction to a different account (or detach with null).
+  // Reconciles account balances and enforces the account/transaction currency match.
+  accountId: z.string().nullable().optional(),
   merchant: z.string().trim().max(200).nullable().optional(),
   description: z.string().trim().max(1000).nullable().optional(),
   transactionDate: isoDate.optional(),

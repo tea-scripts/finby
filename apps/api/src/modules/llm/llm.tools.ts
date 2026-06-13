@@ -100,11 +100,16 @@ export const PHASE2_TOOLS: LlmToolDef[] = [
   {
     name: 'update_transaction',
     description:
-      'Correct a transaction the user ALREADY logged — re-categorize it, fix the merchant, or fix the date. Use when the user fixes or clarifies a past entry ("that coffee was Dining, not Groceries", "the SM run was actually groceries"), NOT when they report a new spend. Targets the most recent matching transaction; pass matchMerchant/matchAmount to disambiguate which one. Re-categorizing automatically moves the budget spend to the correct budget.',
+      'Correct a transaction the user ALREADY logged — re-categorize it, fix the merchant, fix the date, or re-attribute it to the right account. Use when the user fixes or clarifies a past entry ("that coffee was Dining, not Groceries", "that income actually went into my GCash"), NOT when they report a new spend. This is also how you repair a transaction that was logged into the wrong account or with no account: set accountName to move it onto the correct account (balances are reconciled automatically). Targets the most recent matching transaction; pass matchMerchant/matchAmount/matchType to disambiguate which one. Re-categorizing automatically moves the budget spend to the correct budget.',
     input_schema: {
       type: 'object',
       properties: {
         categoryName: { type: 'string', description: 'New category to move the transaction to.' },
+        accountName: {
+          type: 'string',
+          description:
+            'Account to re-attribute the transaction to (the account must already exist and match the transaction currency). Use to fix a transaction logged into the wrong account or with no account.',
+        },
         merchant: { type: 'string', description: 'Corrected merchant/vendor name.' },
         transactionDate: { type: 'string', description: 'Corrected ISO 8601 date.' },
         matchMerchant: {
@@ -229,7 +234,7 @@ export const PHASE2_TOOLS: LlmToolDef[] = [
         currency: {
           type: 'string',
           description:
-            "ISO 4217 currency of the account, e.g. 'PHP', 'USD'. Default to the workspace base currency if unstated.",
+            "ISO 4217 currency of the account, e.g. 'PHP', 'USD'. Infer it from the money that lives in the account — a GCash wallet holding pesos is PHP, a Wise USD balance is USD. When creating an account so you can log a specific transaction into it, use that transaction's currency. Only fall back to the workspace base currency when the account's currency is genuinely unknown.",
         },
         openingBalance: {
           type: 'string',

@@ -406,7 +406,21 @@ export class ChatService {
         (await this.categories.findByName(workspace.id, 'Other')))
       : null;
     const accountName = asString(input.accountName);
-    const account = accountName ? await this.accounts.findByName(workspace.id, accountName) : null;
+    let account: Awaited<ReturnType<AccountsService['findByName']>> = null;
+    if (accountName) {
+      account = await this.accounts.findByName(workspace.id, accountName);
+      // The user named a specific account ("into my GCash") — never silently log
+      // the money unattributed. If it doesn't exist yet, refuse and tell the model
+      // to create it first (in THIS transaction's currency so the two match).
+      if (!account) {
+        return {
+          toolResult: JSON.stringify({
+            error: 'no_such_account',
+            message: `No account named "${accountName}" exists yet. Create it first with create_account using currency ${currencyOriginal} (so it matches this ${currencyOriginal} ${type === 'INCOME' ? 'income' : 'expense'}), then log this into that account. Do NOT tell the user it was logged until it succeeds.`,
+          }),
+        };
+      }
+    }
 
     try {
       const { transaction: tx, budgetChange, currentStreak } = await this.transactions.create({
@@ -674,8 +688,13 @@ export class ChatService {
     const categoryName = asString(input.categoryName);
     const merchant = asString(input.merchant);
     const transactionDate = asString(input.transactionDate);
-    if (!categoryName && !merchant && !transactionDate) {
-      return { toolResult: JSON.stringify({ error: 'Nothing to update — specify a new category, merchant, or date.' }) };
+    const accountName = asString(input.accountName);
+    if (!categoryName && !merchant && !transactionDate && !accountName) {
+      return {
+        toolResult: JSON.stringify({
+          error: 'Nothing to update — specify a new category, merchant, date, or account.',
+        }),
+      };
     }
 
     // Re-categorizing only makes sense onto a real category — never re-route to
@@ -691,6 +710,20 @@ export class ChatService {
         };
       }
       categoryId = category.id;
+    }
+
+    // Re-attribute a transaction to an account it should have been logged into.
+    let accountId: string | undefined;
+    if (accountName) {
+      const account = await this.accounts.findByName(workspace.id, accountName);
+      if (!account) {
+        return {
+          toolResult: JSON.stringify({
+            error: `No account named "${accountName}". Create it first with create_account, then try again.`,
+          }),
+        };
+      }
+      accountId = account.id;
     }
 
     const matchType = asString(input.matchType)?.toUpperCase();
@@ -712,6 +745,7 @@ export class ChatService {
         ...(categoryId ? { categoryId } : {}),
         ...(merchant ? { merchant } : {}),
         ...(transactionDate ? { transactionDate } : {}),
+        ...(accountId ? { accountId } : {}),
       });
       const action: ChatAction = {
         type: 'TRANSACTION_UPDATED',

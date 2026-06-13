@@ -26,12 +26,18 @@ const workspace: WorkspaceContext = {
 
 function build(overrides?: {
   txCreate?: jest.Mock;
+  txUpdate?: jest.Mock;
+  findLatest?: jest.Mock;
   getRate?: jest.Mock;
   findCategory?: jest.Mock;
   findAccount?: jest.Mock;
   accountCreate?: jest.Mock;
 }) {
-  const transactions = { create: overrides?.txCreate ?? jest.fn() };
+  const transactions = {
+    create: overrides?.txCreate ?? jest.fn(),
+    update: overrides?.txUpdate ?? jest.fn(),
+    findLatestForCorrection: overrides?.findLatest ?? jest.fn().mockResolvedValue(null),
+  };
   const fx = { getRate: overrides?.getRate ?? jest.fn() };
   const categories = { findByName: overrides?.findCategory ?? jest.fn().mockResolvedValue(null) };
   const accounts = {
@@ -482,6 +488,90 @@ describe('ChatService.executeTool', () => {
 
     expect(accounts.create).not.toHaveBeenCalled();
     expect(result.toolResult).toContain('Missing');
+  });
+
+  it('log_income into a named account that does not exist refuses to log and asks to create it first', async () => {
+    const txCreate = jest.fn();
+    const { service, transactions } = build({ txCreate }); // findAccount defaults to null
+
+    const result = await service.executeTool(
+      { ...workspace, tier: 'PRO' }, // PRO so the multi-currency limit does not pre-empt the account check
+      'u1',
+      call('log_income', {
+        amountOriginal: '50000',
+        currencyOriginal: 'PHP',
+        source: 'Client',
+        accountName: 'GCash',
+        confidence: 0.95,
+      }),
+    );
+
+    expect(transactions.create).not.toHaveBeenCalled();
+    expect(result.action).toBeUndefined();
+    expect(result.toolResult).toContain('no_such_account');
+    expect(result.toolResult).toContain('PHP'); // tells the model which currency the account must use
+  });
+
+  it('log_income into an existing named account links the transaction to that account', async () => {
+    const findAccount = jest.fn().mockResolvedValue({ id: 'a1', name: 'GCash', currency: 'PHP' });
+    const txCreate = jest
+      .fn()
+      .mockResolvedValue({ transaction: { ...txView, account: { id: 'a1', name: 'GCash' } }, budgetChange: null });
+    const { service, transactions } = build({ findAccount, txCreate });
+
+    await service.executeTool(
+      { ...workspace, tier: 'PRO' },
+      'u1',
+      call('log_income', {
+        amountOriginal: '50000',
+        currencyOriginal: 'PHP',
+        source: 'Client',
+        accountName: 'GCash',
+        confidence: 0.95,
+      }),
+    );
+
+    expect(transactions.create).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'INCOME', accountId: 'a1', currencyOriginal: 'PHP' }),
+    );
+  });
+
+  it('update_transaction re-links a logged transaction to an account', async () => {
+    const findAccount = jest.fn().mockResolvedValue({ id: 'a2', name: 'GCash', currency: 'PHP' });
+    const findLatest = jest.fn().mockResolvedValue({ id: 'tx9', amountOriginal: '50000' });
+    const txUpdate = jest.fn().mockResolvedValue({
+      id: 'tx9',
+      amountOriginal: '50000',
+      currencyOriginal: 'PHP',
+      merchant: null,
+      category: null,
+      account: { id: 'a2', name: 'GCash' },
+    });
+    const { service, transactions } = build({ findAccount, findLatest, txUpdate });
+
+    const result = await service.executeTool(
+      { ...workspace, tier: 'PRO' },
+      'u1',
+      call('update_transaction', { accountName: 'GCash', matchAmount: '50000', matchType: 'INCOME' }),
+    );
+
+    expect(transactions.update).toHaveBeenCalledWith('w1', 'tx9', expect.objectContaining({ accountId: 'a2' }));
+    expect(result.action?.type).toBe('TRANSACTION_UPDATED');
+  });
+
+  it('update_transaction re-link to a non-existent account errors without updating', async () => {
+    const findLatest = jest.fn().mockResolvedValue({ id: 'tx9' });
+    const txUpdate = jest.fn();
+    const { service, transactions } = build({ findLatest, txUpdate }); // findAccount defaults to null
+
+    const result = await service.executeTool(
+      { ...workspace, tier: 'PRO' },
+      'u1',
+      call('update_transaction', { accountName: 'Nope', matchAmount: '50000', matchType: 'INCOME' }),
+    );
+
+    expect(transactions.update).not.toHaveBeenCalled();
+    expect(result.toolResult).toContain('No account named');
   });
 });
 

@@ -233,6 +233,26 @@ export class TransactionsService {
     const categoryChanged = newCategoryId !== existing.categoryId;
     const dateChanged = newDate.getTime() !== existing.transactionDate.getTime();
 
+    // Re-attribution to a different account (e.g. the user logged income but
+    // didn't say which account, then clarifies "that was into GCash"). Only
+    // INCOME/EXPENSE are re-linkable here — TRANSFER carries two accounts and is
+    // corrected by re-logging. A re-link reconciles both account balances.
+    const accountChangeRequested = input.accountId !== undefined;
+    const newAccountId = accountChangeRequested ? input.accountId : existing.fromAccountId;
+    const accountChanged =
+      accountChangeRequested &&
+      existing.type !== 'TRANSFER' &&
+      newAccountId !== existing.fromAccountId;
+
+    if (accountChanged && newAccountId) {
+      const target = await this.requireAccount(workspaceId, newAccountId);
+      if (target.currency.toUpperCase() !== existing.currencyOriginal.toUpperCase()) {
+        throw new UnprocessableEntityException(
+          `Account currency (${target.currency}) must match the transaction currency (${existing.currencyOriginal}).`,
+        );
+      }
+    }
+
     // Re-categorizing (or re-dating) a CONFIRMED expense must move the materialized
     // budget spend off the old budget and onto the new one — otherwise the old
     // category's budget keeps the spend forever and the new one never sees it.
@@ -240,7 +260,12 @@ export class TransactionsService {
       existing.status === 'CONFIRMED' &&
       existing.type === 'EXPENSE' &&
       (categoryChanged || dateChanged);
+    const reconcileBalance =
+      existing.status === 'CONFIRMED' &&
+      (existing.type === 'INCOME' || existing.type === 'EXPENSE') &&
+      accountChanged;
     const amountBase = existing.amountBase.toString();
+    const amountOriginal = existing.amountOriginal.toString();
 
     const updated = await this.prisma.$transaction(async (txc) => {
       if (reapplyBudget && existing.categoryId) {
@@ -253,6 +278,14 @@ export class TransactionsService {
         });
       }
 
+      if (reconcileBalance) {
+        const balanceType = existing.type as CreateTransactionParams['type'];
+        // Reverse the effect on the old account (no-op if it was unattributed)…
+        await this.applyBalances(txc, balanceType, existing.fromAccountId, null, amountOriginal, null, -1);
+        // …and apply it to the new one (no-op if detaching to null).
+        await this.applyBalances(txc, balanceType, newAccountId, null, amountOriginal, null, 1);
+      }
+
       const row = await txc.transaction.update({
         where: { id: transactionId },
         data: {
@@ -260,6 +293,7 @@ export class TransactionsService {
           merchant: input.merchant,
           description: input.description,
           tags: input.tags,
+          ...(accountChanged ? { fromAccountId: newAccountId } : {}),
           ...(input.transactionDate ? { transactionDate: newDate } : {}),
         },
         include: VIEW_INCLUDE,

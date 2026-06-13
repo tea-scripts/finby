@@ -259,6 +259,67 @@ describe('TransactionsService.update', () => {
 
     await expect(service.update('w1', 'missing', { categoryId: 'c-new' } as never)).rejects.toBeInstanceOf(NotFoundException);
   });
+
+  it('re-links an unattributed INCOME to an account and credits that account', async () => {
+    const prisma = buildPrisma();
+    prisma.transaction.findFirst.mockResolvedValue(
+      txRow({ type: 'INCOME', fromAccount: null, fromAccountId: null, currencyOriginal: 'PHP', amountOriginal: new Prisma.Decimal('50000') }),
+    );
+    prisma.account.findFirst.mockResolvedValue({ id: 'a-gcash', workspaceId: 'w1', currency: 'PHP', name: 'GCash' });
+    prisma.transaction.update.mockResolvedValue(
+      txRow({ type: 'INCOME', fromAccountId: 'a-gcash', fromAccount: { id: 'a-gcash', name: 'GCash' }, currencyOriginal: 'PHP', amountOriginal: new Prisma.Decimal('50000') }),
+    );
+    const fx = buildFx();
+    const service = new TransactionsService(prisma as unknown as PrismaService, fx as unknown as FxService, buildBudgets() as unknown as BudgetsService, buildAlerts() as unknown as AlertsService, buildStreaks() as unknown as StreaksService);
+
+    await service.update('w1', 't1', { accountId: 'a-gcash' } as never);
+
+    // Old account was null → no reversal; new account gets the income credited.
+    expect(prisma.account.update).toHaveBeenCalledTimes(1);
+    expect(prisma.account.update).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { id: 'a-gcash' }, data: { balance: { increment: '50000' } } }),
+    );
+    expect(prisma.transaction.update).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ fromAccountId: 'a-gcash' }) }),
+    );
+  });
+
+  it('moving INCOME between accounts reverses the old balance and applies the new', async () => {
+    const prisma = buildPrisma();
+    prisma.transaction.findFirst.mockResolvedValue(
+      txRow({ type: 'INCOME', fromAccountId: 'a-old', fromAccount: { id: 'a-old', name: 'Old' }, currencyOriginal: 'PHP', amountOriginal: new Prisma.Decimal('50000') }),
+    );
+    prisma.account.findFirst.mockResolvedValue({ id: 'a-new', workspaceId: 'w1', currency: 'PHP', name: 'New' });
+    prisma.transaction.update.mockResolvedValue(
+      txRow({ type: 'INCOME', fromAccountId: 'a-new', fromAccount: { id: 'a-new', name: 'New' }, currencyOriginal: 'PHP', amountOriginal: new Prisma.Decimal('50000') }),
+    );
+    const fx = buildFx();
+    const service = new TransactionsService(prisma as unknown as PrismaService, fx as unknown as FxService, buildBudgets() as unknown as BudgetsService, buildAlerts() as unknown as AlertsService, buildStreaks() as unknown as StreaksService);
+
+    await service.update('w1', 't1', { accountId: 'a-new' } as never);
+
+    expect(prisma.account.update).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { id: 'a-old' }, data: { balance: { decrement: '50000' } } }),
+    );
+    expect(prisma.account.update).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { id: 'a-new' }, data: { balance: { increment: '50000' } } }),
+    );
+  });
+
+  it('rejects a re-link to an account whose currency does not match the transaction (422)', async () => {
+    const prisma = buildPrisma();
+    prisma.transaction.findFirst.mockResolvedValue(
+      txRow({ type: 'INCOME', fromAccount: null, fromAccountId: null, currencyOriginal: 'PHP', amountOriginal: new Prisma.Decimal('50000') }),
+    );
+    prisma.account.findFirst.mockResolvedValue({ id: 'a-usd', workspaceId: 'w1', currency: 'USD', name: 'Wise USD' });
+    const fx = buildFx();
+    const service = new TransactionsService(prisma as unknown as PrismaService, fx as unknown as FxService, buildBudgets() as unknown as BudgetsService, buildAlerts() as unknown as AlertsService, buildStreaks() as unknown as StreaksService);
+
+    await expect(service.update('w1', 't1', { accountId: 'a-usd' } as never)).rejects.toBeInstanceOf(
+      UnprocessableEntityException,
+    );
+    expect(prisma.transaction.update).not.toHaveBeenCalled();
+  });
 });
 
 describe('TransactionsService.findLatestForCorrection', () => {
