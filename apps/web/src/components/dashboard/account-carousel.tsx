@@ -14,7 +14,7 @@ export function AccountCarousel({ state }: { state: SectionState<AccountView[]> 
   const accounts = state.data?.filter((a) => !a.isArchived) ?? [];
 
   return (
-    <section className="space-y-3">
+    <section className="min-w-0 space-y-3">
       <h2 className={LEGEND}>Accounts</h2>
       {state.loading ? (
         <Skeleton className="h-[120px] rounded-2xl" />

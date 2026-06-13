@@ -72,11 +72,11 @@ export function Carousel({
       aria-label={ariaLabel}
       tabIndex={0}
       onKeyDown={onKeyDown}
-      className="rounded-2xl outline-none focus-visible:ring-2 focus-visible:ring-accent"
+      className="w-full min-w-0 rounded-2xl outline-none focus-visible:ring-2 focus-visible:ring-accent"
     >
       <div
         ref={viewport}
-        className="touch-pan-y overflow-hidden"
+        className="w-full touch-pan-y overflow-hidden"
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={onPointerEnd}
