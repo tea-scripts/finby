@@ -79,6 +79,7 @@ function streamOf(...responses: LlmResponse[]): jest.Mock {
 /** An llm.streamMessage mock whose stream throws when iterated (connection failure). */
 function streamThrows(error: Error): jest.Mock {
   return jest.fn().mockImplementation((): AsyncIterable<LlmStreamEvent> => {
+    // eslint-disable-next-line require-yield
     return (async function* () {
       throw error;
     })();

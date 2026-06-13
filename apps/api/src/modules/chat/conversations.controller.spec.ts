@@ -56,7 +56,6 @@ describe('ConversationsController.stream (SSE)', () => {
   it('lets a pre-stream throw propagate (no headers written) for HTTP error mapping', async () => {
     const controller = controllerWith(async function* () {
       throw new ServiceUnavailableException('down');
-      // eslint-disable-next-line no-unreachable
       yield { type: 'start' };
     });
     const res = fakeRes();
