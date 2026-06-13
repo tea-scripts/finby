@@ -62,6 +62,7 @@ function call(name: string, input: Record<string, unknown>): LlmToolCall {
   return { id: 't1', name, input };
 }
 
+/** Note: a response whose textOutput is empty yields no `text` delta — only the `complete` event. */
 /** Builds an llm.streamMessage mock that, per call, yields the next response's
  *  text as a single delta then a `complete` event. Extra calls reuse the last. */
 function streamOf(...responses: LlmResponse[]): jest.Mock {
@@ -610,5 +611,35 @@ describe('ChatService.streamMessage — event sequence', () => {
     await expect(collect(service.streamMessage(workspace, 'u1', 'c1', 'hi'))).rejects.toBeInstanceOf(
       ServiceUnavailableException,
     );
+  });
+
+  it('a follow-up failure after a commit yields action then error, still ending with done', async () => {
+    const toolTurn = {
+      stopReason: 'tool_use',
+      textOutput: '',
+      content: [{ type: 'tool_use', id: 't1', name: 'log_expense', input: { amountOriginal: '0.21', currencyOriginal: 'USD', categoryName: 'Dining', confidence: 0.95 } }],
+      toolCalls: [{ id: 't1', name: 'log_expense', input: { amountOriginal: '0.21', currencyOriginal: 'USD', categoryName: 'Dining', confidence: 0.95 } }],
+    } as LlmResponse;
+    let nth = 0;
+    const streamMessage = jest.fn().mockImplementation((): AsyncIterable<LlmStreamEvent> => {
+      const turn = nth++;
+      return (async function* () {
+        if (turn === 0) {
+          yield { type: 'complete', response: toolTurn };
+        } else {
+          throw new Error('overloaded');
+        }
+      })();
+    });
+    const { service } = buildForLoop(streamMessage);
+
+    const events = await collect(service.streamMessage(workspace, 'u1', 'c1', 'spent 0.21 on lunch'));
+    const types = events.map((e) => e.type);
+
+    expect(types).toContain('action');
+    expect(types.indexOf('error')).toBeGreaterThan(types.indexOf('action'));
+    const done = events[events.length - 1]!;
+    expect(done.type).toBe('done');
+    if (done.type === 'done') expect(done.message.content.length).toBeGreaterThan(0);
   });
 });
