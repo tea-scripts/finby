@@ -51,11 +51,21 @@ function buildPrisma(overrides: {
       findMany: jest.fn().mockResolvedValue(overrides.events ?? []),
       update: eventUpdate,
     },
+    conversation: {
+      updateMany: jest.fn().mockResolvedValue({ count: 0 }),
+    },
   };
   (client as unknown as { $transaction: unknown }).$transaction = jest.fn(
     (fn: (c: typeof client) => unknown) => fn(client),
   );
-  return { client, txUpdate, budgetUpdate, eventUpdate, workspaceUpdate };
+  return {
+    client,
+    txUpdate,
+    budgetUpdate,
+    eventUpdate,
+    workspaceUpdate,
+    conversationUpdateMany: client.conversation.updateMany,
+  };
 }
 
 function build(prismaParts: ReturnType<typeof buildPrisma>, fx: FxService) {
@@ -147,6 +157,13 @@ describe('BaseCurrencyService.updateBaseCurrency', () => {
     );
     const pref = parts.workspaceUpdate.mock.calls[0][0].data.preferredCurrencies as string[];
     expect(pref).toEqual(expect.arrayContaining(['USD', 'EUR', 'NGN']));
+    // stale-currency chat summaries are cleared for the workspace
+    expect(parts.conversationUpdateMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { workspaceId: 'ws1' },
+        data: expect.objectContaining({ rollingContextSummary: null }),
+      }),
+    );
     expect(result).toEqual(expect.objectContaining({ baseCurrency: 'NGN', recomputed: 1 }));
   });
 

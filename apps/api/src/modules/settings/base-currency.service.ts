@@ -144,6 +144,14 @@ export class BaseCurrencyService {
         });
       }
 
+      // Compressed chat summaries reference amounts in the old base currency.
+      // Clear them so the assistant doesn't quote stale-currency figures; they
+      // rebuild from recent messages on the next summarization pass.
+      await txc.conversation.updateMany({
+        where: { workspaceId },
+        data: { rollingContextSummary: null, summarizedTokenCount: 0, lastSummarizedAt: null },
+      });
+
       const preferredCurrencies = Array.from(
         new Set([...workspace.preferredCurrencies.map((c) => c.toUpperCase()), newBase]),
       );
