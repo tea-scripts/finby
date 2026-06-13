@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { CURRENCIES } from '@finby/shared';
 import { Button } from '@/components/ui/button';
 import { Dropdown } from '@/components/ui/dropdown';
@@ -19,11 +19,18 @@ export function BaseCurrencySection() {
   const [confirming, setConfirming] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(false);
+  const [recomputed, setRecomputed] = useState<number | null>(null);
+
+  // Keep local selection in sync if the workspace's base currency changes elsewhere.
+  useEffect(() => {
+    setSelected(base);
+    setConfirming(false);
+  }, [base]);
 
   const dirty = selected !== base;
 
   async function handleConfirm() {
-    if (!workspace) return;
+    if (!workspace || saving) return;
     setSaving(true);
     setError(false);
     try {
@@ -31,6 +38,7 @@ export function BaseCurrencySection() {
       setBaseCurrency(result.baseCurrency, result.preferredCurrencies);
       setSelected(result.baseCurrency);
       setConfirming(false);
+      setRecomputed(result.recomputed);
     } catch {
       setError(true);
     } finally {
@@ -56,8 +64,10 @@ export function BaseCurrencySection() {
           onChange={(value) => {
             setSelected(value);
             setConfirming(false);
+            setRecomputed(null);
           }}
           options={OPTIONS}
+          disabled={saving}
         />
 
         {confirming ? (
@@ -81,6 +91,12 @@ export function BaseCurrencySection() {
             Change base currency
           </Button>
         )}
+
+        {recomputed !== null && !confirming ? (
+          <p className="text-xs text-muted">
+            Recalculated {recomputed} transaction{recomputed === 1 ? '' : 's'} into {base}.
+          </p>
+        ) : null}
 
         {error ? (
           <p className="text-xs text-danger">Couldn&apos;t change base currency. Please try again.</p>

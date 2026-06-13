@@ -50,6 +50,19 @@ describe('BaseCurrencySection', () => {
 
     await waitFor(() => expect(updateBaseCurrency).toHaveBeenCalledWith('ws1', 'NGN'));
     await waitFor(() => expect(setBaseCurrency).toHaveBeenCalledWith('NGN', ['USD', 'NGN']));
+    await waitFor(() => expect(screen.getByText(/recalculated 3 transaction/i)).toBeInTheDocument());
+  });
+
+  it('shows an error and does not update the store when the API call fails', async () => {
+    updateBaseCurrency.mockRejectedValue(new Error('network'));
+    render(<BaseCurrencySection />);
+    selectCurrency('NGN');
+    fireEvent.click(screen.getByRole('button', { name: /change base currency/i }));
+    fireEvent.click(screen.getByRole('button', { name: /^confirm/i }));
+    await waitFor(() =>
+      expect(screen.getByText(/couldn't change base currency/i)).toBeInTheDocument(),
+    );
+    expect(setBaseCurrency).not.toHaveBeenCalled();
   });
 
   it('does not offer a change while the selection equals the current base', () => {
