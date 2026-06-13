@@ -6,6 +6,7 @@ import type {
   LlmCreateParams,
   LlmProvider,
   LlmResponse,
+  LlmStreamEvent,
   LlmToolDef,
   SystemPromptContext,
 } from './llm.types';
@@ -28,5 +29,9 @@ export class LlmService {
 
   createMessage(params: LlmCreateParams): Promise<LlmResponse> {
     return this.provider.createMessage(params);
+  }
+
+  streamMessage(params: LlmCreateParams): AsyncIterable<LlmStreamEvent> {
+    return this.provider.streamMessage(params);
   }
 }

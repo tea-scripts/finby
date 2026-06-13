@@ -1,11 +1,15 @@
 import { LlmService } from './llm.service';
-import type { LlmCreateParams, LlmProvider, LlmResponse } from './llm.types';
+import type { LlmCreateParams, LlmProvider, LlmResponse, LlmStreamEvent } from './llm.types';
 
 class FakeProvider implements LlmProvider {
   public lastParams?: LlmCreateParams;
   async createMessage(params: LlmCreateParams): Promise<LlmResponse> {
     this.lastParams = params;
     return { stopReason: 'end_turn', content: [{ type: 'text', text: 'ok' }], textOutput: 'ok', toolCalls: [] };
+  }
+  async *streamMessage(params: LlmCreateParams): AsyncGenerator<LlmStreamEvent> {
+    this.lastParams = params;
+    yield { type: 'complete', response: await this.createMessage(params) };
   }
 }
 

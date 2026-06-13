@@ -32,6 +32,10 @@ export interface LlmResponse {
   toolCalls: LlmToolCall[];
 }
 
+export type LlmStreamEvent =
+  | { type: 'text_delta'; text: string }
+  | { type: 'complete'; response: LlmResponse };
+
 export interface LlmCreateParams {
   system: string;
   messages: LlmMessage[];
@@ -45,6 +49,9 @@ export interface LlmCreateParams {
 /** Provider-agnostic LLM port. The ONLY Anthropic-specific code is claude.provider.ts. */
 export interface LlmProvider {
   createMessage(params: LlmCreateParams): Promise<LlmResponse>;
+  /** Streams text deltas as they arrive, then emits a terminal `complete`
+   *  event carrying the fully assembled response (same shape as createMessage). */
+  streamMessage(params: LlmCreateParams): AsyncIterable<LlmStreamEvent>;
 }
 
 export interface SystemPromptContext {
