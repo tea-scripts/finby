@@ -19,7 +19,8 @@ export type CreateAccountInput = z.infer<typeof createAccountSchema>;
 
 export const updateAccountSchema = z.object({
   name: z.string().trim().min(1).max(120).optional(),
-  color: z.string().trim().max(20).optional(),
+  // Nullable so the client can clear a color back to the default accent.
+  color: z.string().trim().max(20).nullable().optional(),
   icon: z.string().trim().max(40).optional(),
   isArchived: z.boolean().optional(),
 });

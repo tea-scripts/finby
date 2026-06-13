@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { ACCOUNT_TYPES, ACCOUNT_TYPE_LABELS, type AccountType } from '@finby/shared';
 import { Button } from '@/components/ui/button';
+import { ColorPicker } from '@/components/ui/color-picker';
 import { Dropdown } from '@/components/ui/dropdown';
 import { Input } from '@/components/ui/input';
 import { listAccounts } from '@/lib/dashboard-api';
@@ -145,10 +146,11 @@ function AccountRow({
 }) {
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(account.name);
+  const [color, setColor] = useState<string | null>(account.color);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(false);
 
-  async function save(patch: { name?: string; isArchived?: boolean }): Promise<void> {
+  async function save(patch: { name?: string; isArchived?: boolean; color?: string | null }): Promise<void> {
     setBusy(true);
     setError(false);
     try {
@@ -166,13 +168,23 @@ function AccountRow({
     <li className={`flex items-center justify-between gap-3 py-2.5 ${account.isArchived ? 'opacity-60' : ''}`}>
       <div className="min-w-0 flex-1">
         {editing ? (
-          <Input
-            aria-label="Edit name"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-          />
+          <div className="space-y-2">
+            <Input
+              aria-label="Edit name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+            />
+            <ColorPicker value={color} onChange={setColor} label="Account color" />
+          </div>
         ) : (
           <p className="truncate text-sm text-ink">
+            {account.color ? (
+              <span
+                aria-hidden
+                className="mr-2 inline-block h-2.5 w-2.5 rounded-full align-middle"
+                style={{ backgroundColor: account.color }}
+              />
+            ) : null}
             {account.name}
             {account.isArchived ? <span className="ml-2 text-xs text-faint">(archived)</span> : null}
           </p>
@@ -194,7 +206,7 @@ function AccountRow({
               className="px-2 py-1 text-xs"
               loading={busy}
               disabled={!name.trim()}
-              onClick={() => save({ name: name.trim() })}
+              onClick={() => save({ name: name.trim(), color })}
             >
               Save
             </Button>
@@ -203,6 +215,7 @@ function AccountRow({
               className="px-2 py-1 text-xs"
               onClick={() => {
                 setName(account.name);
+                setColor(account.color);
                 setEditing(false);
               }}
             >
@@ -244,6 +257,7 @@ function AddAccountForm({
   const [accountType, setAccountType] = useState<AccountType>(ACCOUNT_TYPES[0]);
   const [currency, setCurrency] = useState(currencyOptions[0] ?? 'USD');
   const [openingBalance, setOpeningBalance] = useState('');
+  const [color, setColor] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(false);
 
@@ -252,6 +266,7 @@ function AddAccountForm({
     setAccountType(ACCOUNT_TYPES[0]);
     setCurrency(currencyOptions[0] ?? 'USD');
     setOpeningBalance('');
+    setColor(null);
     setError(false);
   }
 
@@ -264,6 +279,7 @@ function AddAccountForm({
         accountType,
         currency,
         initialBalance: openingBalance.trim() || '0',
+        color: color ?? undefined,
       });
       onCreated(created);
       reset();
@@ -326,6 +342,11 @@ function AddAccountForm({
             placeholder="0"
           />
         </label>
+      </div>
+
+      <div className="space-y-1.5">
+        <span className="text-xs text-muted">Color (optional)</span>
+        <ColorPicker value={color} onChange={setColor} label="Account color" />
       </div>
 
       {error ? <p className="text-xs text-danger">Couldn&apos;t add the account. Please try again.</p> : null}

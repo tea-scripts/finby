@@ -17,7 +17,8 @@ export interface CreateAccountInput {
 
 export interface UpdateAccountInput {
   name?: string;
-  color?: string;
+  /** A hex color, or `null` to clear back to the default accent. */
+  color?: string | null;
   icon?: string;
   isArchived?: boolean;
 }
