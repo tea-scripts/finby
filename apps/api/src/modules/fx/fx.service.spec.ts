@@ -4,7 +4,9 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { FxService } from './fx.service';
 
 const configMock = {
-  get: jest.fn(() => 'https://api.frankfurter.app'),
+  get: jest.fn((key: string) =>
+    key === 'EXCHANGE_RATE_API_URL' ? 'https://open.er-api.com' : 'https://api.frankfurter.dev/v1',
+  ),
 } as unknown as ConfigService<Env, true>;
 
 function buildService(overrides?: {
@@ -26,9 +28,15 @@ function buildService(overrides?: {
 }
 
 function mockFetch(rates: Record<string, number>, date = '2026-06-02') {
-  return jest
-    .spyOn(global, 'fetch')
-    .mockResolvedValue({ ok: true, json: async () => ({ date, rates }) } as unknown as Response);
+  return jest.spyOn(global, 'fetch').mockResolvedValue({
+    ok: true,
+    status: 200,
+    json: async () => ({
+      result: 'success',
+      time_last_update_utc: new Date(`${date}T00:00:00Z`).toUTCString(),
+      rates,
+    }),
+  } as unknown as Response);
 }
 
 afterEach(() => jest.restoreAllMocks());
@@ -86,5 +94,39 @@ describe('FxService.convertToBase', () => {
     expect(result.fxRateUsed).toBe('0.0175');
     expect(result.fxRateTimestamp).toBeInstanceOf(Date);
     expect(upsert).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('FxService provider fallback', () => {
+  it('falls through to Frankfurter when ExchangeRate-API cannot price the pair', async () => {
+    const { service } = buildService();
+    const fetchSpy = jest.spyOn(global, 'fetch').mockImplementation((input: unknown) => {
+      const url = String(input);
+      if (url.includes('open.er-api.com')) {
+        return Promise.resolve({ ok: true, status: 200, json: async () => ({ result: 'success', rates: { USD: 1 } }) } as unknown as Response);
+      }
+      return Promise.resolve({ ok: true, status: 200, json: async () => ({ date: '2026-06-02', rates: { ZAR: 18.5 } }) } as unknown as Response);
+    });
+
+    const rate = await service.getRate('USD', 'ZAR');
+    expect(rate.rate).toBe('18.5');
+    expect(rate.source).toBe('frankfurter');
+    expect(fetchSpy).toHaveBeenCalledTimes(2);
+  });
+
+  it('throws Unprocessable when no provider can price the pair', async () => {
+    const { service } = buildService();
+    jest
+      .spyOn(global, 'fetch')
+      .mockResolvedValue({ ok: true, status: 200, json: async () => ({ result: 'success', rates: { USD: 1 } }) } as unknown as Response);
+    await expect(service.getRate('USD', 'XAF')).rejects.toThrow('No FX rate available for USD -> XAF');
+  });
+
+  it('throws ServiceUnavailable when every provider is down', async () => {
+    const { service } = buildService();
+    jest
+      .spyOn(global, 'fetch')
+      .mockResolvedValue({ ok: false, status: 503, json: async () => ({}) } as unknown as Response);
+    await expect(service.getRate('USD', 'EUR')).rejects.toThrow('FX rate provider is unreachable');
   });
 });
