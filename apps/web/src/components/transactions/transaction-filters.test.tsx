@@ -82,3 +82,19 @@ describe('TransactionFilters — currency dropdown', () => {
     expect(screen.getByRole('option', { name: 'All currencies' })).toBeInTheDocument();
   });
 });
+
+describe('TransactionFilters — date pickers', () => {
+  it('uses the custom DatePicker (not a native date input) and emits an ISO fromDate', () => {
+    state = { workspace: { preferredCurrencies: ['USD'] } };
+    const onChange = vi.fn();
+    render(
+      <TransactionFilters filters={{ fromDate: '2026-06-13' }} categories={[]} onChange={onChange} />,
+    );
+
+    // Open the From calendar and pick a day.
+    fireEvent.click(screen.getByRole('button', { name: /filter from date/i }));
+    fireEvent.click(screen.getByRole('button', { name: 'June 20, 2026' }));
+
+    expect(onChange).toHaveBeenCalledWith({ fromDate: '2026-06-20' });
+  });
+});

@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { DatePicker } from '@/components/ui/date-picker';
 import { Dropdown, type DropdownOption } from '@/components/ui/dropdown';
 import { Field } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
@@ -101,7 +102,7 @@ export function EditTransactionModal({
           <Input id="e-description" value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Optional note" />
         </Field>
         <Field label="Date" htmlFor="e-date">
-          <Input id="e-date" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+          <DatePicker id="e-date" aria-label="Date" value={date} onChange={setDate} />
         </Field>
         <Field label="Tags" htmlFor="e-tags" hint="Comma-separated">
           <Input id="e-tags" value={tags} onChange={(e) => setTags(e.target.value)} placeholder="food, weekly" />

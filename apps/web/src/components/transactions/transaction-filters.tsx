@@ -1,9 +1,9 @@
 'use client';
 
 import { CURRENCY_CODES } from '@finby/shared';
+import { DatePicker } from '@/components/ui/date-picker';
 import { Dropdown, type DropdownOption } from '@/components/ui/dropdown';
 import { Field } from '@/components/ui/field';
-import { Input } from '@/components/ui/input';
 import { useAuth } from '@/lib/store';
 import type { Category, TransactionQuery } from '@/lib/types';
 
@@ -68,36 +68,26 @@ export function TransactionFilters({
       </Field>
       <div className="grid grid-cols-1 gap-2 [&>*]:min-w-0 lg:grid-cols-2">
         <Field label="From" htmlFor="f-from">
-          <div className="relative">
-            <Input
-              id="f-from"
-              type="date"
-              className="min-w-0"
-              value={filters.fromDate ?? ''}
-              onChange={(e) => set({ fromDate: e.target.value || undefined })}
-            />
-            {!filters.fromDate && (
-              <span className="pointer-events-none absolute inset-y-0 left-3.5 flex items-center text-base text-faint md:text-sm">
-                Start date
-              </span>
-            )}
-          </div>
+          <DatePicker
+            id="f-from"
+            aria-label="Filter from date"
+            placeholder="Start date"
+            className="min-w-0"
+            clearable
+            value={filters.fromDate ?? ''}
+            onChange={(v) => set({ fromDate: v || undefined })}
+          />
         </Field>
         <Field label="To" htmlFor="f-to">
-          <div className="relative">
-            <Input
-              id="f-to"
-              type="date"
-              className="min-w-0"
-              value={filters.toDate ?? ''}
-              onChange={(e) => set({ toDate: e.target.value || undefined })}
-            />
-            {!filters.toDate && (
-              <span className="pointer-events-none absolute inset-y-0 left-3.5 flex items-center text-base text-faint md:text-sm">
-                End date
-              </span>
-            )}
-          </div>
+          <DatePicker
+            id="f-to"
+            aria-label="Filter to date"
+            placeholder="End date"
+            className="min-w-0"
+            clearable
+            value={filters.toDate ?? ''}
+            onChange={(v) => set({ toDate: v || undefined })}
+          />
         </Field>
       </div>
     </div>
