@@ -88,6 +88,14 @@ export interface ChatResult {
   pendingConfirmations: PendingConfirmation[];
 }
 
+export interface ChatStreamHandlers {
+  onText: (text: string) => void;
+  onAction: (action: ChatAction) => void;
+  onPending: (confirmation: PendingConfirmation) => void;
+  onDone: (message: ChatMessageView) => void;
+  onError: (error: { code: string; message: string; details?: unknown }) => void;
+}
+
 export interface ConversationSummary {
   id: string;
   title: string | null;

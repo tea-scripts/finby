@@ -23,7 +23,9 @@ import type { WorkspaceContext } from '../../common/context';
 import { ConversationsService } from './conversations.service';
 import type {
   ChatAction,
+  ChatMessageView,
   ChatResult,
+  ChatStreamEvent,
   PendingConfirmation,
   ToolExecResult,
 } from './chat.types';
@@ -72,12 +74,39 @@ export class ChatService {
     private readonly contextAssembler: ContextAssemblerService,
   ) {}
 
+  /** JSON entry point — drains the streaming generator and assembles the
+   *  same ChatResult the non-streaming endpoint has always returned. */
   async handleMessage(
     workspace: WorkspaceContext,
     userId: string,
     conversationId: string,
     content: string,
   ): Promise<ChatResult> {
+    const actions: ChatAction[] = [];
+    const pendingConfirmations: PendingConfirmation[] = [];
+    let message: ChatMessageView | null = null;
+
+    for await (const event of this.streamMessage(workspace, userId, conversationId, content)) {
+      if (event.type === 'action') actions.push(event.action);
+      else if (event.type === 'pending') pendingConfirmations.push(event.confirmation);
+      else if (event.type === 'done') message = event.message;
+    }
+
+    if (!message) {
+      throw new ServiceUnavailableException(LLM_UNAVAILABLE_MESSAGE);
+    }
+    return { message, actions, pendingConfirmations };
+  }
+
+  /** Streaming entry point and single source of truth for the agentic loop.
+   *  Yields start/text/action/pending/done events; throws (pre-stream) on
+   *  rate-limit (429) or first-turn connection failure (503). */
+  async *streamMessage(
+    workspace: WorkspaceContext,
+    userId: string,
+    conversationId: string,
+    content: string,
+  ): AsyncGenerator<ChatStreamEvent> {
     const conversation = await this.conversations.requireConversation(
       workspace.id,
       userId,
@@ -95,35 +124,24 @@ export class ChatService {
       data: { conversationId, role: 'USER', content, tokenCount: estimateTokens(content) },
     });
 
-    // Signatures of events already logged in THIS conversation. The model sees the
-    // full active window each turn, so without this guard a past "spent $12" can be
-    // re-logged on later turns; we skip a log whose signature is already recorded.
     const loggedSignatures = await this.loadLoggedSignatures(conversationId, workspace.id);
 
     const baseSystem = await this.buildSystemPrompt(workspace, user);
     const { system, messages } = await this.contextAssembler.buildContext(conversationId, baseSystem);
-
     const tools = this.llm.getTools();
-    let first: LlmResponse;
+
+    const actions: ChatAction[] = [];
+    const convo: LlmMessage[] = [...messages];
+
+    let response: LlmResponse;
     try {
-      first = await this.llm.createMessage({ system, messages, tools });
+      response = yield* this.runTurn({ system, messages: convo, tools }, true);
     } catch (error) {
-      // No tool ran yet — nothing was committed. Degrade gracefully (503).
       await this.persistLlmFailure(conversationId, conversation.title, content);
       this.logger.error(`LLM call failed: ${this.describe(error)}`);
       throw new ServiceUnavailableException(LLM_UNAVAILABLE_MESSAGE);
     }
-
-    const actions: ChatAction[] = [];
-    const pendingConfirmations: PendingConfirmation[] = [];
-
-    // Agentic tool loop: keep executing tools and re-prompting until the model
-    // returns final text (or we hit the cap). A single round was the original
-    // bug — multi-step sequences (e.g. get_fx_rate then log_expense) dropped the
-    // second tool, producing an empty message and logging nothing.
-    const convo: LlmMessage[] = [...messages];
-    let response = first;
-    let finalText = first.textOutput;
+    let finalText = response.textOutput;
 
     for (let round = 0; round < MAX_TOOL_ROUNDS && response.toolCalls.length > 0; round += 1) {
       const toolResultBlocks: LlmContentBlock[] = [];
@@ -140,9 +158,6 @@ export class ChatService {
           },
         });
 
-        // Deterministic duplicate guard: if the model re-emits a log for an event
-        // already recorded in this conversation, skip it — never create a duplicate
-        // transaction (a prompt rule alone is not reliable enough for financial data).
         if (signature && loggedSignatures.has(signature)) {
           const dupResult = JSON.stringify({
             status: 'duplicate_skipped',
@@ -177,10 +192,12 @@ export class ChatService {
 
         if (exec.action) {
           actions.push(exec.action);
-          // Only a committed transaction counts toward the dedup set (not pending/errors).
           if (signature) loggedSignatures.add(signature);
+          yield { type: 'action', action: exec.action };
         }
-        if (exec.pending) pendingConfirmations.push(exec.pending);
+        if (exec.pending) {
+          yield { type: 'pending', confirmation: exec.pending };
+        }
         toolResultBlocks.push({
           type: 'tool_result',
           toolUseId: call.id,
@@ -192,20 +209,17 @@ export class ChatService {
       convo.push({ role: 'user', content: toolResultBlocks });
 
       try {
-        response = await this.llm.createMessage({ system, messages: convo, tools });
+        response = yield* this.runTurn({ system, messages: convo, tools }, false);
       } catch (error) {
-        // Tools already executed (e.g. a transaction was created) — don't lose
-        // the action by failing. Synthesize a minimal summary instead.
         this.logger.error(`LLM follow-up failed after tool execution: ${this.describe(error)}`);
         finalText = this.fallbackSummary(actions);
+        yield { type: 'error', code: 'LLM_FOLLOWUP_FAILED', message: LLM_UNAVAILABLE_MESSAGE };
         response = { stopReason: 'error', content: [], textOutput: '', toolCalls: [] };
         break;
       }
       finalText = response.textOutput || finalText;
     }
 
-    // Never surface an empty bubble — synthesize from actions if the model
-    // returned no text (or we exhausted the tool-round cap).
     if (!finalText.trim()) {
       finalText = this.fallbackSummary(actions);
     }
@@ -225,24 +239,47 @@ export class ChatService {
     });
 
     if (workspace.tier === 'FREE') {
-      await this.memory.maintain(conversationId, workspace.tier); // sync eviction
+      await this.memory.maintain(conversationId, workspace.tier);
     } else {
-      // fire-and-forget compression — never let a background failure reject unhandled
       void this.memory.maintain(conversationId, workspace.tier).catch((err) =>
         this.logger.warn(`Background memory maintain failed: ${String(err)}`),
       );
     }
 
-    return {
+    yield {
+      type: 'done',
       message: {
         id: assistant.id,
         role: 'ASSISTANT',
         content: finalText,
         createdAt: assistant.createdAt.toISOString(),
       },
-      actions,
-      pendingConfirmations,
     };
+  }
+
+  /** Runs a single LLM turn: forwards text deltas as `text` events (emitting a
+   *  one-time `start` first when requested) and returns the assembled response. */
+  private async *runTurn(
+    params: { system: string; messages: LlmMessage[]; tools: ReturnType<LlmService['getTools']> },
+    emitStart: boolean,
+  ): AsyncGenerator<ChatStreamEvent, LlmResponse> {
+    let started = false;
+    let response: LlmResponse | undefined;
+    for await (const ev of this.llm.streamMessage(params)) {
+      if (!started) {
+        started = true;
+        if (emitStart) yield { type: 'start' };
+      }
+      if (ev.type === 'text_delta') {
+        if (ev.text) yield { type: 'text', text: ev.text };
+      } else if (ev.type === 'complete') {
+        response = ev.response;
+      }
+    }
+    if (!response) {
+      throw new Error('LLM stream ended without a completion event');
+    }
+    return response;
   }
 
   async executeTool(

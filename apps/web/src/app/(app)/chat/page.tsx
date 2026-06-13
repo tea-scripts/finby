@@ -18,7 +18,7 @@ import {
   createConversation,
   listConversations,
   listMessages,
-  sendMessage,
+  streamMessage,
 } from '@/lib/chat-api';
 import { useAuth } from '@/lib/store';
 import { track } from '@/lib/analytics';
@@ -118,43 +118,53 @@ export default function ChatPage() {
   async function handleSend(content: string) {
     if (!workspace || !conversationId || sending) return;
     setNotice(null);
+    const assistantId = genId();
     setMessages((m) => [
       ...m,
       { id: genId(), role: 'USER', content, createdAt: new Date().toISOString() },
+      { id: assistantId, role: 'ASSISTANT', content: '', createdAt: new Date().toISOString(), actions: [], confirmations: [] },
     ]);
     setSending(true);
     track('chat_message_sent');
+
+    const patch = (fn: (msg: UiMessage) => UiMessage) =>
+      setMessages((m) => m.map((msg) => (msg.id === assistantId ? fn(msg) : msg)));
+
     try {
-      const result = await sendMessage(workspace.id, conversationId, content);
-      setMessages((m) => [
-        ...m,
-        {
-          id: result.message.id,
-          role: result.message.role,
-          content: result.message.content,
-          createdAt: result.message.createdAt,
-          actions: result.actions,
-          confirmations: result.pendingConfirmations,
-        },
-      ]);
-      for (const a of result.actions) {
-        if (a.type === 'TRANSACTION_CREATED') {
-          track('transaction_logged', { tx_type: a.txType, currency: a.preview.currency });
-          // Logging may have advanced the spending streak; the action carries
-          // the fresh value, so update it in place (no refetch). Best streak is
-          // by definition max(previousBest, newCurrent), so keep it in sync too —
-          // otherwise Settings' "Best" lags behind until the next /auth/me load.
-          if (a.currentStreak != null) {
-            setUser({
-              currentStreak: a.currentStreak,
-              longestStreak: Math.max(user?.longestStreak ?? 0, a.currentStreak),
-            });
+      await streamMessage(workspace.id, conversationId, content, {
+        onText: (text) => patch((msg) => ({ ...msg, content: msg.content + text })),
+        onAction: (a) => {
+          patch((msg) => ({ ...msg, actions: [...(msg.actions ?? []), a] }));
+          if (a.type === 'TRANSACTION_CREATED') {
+            track('transaction_logged', { tx_type: a.txType, currency: a.preview.currency });
+            if (a.currentStreak != null) {
+              setUser({
+                currentStreak: a.currentStreak,
+                longestStreak: Math.max(user?.longestStreak ?? 0, a.currentStreak),
+              });
+            }
+          } else if (a.type === 'BUDGET_SET') {
+            track('budget_set', { currency: a.preview.currency });
           }
-        } else if (a.type === 'BUDGET_SET') {
-          track('budget_set', { currency: a.preview.currency });
-        }
-      }
+        },
+        onPending: (c) => patch((msg) => ({ ...msg, confirmations: [...(msg.confirmations ?? []), c] })),
+        onDone: (message) =>
+          patch((msg) => ({
+            ...msg,
+            id: message.id,
+            createdAt: message.createdAt,
+            content: msg.content || message.content,
+          })),
+        onError: (e) => {
+          // Tools may have already committed and streamed their action cards;
+          // keep them and ensure the bubble isn't left empty.
+          patch((msg) => ({ ...msg, content: msg.content || e.message }));
+          setNotice({ kind: 'down', message: e.message });
+        },
+      });
     } catch (err) {
+      // Pre-stream failure (429/503/400) — drop the empty placeholder bubble.
+      setMessages((m) => m.filter((msg) => msg.id !== assistantId));
       handleError(err);
     } finally {
       setSending(false);

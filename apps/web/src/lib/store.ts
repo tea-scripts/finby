@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 import { DEFAULT_PREFERENCES } from '@finby/shared';
-import { ApiError, apiFetch } from './api-client';
+import { API_BASE, ApiError, apiFetch } from './api-client';
 import { identifyUser, resetAnalytics, track } from './analytics';
 import type {
   ApiUser,
@@ -44,6 +44,7 @@ interface AuthState {
   logout: () => Promise<void>;
   tryRefresh: () => Promise<boolean>;
   authed: <T>(path: string, init?: RequestInit) => Promise<T>;
+  authedStream: (path: string, init?: RequestInit) => Promise<Response>;
   markVerified: () => void;
   refreshUser: () => Promise<void>;
   workspaces: WorkspaceMembershipSummary[];
@@ -226,6 +227,42 @@ export const useAuth = create<AuthState>()(
           }
           throw err;
         }
+      },
+
+      authedStream: async (path, init = {}): Promise<Response> => {
+        const run = async (token: string | null): Promise<Response> =>
+          fetch(`${API_BASE}${path}`, {
+            ...init,
+            headers: {
+              'Content-Type': 'application/json',
+              ...(init.headers ?? {}),
+              ...(token ? { Authorization: `Bearer ${token}` } : {}),
+            },
+          });
+
+        let res: Response;
+        try {
+          res = await run(get().accessToken);
+        } catch {
+          throw new ApiError(0, 'NETWORK', "We couldn't reach Finby. Please check your connection and try again.");
+        }
+
+        if (res.status === 401 && get().refreshToken) {
+          const refreshed = await get().tryRefresh();
+          if (refreshed) res = await run(get().accessToken);
+        }
+
+        if (!res.ok) {
+          const text = await res.text();
+          const body = (text ? JSON.parse(text) : {}) as { error?: string; message?: string; details?: unknown };
+          throw new ApiError(
+            res.status,
+            body.error ?? 'ERROR',
+            body.message ?? 'Something went wrong. Please try again.',
+            body.details,
+          );
+        }
+        return res;
       },
     }),
     {

@@ -8,6 +8,7 @@ import type {
   LlmMessage,
   LlmProvider,
   LlmResponse,
+  LlmStreamEvent,
   LlmToolCall,
 } from '../llm.types';
 
@@ -43,6 +44,32 @@ export class ClaudeProvider implements LlmProvider {
     });
 
     return mapResponse(message);
+  }
+
+  async *streamMessage(params: LlmCreateParams): AsyncGenerator<LlmStreamEvent> {
+    const stream = this.client.messages.stream({
+      model: params.model ?? this.model,
+      max_tokens: params.maxTokens ?? 1024,
+      system: params.system,
+      messages: params.messages.map((m) => toMessageParam(m)),
+      ...(params.tools
+        ? {
+            tools: params.tools.map((t) => ({
+              name: t.name,
+              description: t.description,
+              input_schema: t.input_schema as Anthropic.Tool['input_schema'],
+            })),
+          }
+        : {}),
+    });
+
+    for await (const event of stream) {
+      if (event.type === 'content_block_delta' && event.delta.type === 'text_delta') {
+        yield { type: 'text_delta', text: event.delta.text };
+      }
+    }
+
+    yield { type: 'complete', response: mapResponse(await stream.finalMessage()) };
   }
 }
 

@@ -55,6 +55,14 @@ export interface ChatResult {
   pendingConfirmations: PendingConfirmation[];
 }
 
+export type ChatStreamEvent =
+  | { type: 'start' }
+  | { type: 'text'; text: string }
+  | { type: 'action'; action: ChatAction }
+  | { type: 'pending'; confirmation: PendingConfirmation }
+  | { type: 'done'; message: ChatMessageView }
+  | { type: 'error'; code: string; message: string; details?: unknown };
+
 export interface ToolExecResult {
   toolResult: string;
   action?: ChatAction;
