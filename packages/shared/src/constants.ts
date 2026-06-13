@@ -203,3 +203,24 @@ export const ACCOUNT_TYPE_LABELS: Record<AccountType, string> = {
   CRYPTO: 'Crypto',
   OTHER: 'Other',
 };
+
+/** Support ticket categories/statuses — shared by the API zod enums and the UIs. */
+export const SUPPORT_CATEGORIES = ['BUG', 'BILLING', 'ACCOUNT', 'FEATURE_REQUEST', 'OTHER'] as const;
+export type SupportCategory = (typeof SUPPORT_CATEGORIES)[number];
+
+export const SUPPORT_CATEGORY_LABELS: Record<SupportCategory, string> = {
+  BUG: 'Bug',
+  BILLING: 'Billing',
+  ACCOUNT: 'Account',
+  FEATURE_REQUEST: 'Feature request',
+  OTHER: 'Other',
+};
+
+export const SUPPORT_STATUSES = ['OPEN', 'IN_PROGRESS', 'RESOLVED'] as const;
+export type SupportStatus = (typeof SUPPORT_STATUSES)[number];
+
+export const SUPPORT_STATUS_LABELS: Record<SupportStatus, string> = {
+  OPEN: 'Open',
+  IN_PROGRESS: 'In progress',
+  RESOLVED: 'Resolved',
+};

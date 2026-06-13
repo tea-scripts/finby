@@ -1,7 +1,7 @@
 import { z } from 'zod';
+import { SUPPORT_CATEGORIES, SUPPORT_STATUSES } from '@finby/shared';
 
-export const SUPPORT_CATEGORIES = ['BUG', 'BILLING', 'ACCOUNT', 'FEATURE_REQUEST', 'OTHER'] as const;
-export const SUPPORT_STATUSES = ['OPEN', 'IN_PROGRESS', 'RESOLVED'] as const;
+export { SUPPORT_CATEGORIES, SUPPORT_STATUSES };
 
 export const createSupportTicketSchema = z.object({
   category: z.enum(SUPPORT_CATEGORIES),
