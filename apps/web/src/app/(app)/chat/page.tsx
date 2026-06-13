@@ -13,6 +13,7 @@ import { Lottie } from '@/components/ui/lottie';
 import { Modal } from '@/components/ui/modal';
 import { ApiError } from '@/lib/api-client';
 import { dayKey, dayLabel } from '@/lib/format';
+import { createTypewriter } from '@/lib/typewriter';
 import {
   appendAssistantNote,
   createConversation,
@@ -24,6 +25,7 @@ import { useAuth } from '@/lib/store';
 import { track } from '@/lib/analytics';
 import type {
   ChatAction,
+  ChatMessageView,
   PendingConfirmation,
   ReceiptExtraction,
   Transaction,
@@ -130,9 +132,18 @@ export default function ChatPage() {
     const patch = (fn: (msg: UiMessage) => UiMessage) =>
       setMessages((m) => m.map((msg) => (msg.id === assistantId ? fn(msg) : msg)));
 
+    // The typewriter owns the bubble's text: deltas are buffered and revealed
+    // smoothly so the reply reads like fluid typing instead of bursting in.
+    const typer = createTypewriter((text) => patch((msg) => ({ ...msg, content: text })));
+    let produced = false; // whether any content has been fed to the typewriter
+    let finalMessage: ChatMessageView | null = null;
+
     try {
       await streamMessage(workspace.id, conversationId, content, {
-        onText: (text) => patch((msg) => ({ ...msg, content: msg.content + text })),
+        onText: (text) => {
+          produced = true;
+          typer.push(text);
+        },
         onAction: (a) => {
           patch((msg) => ({ ...msg, actions: [...(msg.actions ?? []), a] }));
           if (a.type === 'TRANSACTION_CREATED') {
@@ -148,22 +159,34 @@ export default function ChatPage() {
           }
         },
         onPending: (c) => patch((msg) => ({ ...msg, confirmations: [...(msg.confirmations ?? []), c] })),
-        onDone: (message) =>
-          patch((msg) => ({
-            ...msg,
-            id: message.id,
-            createdAt: message.createdAt,
-            content: msg.content || message.content,
-          })),
+        onDone: (message) => {
+          finalMessage = message;
+          // If the model streamed no text, animate the server's final content
+          // (e.g. the fallback summary) so the bubble is never left empty.
+          if (!produced && message.content) {
+            produced = true;
+            typer.push(message.content);
+          }
+        },
         onError: (e) => {
-          // Tools may have already committed and streamed their action cards;
-          // keep them and ensure the bubble isn't left empty.
-          patch((msg) => ({ ...msg, content: msg.content || e.message }));
+          // Tools may have already committed and streamed their cards; surface the
+          // failure text (if nothing else was produced) and a notice.
+          if (!produced && e.message) {
+            produced = true;
+            typer.push(e.message);
+          }
           setNotice({ kind: 'down', message: e.message });
         },
       });
+
+      // Let the buffer finish revealing before we finalize the bubble id.
+      await typer.finish();
+      const fm = finalMessage as ChatMessageView | null;
+      if (fm) patch((msg) => ({ ...msg, id: fm.id, createdAt: fm.createdAt }));
     } catch (err) {
-      // Pre-stream failure (429/503/400) — drop the empty placeholder bubble.
+      // Pre-stream failure (429/503/400): nothing rendered yet — drop the
+      // placeholder bubble and route through the existing error handler.
+      typer.cancel();
       setMessages((m) => m.filter((msg) => msg.id !== assistantId));
       handleError(err);
     } finally {
