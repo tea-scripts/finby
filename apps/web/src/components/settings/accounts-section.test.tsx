@@ -10,7 +10,13 @@ interface MockWorkspace {
   preferredCurrencies: string[];
 }
 
-let state: { workspace: MockWorkspace };
+interface MockState {
+  workspace: MockWorkspace;
+  activeWorkspaceId: string;
+  workspaces: { workspaceId: string; role: 'OWNER' | 'CO_MANAGER' | 'VIEWER' }[];
+}
+
+let state: MockState;
 
 vi.mock('../../lib/store', () => ({
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -53,7 +59,11 @@ function account(overrides: Partial<AccountView> = {}): AccountView {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  state = { workspace: { id: 'w1', tier: 'PRO', baseCurrency: 'USD', preferredCurrencies: ['USD', 'PHP'] } };
+  state = {
+    workspace: { id: 'w1', tier: 'PRO', baseCurrency: 'USD', preferredCurrencies: ['USD', 'PHP'] },
+    activeWorkspaceId: 'w1',
+    workspaces: [{ workspaceId: 'w1', role: 'OWNER' }],
+  };
   mockList.mockResolvedValue([]);
 });
 
@@ -95,6 +105,31 @@ describe('AccountsSection', () => {
     await waitFor(() => {
       expect(mockUpdate).toHaveBeenCalledWith('w1', 'a1', { isArchived: true });
     });
+  });
+
+  it('VIEWER members see accounts read-only: no add/edit/archive controls', async () => {
+    state.workspace.tier = 'FAMILY';
+    state.workspaces = [{ workspaceId: 'w1', role: 'VIEWER' }];
+    mockList.mockResolvedValue([account()]);
+
+    render(<AccountsSection />);
+
+    expect(await screen.findByText('BDO Savings')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /add account/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /edit/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /archive/i })).not.toBeInTheDocument();
+  });
+
+  it('CO_MANAGER members can manage accounts', async () => {
+    state.workspace.tier = 'FAMILY';
+    state.workspaces = [{ workspaceId: 'w1', role: 'CO_MANAGER' }];
+    mockList.mockResolvedValue([account()]);
+
+    render(<AccountsSection />);
+
+    expect(await screen.findByText('BDO Savings')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /add account/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /archive/i })).toBeInTheDocument();
   });
 
   it('surfaces an error when account creation fails', async () => {

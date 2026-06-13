@@ -13,7 +13,17 @@ import type { AccountView } from '@/lib/types';
  *  here (maintained by the transaction ledger); opening balance is set at creation. */
 export function AccountsSection() {
   const workspace = useAuth((s) => s.workspace);
+  const workspaces = useAuth((s) => s.workspaces);
+  const activeWorkspaceId = useAuth((s) => s.activeWorkspaceId);
   const { formatMoney } = useFormatters();
+
+  // Mirror MembersSection: derive the current member's role from the membership
+  // summaries. Only OWNER/CO_MANAGER may mutate (the backend enforces this too).
+  // Role is undefined until `workspaces` loads — treat unknown as allowed so a
+  // solo owner never has controls hidden during that window; a confirmed VIEWER
+  // gets a read-only view.
+  const role = workspaces.find((w) => w.workspaceId === activeWorkspaceId)?.role;
+  const canManage = role !== 'VIEWER';
 
   const [accounts, setAccounts] = useState<AccountView[]>([]);
   const [loading, setLoading] = useState(true);
@@ -84,6 +94,7 @@ export function AccountsSection() {
                     formatMoney={formatMoney}
                     onUpdated={upsert}
                     workspaceId={workspaceId ?? ''}
+                    canManage={canManage}
                   />
                 ))}
                 {archived.map((a) => (
@@ -93,16 +104,23 @@ export function AccountsSection() {
                     formatMoney={formatMoney}
                     onUpdated={upsert}
                     workspaceId={workspaceId ?? ''}
+                    canManage={canManage}
                   />
                 ))}
               </ul>
             )}
 
-            <AddAccountForm
-              workspaceId={workspaceId ?? ''}
-              currencyOptions={currencyOptions}
-              onCreated={(a) => upsert(a)}
-            />
+            {canManage ? (
+              <AddAccountForm
+                workspaceId={workspaceId ?? ''}
+                currencyOptions={currencyOptions}
+                onCreated={(a) => upsert(a)}
+              />
+            ) : (
+              <p className="text-xs text-muted">
+                Only owners and co-managers can add or edit accounts.
+              </p>
+            )}
           </>
         )}
       </div>
@@ -115,11 +133,13 @@ function AccountRow({
   formatMoney,
   onUpdated,
   workspaceId,
+  canManage,
 }: {
   account: AccountView;
   formatMoney: (amount: string, currency: string) => string;
   onUpdated: (a: AccountView) => void;
   workspaceId: string;
+  canManage: boolean;
 }) {
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(account.name);
@@ -166,7 +186,7 @@ function AccountRow({
       </span>
 
       <div className="flex shrink-0 items-center gap-1.5">
-        {editing ? (
+        {!canManage ? null : editing ? (
           <>
             <Button
               variant="ghost"
