@@ -1,6 +1,7 @@
 import {
   Inject,
   Injectable,
+  Logger,
   ServiceUnavailableException,
   UnprocessableEntityException,
 } from '@nestjs/common';
@@ -11,6 +12,9 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { REDIS_CLIENT } from '../../redis/redis.constants';
 import type { Env } from '../../config/env.schema';
 import type { FxConversion, FxRate } from './fx.types';
+import type { FxRateProvider } from './providers/fx-provider.interface';
+import { ExchangeRateApiProvider } from './providers/exchange-rate-api.provider';
+import { FrankfurterProvider } from './providers/frankfurter.provider';
 
 const CACHE_TTL_SECONDS = 15 * 60;
 
@@ -22,11 +26,20 @@ interface CachedRate {
 
 @Injectable()
 export class FxService {
+  private readonly logger = new Logger(FxService.name);
+  private readonly providers: FxRateProvider[];
+
   constructor(
     @Inject(REDIS_CLIENT) private readonly redis: Redis,
     private readonly config: ConfigService<Env, true>,
     private readonly prisma: PrismaService,
-  ) {}
+  ) {
+    // Priority order: broad-coverage latest first, historical-capable fallback second.
+    this.providers = [
+      new ExchangeRateApiProvider(this.config.get('EXCHANGE_RATE_API_URL', { infer: true })),
+      new FrankfurterProvider(this.config.get('FRANKFURTER_API_URL', { infer: true })),
+    ];
+  }
 
   async getRate(from: string, to: string, date?: string): Promise<FxRate> {
     const fromCode = from.toUpperCase();
@@ -39,7 +52,7 @@ export class FxService {
         rate: '1',
         inverseRate: '1',
         date: date ?? this.today(),
-        source: 'frankfurter',
+        source: 'identity',
         isCached: false,
       };
     }
@@ -135,27 +148,24 @@ export class FxService {
     to: string,
     date?: string,
   ): Promise<CachedRate> {
-    const base = this.config.get('FRANKFURTER_API_URL', { infer: true });
-    const path = date ?? 'latest';
-    const url = `${base}/${path}?from=${from}&to=${to}`;
-
-    let response: Response;
-    try {
-      response = await fetch(url);
-    } catch {
+    let transientError: unknown;
+    for (const provider of this.providers) {
+      try {
+        const result = await provider.getRate(from, to, date);
+        if (result) {
+          return { rate: result.rate, date: result.date, source: provider.name };
+        }
+      } catch (error) {
+        this.logger.warn(
+          `FX provider ${provider.name} failed: ${error instanceof Error ? error.message : String(error)}`,
+        );
+        transientError = error; // provider is down — try the next one
+      }
+    }
+    if (transientError !== undefined) {
       throw new ServiceUnavailableException('FX rate provider is unreachable.');
     }
-    if (!response.ok) {
-      throw new ServiceUnavailableException(`FX rate provider error (${response.status}).`);
-    }
-
-    const data = (await response.json()) as { date: string; rates?: Record<string, number> };
-    const value = data.rates?.[to];
-    if (value === undefined) {
-      throw new UnprocessableEntityException(`No FX rate available for ${from} -> ${to}.`);
-    }
-
-    return { rate: String(value), date: data.date, source: 'frankfurter' };
+    throw new UnprocessableEntityException(`No FX rate available for ${from} -> ${to}.`);
   }
 
   private invert(rate: string): string {
