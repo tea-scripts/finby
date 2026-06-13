@@ -5,13 +5,21 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { SupportService } from './support.service';
 
 function buildPrisma() {
-  return { supportTicket: { create: jest.fn(), findMany: jest.fn() } };
+  return {
+    supportTicket: {
+      create: jest.fn(),
+      findMany: jest.fn(),
+      findUnique: jest.fn(),
+      update: jest.fn(),
+    },
+  };
 }
 
 function buildEmail() {
   return {
     sendSupportTicketReceived: jest.fn().mockResolvedValue(undefined),
     sendSupportTicketAck: jest.fn().mockResolvedValue(undefined),
+    sendSupportTicketResolved: jest.fn().mockResolvedValue(undefined),
   };
 }
 
@@ -151,5 +159,110 @@ describe('SupportService.listForUser', () => {
       resolvedAt: '2026-06-14T09:00:00.000Z',
       createdAt: '2026-06-13T10:00:00.000Z',
     });
+  });
+});
+
+const adminRow = { ...row, user: { email: 'user@finby.app', displayName: 'Aisha' } };
+
+describe('SupportService.listAll (admin)', () => {
+  it('filters by status when given and includes the submitter', async () => {
+    const prisma = buildPrisma();
+    prisma.supportTicket.findMany.mockResolvedValue([adminRow]);
+    const service = buildService(prisma);
+
+    const views = await service.listAll('OPEN');
+
+    expect(prisma.supportTicket.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { status: 'OPEN' },
+        orderBy: { createdAt: 'desc' },
+        include: { user: { select: { email: true, displayName: true } } },
+      }),
+    );
+    expect(views[0]).toMatchObject({
+      id: 't1',
+      status: 'OPEN',
+      user: { email: 'user@finby.app', displayName: 'Aisha' },
+    });
+  });
+
+  it('lists all tickets when no status filter is given', async () => {
+    const prisma = buildPrisma();
+    prisma.supportTicket.findMany.mockResolvedValue([adminRow]);
+    const service = buildService(prisma);
+
+    await service.listAll();
+
+    expect(prisma.supportTicket.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: {} }),
+    );
+  });
+});
+
+describe('SupportService.updateStatus (admin)', () => {
+  it('resolving sets resolvedAt and emails the submitter', async () => {
+    const prisma = buildPrisma();
+    prisma.supportTicket.findUnique.mockResolvedValue({ ...adminRow, status: 'OPEN', resolvedAt: null });
+    prisma.supportTicket.update.mockResolvedValue({
+      ...adminRow,
+      status: 'RESOLVED',
+      resolvedAt: new Date('2026-06-15T08:00:00.000Z'),
+    });
+    const email = buildEmail();
+    const service = buildService(prisma, email);
+
+    const view = await service.updateStatus('t1', 'RESOLVED');
+
+    expect(prisma.supportTicket.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: 't1' },
+        data: expect.objectContaining({ status: 'RESOLVED', resolvedAt: expect.any(Date) }),
+      }),
+    );
+    expect(email.sendSupportTicketResolved).toHaveBeenCalledWith('user@finby.app', 'App crashes on login');
+    expect(view.status).toBe('RESOLVED');
+  });
+
+  it('moving to a non-resolved status clears resolvedAt and sends no email', async () => {
+    const prisma = buildPrisma();
+    prisma.supportTicket.findUnique.mockResolvedValue({ ...adminRow, status: 'OPEN', resolvedAt: null });
+    prisma.supportTicket.update.mockResolvedValue({ ...adminRow, status: 'IN_PROGRESS', resolvedAt: null });
+    const email = buildEmail();
+    const service = buildService(prisma, email);
+
+    await service.updateStatus('t1', 'IN_PROGRESS');
+
+    expect(prisma.supportTicket.update).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ status: 'IN_PROGRESS', resolvedAt: null }) }),
+    );
+    expect(email.sendSupportTicketResolved).not.toHaveBeenCalled();
+  });
+
+  it('does not re-email when an already-resolved ticket stays resolved', async () => {
+    const prisma = buildPrisma();
+    prisma.supportTicket.findUnique.mockResolvedValue({
+      ...adminRow,
+      status: 'RESOLVED',
+      resolvedAt: new Date('2026-06-15T08:00:00.000Z'),
+    });
+    prisma.supportTicket.update.mockResolvedValue({
+      ...adminRow,
+      status: 'RESOLVED',
+      resolvedAt: new Date('2026-06-15T08:00:00.000Z'),
+    });
+    const email = buildEmail();
+    const service = buildService(prisma, email);
+
+    await service.updateStatus('t1', 'RESOLVED');
+
+    expect(email.sendSupportTicketResolved).not.toHaveBeenCalled();
+  });
+
+  it('throws when the ticket does not exist', async () => {
+    const prisma = buildPrisma();
+    prisma.supportTicket.findUnique.mockResolvedValue(null);
+    const service = buildService(prisma);
+
+    await expect(service.updateStatus('missing', 'RESOLVED')).rejects.toThrow();
   });
 });

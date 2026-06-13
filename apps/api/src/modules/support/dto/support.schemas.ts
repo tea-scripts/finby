@@ -14,3 +14,8 @@ export const updateSupportTicketSchema = z.object({
   status: z.enum(SUPPORT_STATUSES),
 });
 export type UpdateSupportTicketInput = z.infer<typeof updateSupportTicketSchema>;
+
+export const adminTicketListQuerySchema = z.object({
+  status: z.enum(SUPPORT_STATUSES).optional(),
+});
+export type AdminTicketListQuery = z.infer<typeof adminTicketListQuerySchema>;

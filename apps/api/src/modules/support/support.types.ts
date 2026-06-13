@@ -12,3 +12,8 @@ export interface SupportTicketView {
   resolvedAt: string | null;
   createdAt: string;
 }
+
+/** Admin-facing view: includes the submitter for triage. */
+export interface AdminSupportTicketView extends SupportTicketView {
+  user: { email: string; displayName: string };
+}

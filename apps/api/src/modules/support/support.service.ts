@@ -1,11 +1,13 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { SupportTicket } from '@prisma/client';
 import type { Env } from '../../config/env.schema';
 import { PrismaService } from '../../prisma/prisma.service';
 import { EmailService } from '../email/email.service';
 import type { CreateSupportTicketInput } from './dto/support.schemas';
-import type { SupportTicketView } from './support.types';
+import type { AdminSupportTicketView, SupportStatus, SupportTicketView } from './support.types';
+
+type TicketWithUser = SupportTicket & { user: { email: string; displayName: string } };
 
 function toView(t: SupportTicket): SupportTicketView {
   return {
@@ -17,6 +19,10 @@ function toView(t: SupportTicket): SupportTicketView {
     resolvedAt: t.resolvedAt ? t.resolvedAt.toISOString() : null,
     createdAt: t.createdAt.toISOString(),
   };
+}
+
+function toAdminView(t: TicketWithUser): AdminSupportTicketView {
+  return { ...toView(t), user: { email: t.user.email, displayName: t.user.displayName } };
 }
 
 @Injectable()
@@ -52,6 +58,50 @@ export class SupportService {
       orderBy: { createdAt: 'desc' },
     });
     return tickets.map(toView);
+  }
+
+  /** Admin: list all tickets (optionally filtered by status), newest first. */
+  async listAll(status?: SupportStatus): Promise<AdminSupportTicketView[]> {
+    const tickets = await this.prisma.supportTicket.findMany({
+      where: status ? { status } : {},
+      orderBy: { createdAt: 'desc' },
+      include: { user: { select: { email: true, displayName: true } } },
+    });
+    return (tickets as TicketWithUser[]).map(toAdminView);
+  }
+
+  /** Admin: change a ticket's status. Transitioning into RESOLVED stamps
+   *  resolvedAt and emails the submitter once; moving out of RESOLVED clears it. */
+  async updateStatus(id: string, status: SupportStatus): Promise<AdminSupportTicketView> {
+    const existing = await this.prisma.supportTicket.findUnique({
+      where: { id },
+      include: { user: { select: { email: true, displayName: true } } },
+    });
+    if (!existing) {
+      throw new NotFoundException('Support ticket not found.');
+    }
+
+    const becomingResolved = status === 'RESOLVED' && existing.status !== 'RESOLVED';
+    const resolvedAt =
+      status === 'RESOLVED' ? (existing.resolvedAt ?? new Date()) : null;
+
+    const updated = (await this.prisma.supportTicket.update({
+      where: { id },
+      data: { status, resolvedAt },
+      include: { user: { select: { email: true, displayName: true } } },
+    })) as TicketWithUser;
+
+    if (becomingResolved) {
+      try {
+        await this.email.sendSupportTicketResolved(existing.user.email, existing.subject);
+      } catch (err) {
+        this.logger.error(
+          `Failed to send support ticket resolved email: ${err instanceof Error ? err.message : String(err)}`,
+        );
+      }
+    }
+
+    return toAdminView(updated);
   }
 
   /** Notify the support inbox + acknowledge the user. Never throws — a mail

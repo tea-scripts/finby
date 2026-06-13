@@ -7,11 +7,18 @@ import { AdminAuthController } from './admin-auth.controller';
 import { AdminAuthService } from './admin-auth.service';
 import { AdminUsersController } from './admin-users.controller';
 import { AdminUsersService } from './admin-users.service';
+import { AdminTicketsController } from './admin-tickets.controller';
 import { AdminJwtStrategy } from './strategies/admin-jwt.strategy';
+import { SupportModule } from '../support/support.module';
 
 @Module({
-  imports: [PassportModule, JwtModule.register({})],
-  controllers: [AdminAuthController, AdminAnalyticsController, AdminUsersController],
+  imports: [PassportModule, JwtModule.register({}), SupportModule],
+  controllers: [
+    AdminAuthController,
+    AdminAnalyticsController,
+    AdminUsersController,
+    AdminTicketsController,
+  ],
   providers: [AdminAuthService, AdminAnalyticsService, AdminUsersService, AdminJwtStrategy],
 })
 export class AdminModule {}
