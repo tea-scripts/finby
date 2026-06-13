@@ -1,6 +1,20 @@
+import type { SupportCategory, SupportStatus } from './constants';
+
 export interface TimeSeriesPoint {
   date: string; // YYYY-MM-DD
   value: number;
+}
+
+/** Admin view of a support ticket (GET /admin/tickets → { tickets }). */
+export interface AdminSupportTicket {
+  id: string;
+  category: SupportCategory;
+  subject: string;
+  message: string;
+  status: SupportStatus;
+  resolvedAt: string | null; // ISO
+  createdAt: string; // ISO
+  user: { email: string; displayName: string };
 }
 
 export interface GrowthMetrics {

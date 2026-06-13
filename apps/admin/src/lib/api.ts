@@ -45,4 +45,13 @@ export const api = {
         (search ? `&search=${encodeURIComponent(search)}` : '') +
         (plan ? `&plan=${encodeURIComponent(plan)}` : ''),
     ),
+  tickets: (status = '') =>
+    request<{ tickets: import('@finby/shared').AdminSupportTicket[] }>(
+      `/admin/tickets${status ? `?status=${encodeURIComponent(status)}` : ''}`,
+    ),
+  updateTicket: (id: string, status: string) =>
+    request<import('@finby/shared').AdminSupportTicket>(`/admin/tickets/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ status }),
+    }),
 };
