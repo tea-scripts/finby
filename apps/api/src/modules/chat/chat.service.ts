@@ -318,7 +318,9 @@ export class ChatService {
   }
 
   /** Canonical signature of a logging tool call (EXPENSE/INCOME/TRANSFER), or null
-   *  for non-logging tools / incomplete input. Used to detect re-logged history. */
+   *  for non-logging tools / incomplete input. Used to detect re-logged history.
+   *  Account-aware: two otherwise-identical events into different accounts are
+   *  distinct (e.g. ₱5,000 into GCash vs into BPI), so neither shadows the other. */
   private logSignature(call: LlmToolCall): string | null {
     const type =
       call.name === 'log_expense'
@@ -333,7 +335,24 @@ export class ChatService {
     const currency = asString(call.input.currencyOriginal)?.toUpperCase();
     if (!amount || !currency) return null;
     const merchant = (asString(call.input.merchant) ?? '').toLowerCase();
-    return `${type}|${normalizeAmount(amount)}|${currency}|${merchant}`;
+    const account =
+      type === 'TRANSFER'
+        ? `${(asString(call.input.fromAccountName) ?? '').toLowerCase()}>${(asString(call.input.toAccountName) ?? '').toLowerCase()}`
+        : (asString(call.input.accountName) ?? '').toLowerCase();
+    return this.composeSignature(type, amount, currency, merchant, account);
+  }
+
+  /** Build the canonical 5-part dedup key. Both the tool-call side (account NAMES
+   *  from input) and the stored-transaction side (account names joined from the
+   *  relation) feed through here so the two always compose identically. */
+  private composeSignature(
+    type: string,
+    amountRaw: string,
+    currency: string,
+    merchant: string,
+    account: string,
+  ): string {
+    return `${type}|${normalizeAmount(amountRaw)}|${currency.toUpperCase()}|${merchant.toLowerCase()}|${account.toLowerCase()}`;
   }
 
   /** Signatures of non-void transactions already logged in this conversation
@@ -350,15 +369,29 @@ export class ChatService {
     if (ids.length === 0) return new Set();
     const txs = await this.prisma.transaction.findMany({
       where: { workspaceId, sourceMessageId: { in: ids }, status: { not: 'VOID' } },
-      select: { type: true, amountOriginal: true, currencyOriginal: true, merchant: true },
+      select: {
+        type: true,
+        amountOriginal: true,
+        currencyOriginal: true,
+        merchant: true,
+        fromAccount: { select: { name: true } },
+        toAccount: { select: { name: true } },
+      },
     });
     return new Set(
-      txs.map(
-        (t) =>
-          `${t.type}|${normalizeAmount(t.amountOriginal.toString())}|${t.currencyOriginal.toUpperCase()}|${(
-            t.merchant ?? ''
-          ).toLowerCase()}`,
-      ),
+      txs.map((t) => {
+        const account =
+          t.type === 'TRANSFER'
+            ? `${(t.fromAccount?.name ?? '').toLowerCase()}>${(t.toAccount?.name ?? '').toLowerCase()}`
+            : (t.fromAccount?.name ?? '').toLowerCase();
+        return this.composeSignature(
+          t.type,
+          t.amountOriginal.toString(),
+          t.currencyOriginal,
+          t.merchant ?? '',
+          account,
+        );
+      }),
     );
   }
 

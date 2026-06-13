@@ -28,6 +28,7 @@ import { MarketModule } from './modules/market/market.module';
 import { PortfolioModule } from './modules/portfolio/portfolio.module';
 import { PushModule } from './modules/push/push.module';
 import { ReceiptsModule } from './modules/receipts/receipts.module';
+import { VoiceModule } from './modules/voice/voice.module';
 import { RemindersModule } from './modules/reminders/reminders.module';
 import { MembersModule } from './modules/members/members.module';
 import { SettingsModule } from './modules/settings/settings.module';
@@ -104,6 +105,7 @@ import { RedisModule } from './redis/redis.module';
     RemindersModule,
     ChatModule,
     ReceiptsModule,
+    VoiceModule,
     SettingsModule,
     MembersModule,
     FeedbackModule,
