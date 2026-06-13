@@ -52,7 +52,7 @@ export class FxService {
         rate: '1',
         inverseRate: '1',
         date: date ?? this.today(),
-        source: 'frankfurter',
+        source: 'identity',
         isCached: false,
       };
     }
