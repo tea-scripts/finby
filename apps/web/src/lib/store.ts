@@ -54,6 +54,7 @@ interface AuthState {
   setWorkspaceTier: (tier: import('./types').SubscriptionTier) => void;
   setUser: (patch: Partial<ApiUser>) => void;
   setPreferredCurrencies: (codes: string[]) => void;
+  setBaseCurrency: (baseCurrency: string, preferredCurrencies: string[]) => void;
 }
 
 const CLEARED = {
@@ -170,6 +171,14 @@ export const useAuth = create<AuthState>()(
         set((s) =>
           s.workspace
             ? { workspace: { ...s.workspace, preferredCurrencies: codes } }
+            : {},
+        );
+      },
+
+      setBaseCurrency: (baseCurrency, preferredCurrencies) => {
+        set((s) =>
+          s.workspace
+            ? { workspace: { ...s.workspace, baseCurrency, preferredCurrencies } }
             : {},
         );
       },

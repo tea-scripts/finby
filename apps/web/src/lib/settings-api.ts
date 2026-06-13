@@ -25,3 +25,19 @@ export function updateCurrencies(
     { method: 'PATCH', body: JSON.stringify({ currencies }) },
   );
 }
+
+export interface UpdateBaseCurrencyResult {
+  baseCurrency: string;
+  preferredCurrencies: string[];
+  recomputed: number;
+}
+
+export function updateBaseCurrency(
+  workspaceId: string,
+  baseCurrency: string,
+): Promise<UpdateBaseCurrencyResult> {
+  return authed<UpdateBaseCurrencyResult>(
+    `/workspaces/${workspaceId}/currencies/base`,
+    { method: 'PATCH', body: JSON.stringify({ baseCurrency }) },
+  );
+}
