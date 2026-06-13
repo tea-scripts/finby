@@ -73,6 +73,8 @@ export const envSchema = z.object({
   EMAIL_FROM: z.string().default('Finby <noreply@finby.app>'),
   // Inbox that receives user review/feedback notifications.
   FEEDBACK_NOTIFY_TO: z.string().email().default('support@finby.app'),
+  // Inbox that receives new support-ticket notifications.
+  SUPPORT_NOTIFY_TO: z.string().email().default('support@finby.app'),
 
   // Chat memory token budgets
   FREE_ACTIVE_WINDOW_TOKEN_BUDGET: z.coerce.number().int().positive().default(4000),

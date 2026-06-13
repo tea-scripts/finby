@@ -119,6 +119,55 @@ export function feedbackNotificationEmail(
   };
 }
 
+const CATEGORY_LABELS: Record<string, string> = {
+  BUG: 'Bug',
+  BILLING: 'Billing',
+  ACCOUNT: 'Account',
+  FEATURE_REQUEST: 'Feature request',
+  OTHER: 'Other',
+};
+
+export function supportTicketReceivedEmail(
+  submitterEmail: string,
+  category: string,
+  subject: string,
+  message: string,
+  submittedAtLabel: string,
+): { subject: string; html: string } {
+  const label = CATEGORY_LABELS[category] ?? category;
+  return {
+    subject: `New support ticket: ${subject}`,
+    html: SHELL(
+      `<h1 style="font-size:20px;margin:0 0 12px;color:#e8eef7;">New support ticket</h1>
+      <p style="margin:0 0 6px;color:#8da3c0;font-size:13px;">Category: <strong style="color:#e8eef7;">${esc(label)}</strong></p>
+      <p style="margin:0 0 14px;color:#e8eef7;font-size:16px;font-weight:600;">${esc(subject)}</p>
+      <div style="background-color:#06101f;border:1px solid #1c2c46;border-radius:10px;padding:14px 16px;margin:0 0 18px;color:#e8eef7;line-height:1.5;white-space:pre-wrap;">${esc(message)}</div>
+      <p style="margin:0;line-height:1.6;color:#8da3c0;font-size:13px;">From <strong style="color:#e8eef7;">${esc(submitterEmail)}</strong><br/>${esc(submittedAtLabel)}</p>`,
+      'Internal notification — a user submitted a support ticket in Finby.',
+    ),
+  };
+}
+
+export function supportTicketAckEmail(subject: string): { subject: string; html: string } {
+  return {
+    subject: `We got your message: ${subject}`,
+    html: SHELL(`<h1 style="font-size:20px;margin:0 0 12px;color:#e8eef7;">Thanks — we're on it</h1>
+      <p style="margin:0 0 14px;line-height:1.5;color:#8da3c0;">We received your support request:</p>
+      <p style="margin:0 0 18px;color:#e8eef7;font-size:16px;font-weight:600;">${esc(subject)}</p>
+      <p style="margin:0;line-height:1.5;color:#8da3c0;">Our team will get back to you by email as soon as we can. You can track this request under Settings → Support.</p>`),
+  };
+}
+
+export function supportTicketResolvedEmail(subject: string): { subject: string; html: string } {
+  return {
+    subject: `Resolved: ${subject}`,
+    html: SHELL(`<h1 style="font-size:20px;margin:0 0 12px;color:#e8eef7;">Your support ticket is resolved</h1>
+      <p style="margin:0 0 14px;line-height:1.5;color:#8da3c0;">We've marked this request as resolved:</p>
+      <p style="margin:0 0 18px;color:#e8eef7;font-size:16px;font-weight:600;">${esc(subject)}</p>
+      <p style="margin:0;line-height:1.5;color:#8da3c0;">If it's not fully sorted, just reply to this email and we'll reopen it.</p>`),
+  };
+}
+
 export function memberInviteEmail(
   inviterName: string,
   workspaceName: string,

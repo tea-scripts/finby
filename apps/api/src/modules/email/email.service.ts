@@ -7,6 +7,9 @@ import {
   passwordResetEmail,
   reengagementEmail,
   renewalReminderEmail,
+  supportTicketAckEmail,
+  supportTicketReceivedEmail,
+  supportTicketResolvedEmail,
   verificationEmail,
   welcomeEmail,
 } from './email.templates';
@@ -56,6 +59,28 @@ export class EmailService {
   ): Promise<void> {
     const { subject, html } = feedbackNotificationEmail(submitterEmail, rating, comment, submittedAtLabel);
     await this.provider.send({ to, subject, html });
+  }
+
+  async sendSupportTicketReceived(
+    to: string,
+    submitterEmail: string,
+    category: string,
+    subject: string,
+    message: string,
+    submittedAtLabel: string,
+  ): Promise<void> {
+    const email = supportTicketReceivedEmail(submitterEmail, category, subject, message, submittedAtLabel);
+    await this.provider.send({ to, subject: email.subject, html: email.html });
+  }
+
+  async sendSupportTicketAck(to: string, subject: string): Promise<void> {
+    const email = supportTicketAckEmail(subject);
+    await this.provider.send({ to, subject: email.subject, html: email.html });
+  }
+
+  async sendSupportTicketResolved(to: string, subject: string): Promise<void> {
+    const email = supportTicketResolvedEmail(subject);
+    await this.provider.send({ to, subject: email.subject, html: email.html });
   }
 
   async sendMemberInvite(

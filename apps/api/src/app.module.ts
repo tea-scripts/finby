@@ -21,6 +21,7 @@ import { CategoriesModule } from './modules/categories/categories.module';
 import { ChatModule } from './modules/chat/chat.module';
 import { ExportModule } from './modules/export/export.module';
 import { FeedbackModule } from './modules/feedback/feedback.module';
+import { SupportModule } from './modules/support/support.module';
 import { JwtAuthGuard } from './modules/auth/guards/jwt-auth.guard';
 import { FxModule } from './modules/fx/fx.module';
 import { MarketModule } from './modules/market/market.module';
@@ -106,6 +107,7 @@ import { RedisModule } from './redis/redis.module';
     SettingsModule,
     MembersModule,
     FeedbackModule,
+    SupportModule,
   ],
   controllers: [AppController],
   providers: [
