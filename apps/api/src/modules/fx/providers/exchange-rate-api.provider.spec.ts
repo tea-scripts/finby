@@ -1,9 +1,11 @@
 import { ExchangeRateApiProvider } from './exchange-rate-api.provider';
 
-function mockFetch(body: unknown, ok = true) {
+function mockFetch(body: unknown, init: { ok?: boolean; status?: number } = {}) {
+  const ok = init.ok ?? true;
+  const status = init.status ?? (ok ? 200 : 500);
   return jest
     .spyOn(global, 'fetch')
-    .mockResolvedValue({ ok, json: async () => body } as unknown as Response);
+    .mockResolvedValue({ ok, status, json: async () => body } as unknown as Response);
 }
 
 afterEach(() => jest.restoreAllMocks());
@@ -32,8 +34,18 @@ describe('ExchangeRateApiProvider', () => {
     expect(spy).not.toHaveBeenCalled();
   });
 
-  it('returns null on a non-OK response', async () => {
-    mockFetch({}, false);
+  it('returns null on a 404 (unsupported base currency)', async () => {
+    mockFetch({}, { ok: false, status: 404 });
     expect(await provider.getRate('USD', 'NGN')).toBeNull();
+  });
+
+  it('throws on a transient (5xx) response', async () => {
+    mockFetch({}, { ok: false, status: 503 });
+    await expect(provider.getRate('USD', 'NGN')).rejects.toThrow('503');
+  });
+
+  it('propagates network errors (fetch rejects)', async () => {
+    jest.spyOn(global, 'fetch').mockRejectedValue(new Error('network down'));
+    await expect(provider.getRate('USD', 'NGN')).rejects.toThrow('network down');
   });
 });

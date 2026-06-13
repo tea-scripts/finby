@@ -11,11 +11,14 @@ export class ExchangeRateApiProvider implements FxRateProvider {
   constructor(private readonly baseUrl: string) {}
 
   async getRate(from: string, to: string, date?: string): Promise<ProviderRate | null> {
+    // Contract: callers pass UTC dates (YYYY-MM-DD). The open tier serves only
+    // the latest rate, so defer any explicit non-today date to another provider.
     const today = new Date().toISOString().slice(0, 10);
-    if (date && date !== today) return null; // open tier serves latest only
+    if (date && date !== today) return null;
 
     const response = await fetch(`${this.baseUrl}/v6/latest/${from}`);
-    if (!response.ok) return null;
+    if (response.status === 404) return null; // unsupported base currency
+    if (!response.ok) throw new Error(`exchangerate-api responded ${response.status}`);
 
     const data = (await response.json()) as {
       result?: string;

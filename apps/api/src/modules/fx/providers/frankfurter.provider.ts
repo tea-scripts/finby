@@ -12,7 +12,8 @@ export class FrankfurterProvider implements FxRateProvider {
   async getRate(from: string, to: string, date?: string): Promise<ProviderRate | null> {
     const path = date ?? 'latest';
     const response = await fetch(`${this.baseUrl}/${path}?from=${from}&to=${to}`);
-    if (!response.ok) return null;
+    if (response.status === 404) return null; // no data for this date/pair
+    if (!response.ok) throw new Error(`frankfurter responded ${response.status}`);
 
     const data = (await response.json()) as { date: string; rates?: Record<string, number> };
     const value = data.rates?.[to];
