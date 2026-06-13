@@ -25,7 +25,7 @@ export function AccountCarousel({ state }: { state: SectionState<AccountView[]> 
           <SectionEmpty message="No accounts yet." />
         </div>
       ) : accounts.length === 1 ? (
-        <AccountCard account={accounts[0]} />
+        <AccountCard account={accounts[0]!} />
       ) : (
         <Carousel ariaLabel="Accounts">
           {accounts.map((a) => (

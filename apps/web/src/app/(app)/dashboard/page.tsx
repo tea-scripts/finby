@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { AccountList } from '@/components/dashboard/account-list';
+import { AccountCarousel } from '@/components/dashboard/account-carousel';
 import { BudgetList } from '@/components/dashboard/budget-list';
 import { MonthSummary } from '@/components/dashboard/month-summary';
 import { RecentTransactions } from '@/components/dashboard/recent-transactions';
@@ -66,7 +66,7 @@ export default function DashboardPage() {
         <MonthSummary state={summary} />
         <div className="grid gap-5 lg:grid-cols-2">
           <BudgetList state={budgets} />
-          <AccountList state={accounts} />
+          <AccountCarousel state={accounts} />
         </div>
         <RecentTransactions state={recent} />
       </div>
