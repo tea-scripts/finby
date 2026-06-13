@@ -28,6 +28,7 @@ describe('LlmService', () => {
       'log_investment_event',
       'get_market_data',
       'get_fx_rate',
+      'create_account',
     ]);
   });
 

@@ -29,11 +29,15 @@ function build(overrides?: {
   getRate?: jest.Mock;
   findCategory?: jest.Mock;
   findAccount?: jest.Mock;
+  accountCreate?: jest.Mock;
 }) {
   const transactions = { create: overrides?.txCreate ?? jest.fn() };
   const fx = { getRate: overrides?.getRate ?? jest.fn() };
   const categories = { findByName: overrides?.findCategory ?? jest.fn().mockResolvedValue(null) };
-  const accounts = { findByName: overrides?.findAccount ?? jest.fn().mockResolvedValue(null) };
+  const accounts = {
+    findByName: overrides?.findAccount ?? jest.fn().mockResolvedValue(null),
+    create: overrides?.accountCreate ?? jest.fn(),
+  };
   const budgets = { createOrUpdate: jest.fn(), list: jest.fn().mockResolvedValue([]) };
   const analytics = { summary: jest.fn(), byCategory: jest.fn(), trend: jest.fn(), topMerchants: jest.fn() };
   const market = { getQuote: jest.fn(), getOverview: jest.fn() };
@@ -376,6 +380,108 @@ describe('ChatService.executeTool', () => {
     if (result.action?.type === 'BUDGET_SET') {
       expect(result.action.preview.currency).toBe('USD');
     }
+  });
+
+  it('create_account creates an account and returns the created account', async () => {
+    const accountCreate = jest.fn().mockResolvedValue({
+      id: 'a1',
+      name: 'GCash',
+      currency: 'USD',
+      accountType: 'EWALLET',
+      balance: '5000',
+      color: null,
+      icon: null,
+      isArchived: false,
+    });
+    const { service, accounts } = build({ accountCreate });
+
+    const result = await service.executeTool(
+      workspace,
+      'u1',
+      call('create_account', {
+        name: 'GCash',
+        accountType: 'EWALLET',
+        currency: 'USD',
+        openingBalance: '5000',
+      }),
+    );
+
+    expect(accounts.create).toHaveBeenCalledWith(
+      'w1',
+      expect.objectContaining({
+        name: 'GCash',
+        accountType: 'EWALLET',
+        currency: 'USD',
+        initialBalance: '5000',
+      }),
+    );
+    expect(result.toolResult).toContain('account_created');
+    expect(result.toolResult).toContain('GCash');
+  });
+
+  it('create_account defaults the opening balance to 0 when omitted', async () => {
+    const accountCreate = jest.fn().mockResolvedValue({
+      id: 'a1',
+      name: 'Cash',
+      currency: 'USD',
+      accountType: 'CASH',
+      balance: '0',
+      color: null,
+      icon: null,
+      isArchived: false,
+    });
+    const { service, accounts } = build({ accountCreate });
+
+    await service.executeTool(
+      workspace,
+      'u1',
+      call('create_account', { name: 'Cash', accountType: 'CASH', currency: 'USD' }),
+    );
+
+    expect(accounts.create).toHaveBeenCalledWith(
+      'w1',
+      expect.objectContaining({ initialBalance: '0' }),
+    );
+  });
+
+  it('create_account in a non-base currency on FREE is blocked by the currency limit', async () => {
+    const { service, accounts } = build();
+
+    const result = await service.executeTool(
+      workspace,
+      'u1',
+      call('create_account', { name: 'Wise', accountType: 'BANK', currency: 'EUR' }),
+    );
+
+    expect(accounts.create).not.toHaveBeenCalled();
+    expect(result.toolResult).toContain('tier_limit');
+  });
+
+  it('create_account with an existing name does not create a duplicate', async () => {
+    const findAccount = jest.fn().mockResolvedValue({ id: 'a1', name: 'GCash' });
+    const { service, accounts } = build({ findAccount });
+
+    const result = await service.executeTool(
+      workspace,
+      'u1',
+      call('create_account', { name: 'GCash', accountType: 'EWALLET', currency: 'USD' }),
+    );
+
+    expect(accounts.create).not.toHaveBeenCalled();
+    expect(result.toolResult).toContain('already');
+  });
+
+  it('create_account with missing required fields returns an error and does not create', async () => {
+    const { service, accounts } = build();
+
+    const result = await service.executeTool(
+      workspace,
+      'u1',
+      call('create_account', { name: 'Nameless' }),
+    );
+
+    expect(accounts.create).not.toHaveBeenCalled();
+    expect(result.toolResult).toContain('Missing');
   });
 });
 

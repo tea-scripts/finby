@@ -9,6 +9,7 @@ import { randomUUID } from 'node:crypto';
 import { TIER_LIMITS, type SubscriptionTier } from '@finby/shared';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AccountsService } from '../accounts/accounts.service';
+import { createAccountSchema } from '../accounts/dto/accounts.schemas';
 import { CategoriesService } from '../categories/categories.service';
 import { FxService } from '../fx/fx.service';
 import { LlmService } from '../llm/llm.service';
@@ -297,6 +298,8 @@ export class ChatService {
         return this.execTransfer(workspace, userId, call.input, sourceMessageId);
       case 'set_budget':
         return this.execSetBudget(workspace, call.input);
+      case 'create_account':
+        return this.execCreateAccount(workspace, call.input);
       case 'update_transaction':
         return this.execUpdateTransaction(workspace, call.input);
       case 'correct_holding_ticker':
@@ -602,6 +605,62 @@ export class ChatService {
           utilizationPercent: budget.utilizationPercent,
         }),
         action,
+      };
+    } catch (error) {
+      return { toolResult: JSON.stringify({ error: this.errorMessage(error) }) };
+    }
+  }
+
+  /** Create a new account from chat. Mirrors the HTTP POST: same zod validation
+   *  and the same single-currency tier gate, so chat can't bypass plan limits. */
+  private async execCreateAccount(
+    workspace: WorkspaceContext,
+    input: Record<string, unknown>,
+  ): Promise<ToolExecResult> {
+    const parsed = createAccountSchema.safeParse({
+      name: input.name,
+      accountType:
+        typeof input.accountType === 'string' ? input.accountType.toUpperCase() : input.accountType,
+      currency: input.currency,
+      initialBalance: asString(input.openingBalance) ?? '0',
+    });
+    if (!parsed.success) {
+      return {
+        toolResult: JSON.stringify({
+          error:
+            'Missing or invalid account fields: need a name, an accountType (BANK/CASH/EWALLET/BROKERAGE/CRYPTO/OTHER), and a 3-letter currency code.',
+        }),
+      };
+    }
+
+    const limitError = this.currencyLimitError(
+      workspace.tier,
+      workspace.baseCurrency,
+      parsed.data.currency,
+    );
+    if (limitError) {
+      return { toolResult: JSON.stringify({ error: 'tier_limit', message: limitError }) };
+    }
+
+    const existing = await this.accounts.findByName(workspace.id, parsed.data.name);
+    if (existing) {
+      return {
+        toolResult: JSON.stringify({
+          error: `You already have an account named "${parsed.data.name}".`,
+        }),
+      };
+    }
+
+    try {
+      const account = await this.accounts.create(workspace.id, parsed.data);
+      return {
+        toolResult: JSON.stringify({
+          status: 'account_created',
+          name: account.name,
+          accountType: account.accountType,
+          currency: account.currency,
+          balance: account.balance,
+        }),
       };
     } catch (error) {
       return { toolResult: JSON.stringify({ error: this.errorMessage(error) }) };

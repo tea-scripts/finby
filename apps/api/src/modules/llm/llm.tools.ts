@@ -213,4 +213,31 @@ export const PHASE2_TOOLS: LlmToolDef[] = [
       required: ['from', 'to'],
     },
   },
+  {
+    name: 'create_account',
+    description:
+      "Create a new account (bank, cash, e-wallet, brokerage, crypto, etc.) for the workspace. Use when the user wants to add or set up an account, e.g. 'add my GCash wallet' or 'create a BDO savings account with ₱5,000'.",
+    input_schema: {
+      type: 'object',
+      properties: {
+        name: { type: 'string', description: "Account name, e.g. 'BDO Savings', 'GCash', 'Wise USD'" },
+        accountType: {
+          type: 'string',
+          enum: ['BANK', 'CASH', 'EWALLET', 'BROKERAGE', 'CRYPTO', 'OTHER'],
+          description: 'The kind of account. Infer from context; use OTHER if unclear.',
+        },
+        currency: {
+          type: 'string',
+          description:
+            "ISO 4217 currency of the account, e.g. 'PHP', 'USD'. Default to the workspace base currency if unstated.",
+        },
+        openingBalance: {
+          type: 'string',
+          description:
+            "Optional starting balance as a non-negative decimal string, e.g. '5000.00'. Defaults to '0'.",
+        },
+      },
+      required: ['name', 'accountType', 'currency'],
+    },
+  },
 ];
