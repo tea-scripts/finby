@@ -1,10 +1,11 @@
 import { z } from 'zod';
+import { ACCOUNT_TYPES } from '@finby/shared';
 
 const decimalString = z
   .string()
   .regex(/^\d+(\.\d+)?$/, 'must be a non-negative decimal string');
 
-export const ACCOUNT_TYPES = ['BANK', 'CASH', 'EWALLET', 'BROKERAGE', 'CRYPTO', 'OTHER'] as const;
+export { ACCOUNT_TYPES };
 
 export const createAccountSchema = z.object({
   name: z.string().trim().min(1).max(120),

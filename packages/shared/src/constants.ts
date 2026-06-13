@@ -189,3 +189,17 @@ export const CURRENCY_CODES: string[] = CURRENCIES.map((c) => c.code);
 export function isCurrencyCode(code: string): boolean {
   return CURRENCY_CODES.includes(code);
 }
+
+/** Account kinds — single source of truth for the API zod enum and the web UI. */
+export const ACCOUNT_TYPES = ['BANK', 'CASH', 'EWALLET', 'BROKERAGE', 'CRYPTO', 'OTHER'] as const;
+export type AccountType = (typeof ACCOUNT_TYPES)[number];
+
+/** Human-readable labels for account types (UI dropdowns). */
+export const ACCOUNT_TYPE_LABELS: Record<AccountType, string> = {
+  BANK: 'Bank',
+  CASH: 'Cash',
+  EWALLET: 'E-wallet',
+  BROKERAGE: 'Brokerage',
+  CRYPTO: 'Crypto',
+  OTHER: 'Other',
+};
