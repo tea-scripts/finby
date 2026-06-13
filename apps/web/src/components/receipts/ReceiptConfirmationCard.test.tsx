@@ -129,4 +129,29 @@ describe('ReceiptConfirmationCard', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
     expect(onCancel).toHaveBeenCalledTimes(1);
   });
+
+  // Regression guard: while confirming, the spinner must overlay the button
+  // without changing its width or moving its label (the glitch we fixed before).
+  it('shows a non-shifting loading state while confirming', () => {
+    const onConfirm = vi.fn();
+    const onCancel = vi.fn();
+    const { container } = render(
+      <ReceiptConfirmationCard
+        extraction={EXTRACTION}
+        categories={CATEGORIES}
+        confirming
+        onConfirm={onConfirm}
+        onCancel={onCancel}
+      />,
+    );
+    // Label stays in flow (and in the a11y tree) so the button keeps its width.
+    const logButton = screen.getByRole('button', { name: 'Log Transaction' });
+    expect(logButton).toBeDisabled();
+    // Cancel is locked out mid-confirm so the receipt can't be dismissed.
+    expect(screen.getByRole('button', { name: 'Cancel' })).toBeDisabled();
+    // The spinner is an absolute overlay, never an inline sibling that widens it.
+    const spinner = container.querySelector('.animate-spin');
+    expect(spinner).not.toBeNull();
+    expect(spinner!.closest('[class*="absolute"]')).not.toBeNull();
+  });
 });
