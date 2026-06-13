@@ -176,11 +176,18 @@ export const useAuth = create<AuthState>()(
       },
 
       setBaseCurrency: (baseCurrency, preferredCurrencies) => {
-        set((s) =>
-          s.workspace
-            ? { workspace: { ...s.workspace, baseCurrency, preferredCurrencies } }
-            : {},
-        );
+        set((s) => {
+          if (!s.workspace) return {};
+          const id = s.workspace.id;
+          return {
+            workspace: { ...s.workspace, baseCurrency, preferredCurrencies },
+            // Keep the cached membership list in sync so switching workspace
+            // and back doesn't resurrect the old base currency.
+            workspaces: s.workspaces.map((w) =>
+              w.workspaceId === id ? { ...w, baseCurrency } : w,
+            ),
+          };
+        });
       },
 
       fetchWorkspaces: async () => {
