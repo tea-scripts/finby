@@ -1,6 +1,17 @@
-import type { UserPreferences } from '@finby/shared';
+import type { SupportCategory, SupportStatus, UserPreferences } from '@finby/shared';
 
 export type SubscriptionTier = 'FREE' | 'PRO' | 'PREMIUM' | 'FAMILY';
+
+/** A user's support ticket (GET /support/tickets → { tickets }). */
+export interface SupportTicketView {
+  id: string;
+  category: SupportCategory;
+  subject: string;
+  message: string;
+  status: SupportStatus;
+  resolvedAt: string | null;
+  createdAt: string;
+}
 
 export interface ApiUser {
   id: string;

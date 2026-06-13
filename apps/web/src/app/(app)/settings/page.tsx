@@ -8,6 +8,7 @@ import { CurrenciesSection } from '@/components/settings/currencies-section';
 import { AccountsSection } from '@/components/settings/accounts-section';
 import { PreferencesSection } from '@/components/settings/preferences-section';
 import { FeedbackSection } from '@/components/settings/feedback-section';
+import { SupportSection } from '@/components/settings/support-section';
 import { MembersSection } from '@/components/settings/members-section';
 import { ReferSection } from '@/components/settings/refer-section';
 import { useAuth } from '@/lib/store';
@@ -47,6 +48,8 @@ export default function SettingsPage() {
         <ReferSection />
 
         <FeedbackSection />
+
+        <SupportSection />
 
         {/* About & Legal */}
         <section className="space-y-3">
