@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, type FormEvent, type KeyboardEvent } from 'react';
-import { Camera } from '@phosphor-icons/react';
+import { CameraIcon } from '@phosphor-icons/react';
 import { Button } from '@/components/ui/button';
 
 /** Chat input. Enter sends, Shift+Enter inserts a newline.
@@ -58,7 +58,7 @@ export function Composer({
           disabled={disabled}
           className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-muted transition hover:bg-surface-2 hover:text-ink disabled:opacity-50"
         >
-          <Camera size={22} />
+          <CameraIcon size={22} />
         </button>
       )}
       <textarea
