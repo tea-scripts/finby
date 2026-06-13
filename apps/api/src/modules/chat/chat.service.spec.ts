@@ -683,7 +683,10 @@ describe('ChatService.handleMessage — multi-step tool loop', () => {
     expect(result.message.content.length).toBeGreaterThan(0);
   });
 
-  function buildForDedup(streamMessage: jest.Mock) {
+  function buildForDedup(
+    streamMessage: jest.Mock,
+    opts?: { rows?: Record<string, unknown>[]; findAccount?: jest.Mock; txCreate?: jest.Mock },
+  ) {
     const create = jest.fn().mockResolvedValue({ id: 'm', createdAt: new Date('2026-06-02T00:00:00Z') });
     const prisma = {
       user: { findUnique: jest.fn().mockResolvedValue({ displayName: 'Timi', timezone: 'UTC' }) },
@@ -696,9 +699,11 @@ describe('ChatService.handleMessage — multi-step tool loop', () => {
       transaction: {
         findMany: jest
           .fn()
-          .mockResolvedValue([
-            { type: 'EXPENSE', amountOriginal: '12', currencyOriginal: 'USD', merchant: 'Lunch' },
-          ]),
+          .mockResolvedValue(
+            opts?.rows ?? [
+              { type: 'EXPENSE', amountOriginal: '12', currencyOriginal: 'USD', merchant: 'Lunch' },
+            ],
+          ),
       },
       conversation: { update: jest.fn() },
     };
@@ -710,12 +715,15 @@ describe('ChatService.handleMessage — multi-step tool loop', () => {
       buildSystemPrompt: jest.fn().mockReturnValue('sys'),
       streamMessage,
     };
-    const transactions = { create: jest.fn() };
+    const transactions = { create: opts?.txCreate ?? jest.fn() };
     const categories = {
       findByName: jest.fn().mockResolvedValue({ id: 'c1', name: 'Dining' }),
       list: jest.fn().mockResolvedValue([]),
     };
-    const accounts = { findByName: jest.fn().mockResolvedValue(null), list: jest.fn().mockResolvedValue([]) };
+    const accounts = {
+      findByName: opts?.findAccount ?? jest.fn().mockResolvedValue(null),
+      list: jest.fn().mockResolvedValue([]),
+    };
     const budgets = { list: jest.fn().mockResolvedValue([]) };
     const memory = { maintain: jest.fn().mockResolvedValue(undefined) };
     const contextAssembler = { buildContext: jest.fn().mockResolvedValue({ system: 'sys', messages: [] }) };
@@ -754,6 +762,70 @@ describe('ChatService.handleMessage — multi-step tool loop', () => {
     expect(transactions.create).not.toHaveBeenCalled();
     expect(result.actions).toHaveLength(0);
     expect(result.message.content).toBe('Your June budget is set.');
+  });
+
+  it('logs a same-amount event into a DIFFERENT account instead of treating it as a duplicate', async () => {
+    const streamMessage = streamOf(
+      toolUse(
+        'log_income',
+        { amountOriginal: '5000', currencyOriginal: 'PHP', accountName: 'BPI', confidence: 0.95 },
+        't1',
+      ),
+      finalText('Logged ₱5,000 into BPI.'),
+    );
+    const { service, transactions } = buildForDedup(streamMessage, {
+      // An identical-looking income already logged into GCash earlier this conversation.
+      rows: [
+        {
+          type: 'INCOME',
+          amountOriginal: '5000',
+          currencyOriginal: 'PHP',
+          merchant: null,
+          fromAccount: { name: 'GCash' },
+          toAccount: null,
+        },
+      ],
+      findAccount: jest.fn().mockResolvedValue({ id: 'a-bpi', name: 'BPI', currency: 'PHP' }),
+      txCreate: jest
+        .fn()
+        .mockResolvedValue({ transaction: { ...txView, account: { id: 'a-bpi', name: 'BPI' } }, budgetChange: null }),
+    });
+
+    const result = await service.handleMessage({ ...workspace, tier: 'PRO' }, 'u1', 'c1', 'got another 5000 into BPI');
+
+    // Different account → NOT a duplicate; it is logged.
+    expect(transactions.create).toHaveBeenCalledTimes(1);
+    expect(result.actions).toHaveLength(1);
+  });
+
+  it('still skips a re-log into the SAME account', async () => {
+    const streamMessage = streamOf(
+      toolUse(
+        'log_income',
+        { amountOriginal: '5000', currencyOriginal: 'PHP', accountName: 'GCash', confidence: 0.95 },
+        't1',
+      ),
+      finalText('Already recorded.'),
+    );
+    const { service, transactions } = buildForDedup(streamMessage, {
+      rows: [
+        {
+          type: 'INCOME',
+          amountOriginal: '5000',
+          currencyOriginal: 'PHP',
+          merchant: null,
+          fromAccount: { name: 'GCash' },
+          toAccount: null,
+        },
+      ],
+      findAccount: jest.fn().mockResolvedValue({ id: 'a-gcash', name: 'GCash', currency: 'PHP' }),
+    });
+
+    const result = await service.handleMessage({ ...workspace, tier: 'PRO' }, 'u1', 'c1', 'log 5000 into gcash again');
+
+    // Same amount/currency/account → duplicate → skipped.
+    expect(transactions.create).not.toHaveBeenCalled();
+    expect(result.actions).toHaveLength(0);
   });
 });
 
