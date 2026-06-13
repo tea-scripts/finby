@@ -24,6 +24,8 @@ const INK_LINE = rgb(148, 163, 184);
 const BEAM = rgb(52, 211, 153);
 const CHECK_BG = rgb(16, 185, 129);
 const WHITE = rgb(255, 255, 255);
+const CHIP = rgb(255, 209, 102);
+const BADGE = rgb(29, 110, 245);
 
 const fill = (c, o = 100) => ({ ty: 'fl', c: { a: 0, k: c }, o: { a: 0, k: o }, r: 1, nm: 'fill' });
 const stroke = (c, w, o = 100) => ({
@@ -43,6 +45,12 @@ const FIRE = [0, 0.80, 0.11, 0.11, 0.4, 1, 0.35, 0, 0.74, 1, 0.62, 0.17, 1, 1, 0
 const INNER = [0, 1, 0.45, 0, 0.5, 1, 0.8, 0.3, 1, 1, 0.98, 0.85];
 // glow: warm centre fading out (radial)
 const GLOW = [0, 1, 0.42, 0, 1, 1, 0.25, 0, 1];
+// account-card face gradients (2 stops: deep -> bright), one per card "type"
+const CARD_BLUE = [0, 0.11, 0.4, 0.92, 1, 0.3, 0.6, 1];
+const CARD_GREEN = [0, 0.02, 0.55, 0.38, 1, 0.13, 0.8, 0.55];
+const CARD_VIOLET = [0, 0.4, 0.25, 0.85, 1, 0.62, 0.45, 0.98];
+// cool accent glow behind the stack (radial)
+const ACCT_GLOW = [0, 0.16, 0.5, 1, 1, 0.04, 0.2, 0.45];
 
 const trGroup = () => ({
   ty: 'tr', p: { a: 0, k: [0, 0] }, a: { a: 0, k: [0, 0] }, s: { a: 0, k: [100, 100] },
@@ -270,7 +278,65 @@ function receiptScan() {
   return comp('receipt-scan', layers, 170);
 }
 
+// ── account-cards ────────────────────────────────────────────────────────────
+function accountCards() {
+  const layers = [];
+  let ind = 1;
+
+  // cool accent glow behind the stack, gently breathing
+  layers.push(
+    layer(ind++, 'glow', [group([ellipse([182, 182]), grad(ACCT_GLOW, [0, 0], [0, 90], 2, 45)])], {
+      p: { a: 0, k: [100, 104, 0] },
+      o: { a: 1, k: [ease(0, [28]), ease(40, [52]), ease(90, [28]), ease(150, [28])] },
+      s: { a: 1, k: [ease(0, [100, 100, 100]), ease(55, [112, 112, 100]), ease(150, [100, 100, 100])] },
+    }),
+  );
+
+  // one card = gradient body + chip + two stripes, sharing the layer transform
+  const cardShapes = (gradStops) => [
+    group([rect([98, 62], [0, 0], 12), grad(gradStops, [-49, -31], [49, 31])], 'body'),
+    group([rect([16, 12], [-28, -10], 3), fill(CHIP)], 'chip'),
+    group([rect([44, 5], [6, 12], 2.5), fill(WHITE, 55)], 'stripe-0'),
+    group([rect([30, 5], [-1, 22], 2.5), fill(WHITE, 32)], 'stripe-1'),
+  ];
+
+  // three cards slide up and settle into a fanned stack, back-to-front stagger
+  const cards = [
+    { grad: CARD_BLUE, rest: [100, 92, 0], rot: -11, start: 0 },
+    { grad: CARD_GREEN, rest: [100, 104, 0], rot: 0, start: 12 },
+    { grad: CARD_VIOLET, rest: [100, 116, 0], rot: 11, start: 24 },
+  ];
+  cards.forEach((c, i) => {
+    const settle = c.start + 26;
+    layers.push(
+      layer(ind++, `card-${i}`, cardShapes(c.grad), {
+        p: { a: 1, k: [ease(c.start, [c.rest[0], c.rest[1] + 34, 0]), hold(settle, c.rest)] },
+        r: { a: 1, k: [ease(c.start, [c.rot * 0.3]), hold(settle, [c.rot])] },
+        o: { a: 1, k: [hold(c.start, [0]), ease(c.start + 8, [100])] },
+        s: { a: 1, k: [ease(c.start, [86, 86, 100]), hold(settle, [100, 100, 100])] },
+      }),
+    );
+  });
+
+  // "+" badge pops once the stack has settled (top-right success beat)
+  const plusH = { c: false, v: [[-7, 0], [7, 0]], i: [[0, 0], [0, 0]], o: [[0, 0], [0, 0]] };
+  const plusV = { c: false, v: [[0, -7], [0, 7]], i: [[0, 0], [0, 0]], o: [[0, 0], [0, 0]] };
+  layers.push(
+    layer(ind++, 'badge', [
+      group([ellipse([34, 34]), fill(BADGE)], 'circle'),
+      group([path(plusH), stroke(WHITE, 4)], 'plus-h'),
+      group([path(plusV), stroke(WHITE, 4)], 'plus-v'),
+    ], {
+      p: { a: 0, k: [142, 82, 0] },
+      s: { a: 1, k: [hold(0, [0, 0, 100]), hold(54, [0, 0, 100]), ease(64, [120, 120, 100]), ease(76, [100, 100, 100])] },
+    }),
+  );
+
+  return comp('account-cards', layers);
+}
+
 writeFileSync(join(OUT, 'streak-flame.json'), JSON.stringify(streakFlame()));
 writeFileSync(join(OUT, 'notif-bell.json'), JSON.stringify(notifBell()));
 writeFileSync(join(OUT, 'receipt-scan.json'), JSON.stringify(receiptScan()));
-console.log('wrote streak-flame.json, notif-bell.json and receipt-scan.json to', OUT);
+writeFileSync(join(OUT, 'account-cards.json'), JSON.stringify(accountCards()));
+console.log('wrote streak-flame, notif-bell, receipt-scan and account-cards to', OUT);

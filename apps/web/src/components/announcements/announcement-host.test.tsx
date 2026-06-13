@@ -92,8 +92,19 @@ describe('AnnouncementHost', () => {
     expect(screen.getByRole('heading', { name: 'Scan receipts, skip the typing' })).toBeInTheDocument();
   });
 
-  it('renders nothing when every announcement is dismissed', () => {
+  it('shows the accounts announcement once streaks, notifications, and receipts are dismissed', () => {
     setState(['streaks-2026-06', 'in-app-notifs-2026-06', 'receipt-scanning-2026-06']);
+    render(<AnnouncementHost />);
+    expect(screen.getByRole('heading', { name: 'Set up your accounts' })).toBeInTheDocument();
+  });
+
+  it('renders nothing when every announcement is dismissed', () => {
+    setState([
+      'streaks-2026-06',
+      'in-app-notifs-2026-06',
+      'receipt-scanning-2026-06',
+      'accounts-2026-06',
+    ]);
     const { container } = render(<AnnouncementHost />);
     expect(container.firstChild).toBeNull();
   });

@@ -87,4 +87,20 @@ export const ANNOUNCEMENTS: Announcement[] = [
     ],
     primary: { label: 'Got it', kind: 'dismiss' },
   },
+  {
+    id: 'accounts-2026-06',
+    mode: 'steps',
+    lottie: '/lottie/account-cards.json',
+    emoji: '🏦',
+    confetti: true,
+    hashtag: 'New',
+    title: 'Set up your accounts',
+    body: 'Add your bank, cash, e-wallet, brokerage, or crypto accounts so every transaction lands in the right place and your balances stay accurate.',
+    steps: [
+      { label: 'Just ask in chat', caption: '“Add my GCash wallet” or “create a BDO savings with ₱5,000”.' },
+      { label: 'Or open Settings → Accounts', caption: 'Add, rename, and archive accounts any time.' },
+      { label: 'Balances track themselves', caption: 'Every transaction you log updates the right account.' },
+    ],
+    primary: { label: 'Got it', kind: 'dismiss' },
+  },
 ];
