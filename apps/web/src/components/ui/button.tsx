@@ -8,7 +8,7 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 const base =
-  'inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-medium transition focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 disabled:cursor-not-allowed disabled:opacity-60';
+  'relative inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-medium transition focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/60 disabled:cursor-not-allowed disabled:opacity-60';
 
 const variants: Record<Variant, string> = {
   primary:
@@ -37,10 +37,21 @@ export function Button({
     <button
       className={`${base} ${variants[variant]} ${className}`}
       disabled={disabled || loading}
+      aria-busy={loading || undefined}
       {...rest}
     >
-      {loading && <Spinner />}
-      {children}
+      {loading && (
+        <span className="absolute inset-0 flex items-center justify-center">
+          <Spinner />
+        </span>
+      )}
+      {/* Keep the label in flow (just transparent) while loading so the button's
+          width never changes — appending the spinner inline would widen the
+          button and shift/squeeze adjacent layout (e.g. the chat composer's
+          input). opacity-0 (not invisible) keeps the label in the a11y tree. */}
+      <span className={`inline-flex items-center gap-2 ${loading ? 'opacity-0' : ''}`}>
+        {children}
+      </span>
     </button>
   );
 }

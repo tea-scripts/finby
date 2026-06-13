@@ -120,8 +120,8 @@ export function ReceiptConfirmationCard({
 
       {extraction.notes && <p className="text-xs text-faint">{extraction.notes}</p>}
 
-      {/* flex-1 halves keep both buttons a fixed size, so the spinner that
-          appears while confirming can't shift or overlap them. */}
+      {/* flex-1 keeps Cancel and Log Transaction equal width. The spinner's
+          no-shift behaviour while confirming is handled by Button itself. */}
       <div className="flex gap-2 pt-1">
         <Button variant="ghost" onClick={onCancel} disabled={confirming} className="flex-1">
           Cancel
