@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { PlanCard } from '@/components/billing/PlanCard';
 import { ProfileSection } from '@/components/settings/profile-section';
+import { BaseCurrencySection } from '@/components/settings/base-currency-section';
 import { CurrenciesSection } from '@/components/settings/currencies-section';
 import { AccountsSection } from '@/components/settings/accounts-section';
 import { PreferencesSection } from '@/components/settings/preferences-section';
@@ -28,6 +29,8 @@ export default function SettingsPage() {
         <h1 className="font-display text-2xl font-bold text-ink">Settings</h1>
 
         <ProfileSection />
+
+        <BaseCurrencySection />
 
         <CurrenciesSection />
 
