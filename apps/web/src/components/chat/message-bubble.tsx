@@ -61,33 +61,42 @@ function MarkdownContent({ content }: { content: string }) {
 }
 
 /** A single chat bubble. USER is right-aligned + accent; everything else
- *  (ASSISTANT) is left-aligned on a surface. Children render below the text
- *  for attached action / confirmation cards. Assistant content is rendered as
- *  Markdown (bold, tables, lists, code); user text stays verbatim. */
+ *  (ASSISTANT) is left-aligned on a surface. `lead` renders above the text
+ *  (committed action cards — the settled result of logging); `children` render
+ *  below it (pending confirmation cards tied to the prose). The text bubble is
+ *  suppressed until content is non-empty, so no empty box shows mid-stream.
+ *  Assistant content is rendered as Markdown; user text stays verbatim. */
 export function MessageBubble({
   role,
   content,
   createdAt,
+  lead,
   children,
 }: {
   role: string;
   content: string;
   createdAt?: string;
+  /** Rendered above the text bubble — for committed action cards. */
+  lead?: ReactNode;
   children?: ReactNode;
 }) {
   const isUser = role === 'USER';
+  const hasText = content.trim().length > 0;
   return (
     <div className={`flex ${isUser ? 'justify-end' : 'justify-start'}`}>
       <div className={`flex max-w-[85%] flex-col sm:max-w-[75%] ${isUser ? 'items-end' : 'items-start'}`}>
-        <div
-          className={`rounded-2xl px-4 py-2.5 text-sm leading-relaxed ${
-            isUser
-              ? 'whitespace-pre-wrap bg-accent text-white rounded-br-md'
-              : 'border border-line bg-surface text-ink rounded-bl-md'
-          }`}
-        >
-          {isUser ? content : <MarkdownContent content={content} />}
-        </div>
+        {lead}
+        {hasText && (
+          <div
+            className={`rounded-2xl px-4 py-2.5 text-sm leading-relaxed ${
+              isUser
+                ? 'whitespace-pre-wrap bg-accent text-white rounded-br-md'
+                : `border border-line bg-surface text-ink rounded-bl-md${lead ? ' mt-2' : ''}`
+            }`}
+          >
+            {isUser ? content : <MarkdownContent content={content} />}
+          </div>
+        )}
         {children}
         {createdAt && <p className="mt-1 px-1 text-[11px] text-faint">{timeOfDay(createdAt)}</p>}
       </div>
