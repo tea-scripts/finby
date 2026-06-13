@@ -91,7 +91,7 @@ export function MessageBubble({
             className={`rounded-2xl px-4 py-2.5 text-sm leading-relaxed ${
               isUser
                 ? 'whitespace-pre-wrap bg-accent text-white rounded-br-md'
-                : `border border-line bg-surface text-ink rounded-bl-md${lead ? ' mt-2' : ''}`
+                : `border border-line bg-surface text-ink rounded-bl-md${lead != null ? ' mt-2' : ''}`
             }`}
           >
             {isUser ? content : <MarkdownContent content={content} />}
