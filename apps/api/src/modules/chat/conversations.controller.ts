@@ -115,21 +115,35 @@ export class ConversationsController {
       'X-Accel-Buffering': 'no',
     });
 
-    const heartbeat = setInterval(() => res.write(':ping\n\n'), 15000);
+    const safeWrite = (chunk: string): void => {
+      if (res.writableEnded) return;
+      try {
+        res.write(chunk);
+      } catch {
+        /* client disconnected mid-stream — stop writing; the server still
+           finishes the generator so any committed work is persisted. */
+      }
+    };
+
+    const heartbeat = setInterval(() => safeWrite(':ping\n\n'), 15000);
     const frame = (event: ChatStreamEvent): string =>
       `event: ${event.type}\ndata: ${JSON.stringify(event)}\n\n`;
 
     try {
-      if (!first.done) res.write(frame(first.value));
-      for await (const event of gen) res.write(frame(event));
+      if (!first.done) safeWrite(frame(first.value));
+      for await (const event of gen) safeWrite(frame(event));
     } catch {
       // Headers are already sent — deliver failures as an in-stream error event.
-      res.write(
-        `event: error\ndata: ${JSON.stringify({ code: 'STREAM_FAILED', message: 'The response was interrupted. Please try again.' })}\n\n`,
+      safeWrite(
+        frame({
+          type: 'error',
+          code: 'STREAM_FAILED',
+          message: 'The response was interrupted. Please try again.',
+        }),
       );
     } finally {
       clearInterval(heartbeat);
-      res.end();
+      if (!res.writableEnded) res.end();
     }
   }
 }
