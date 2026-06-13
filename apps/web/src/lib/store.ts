@@ -54,6 +54,7 @@ interface AuthState {
   setWorkspaceTier: (tier: import('./types').SubscriptionTier) => void;
   setUser: (patch: Partial<ApiUser>) => void;
   setPreferredCurrencies: (codes: string[]) => void;
+  setBaseCurrency: (baseCurrency: string, preferredCurrencies: string[]) => void;
 }
 
 const CLEARED = {
@@ -172,6 +173,21 @@ export const useAuth = create<AuthState>()(
             ? { workspace: { ...s.workspace, preferredCurrencies: codes } }
             : {},
         );
+      },
+
+      setBaseCurrency: (baseCurrency, preferredCurrencies) => {
+        set((s) => {
+          if (!s.workspace) return {};
+          const id = s.workspace.id;
+          return {
+            workspace: { ...s.workspace, baseCurrency, preferredCurrencies },
+            // Keep the cached membership list in sync so switching workspace
+            // and back doesn't resurrect the old base currency.
+            workspaces: s.workspaces.map((w) =>
+              w.workspaceId === id ? { ...w, baseCurrency } : w,
+            ),
+          };
+        });
       },
 
       fetchWorkspaces: async () => {

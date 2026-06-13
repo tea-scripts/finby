@@ -5,3 +5,9 @@ export const updateCurrenciesSchema = z.object({
 });
 
 export type UpdateCurrenciesInput = z.infer<typeof updateCurrenciesSchema>;
+
+export const updateBaseCurrencySchema = z.object({
+  baseCurrency: z.string().trim().length(3).toUpperCase(),
+});
+
+export type UpdateBaseCurrencyInput = z.infer<typeof updateBaseCurrencySchema>;
