@@ -62,6 +62,7 @@ export default function ChatPage() {
   const [sending, setSending] = useState(false);
   const [notice, setNotice] = useState<Notice>(null);
   const [upgradeOpen, setUpgradeOpen] = useState(false);
+  const [upgradeSource, setUpgradeSource] = useState('chat_limit');
   const [clearOpen, setClearOpen] = useState(false);
   const [clearing, setClearing] = useState(false);
   const [scannerOpen, setScannerOpen] = useState(false);
@@ -361,7 +362,10 @@ export default function ChatPage() {
               {notice.upgrade && (
                 <button
                   type="button"
-                  onClick={() => setUpgradeOpen(true)}
+                  onClick={() => {
+                    setUpgradeSource('chat_limit');
+                    setUpgradeOpen(true);
+                  }}
                   className="mt-2 rounded-lg bg-accent px-3 py-1.5 text-xs font-semibold text-white transition hover:opacity-90"
                 >
                   Upgrade to Pro
@@ -374,6 +378,18 @@ export default function ChatPage() {
             onSend={handleSend}
             onClearCommand={requestClear}
             onScanReceipt={() => setScannerOpen(true)}
+            voice={
+              workspace
+                ? {
+                    enabled: workspace.tier !== 'FREE',
+                    workspaceId: workspace.id,
+                    onUpgradeNeeded: () => {
+                      setUpgradeSource('voice_input');
+                      setUpgradeOpen(true);
+                    },
+                  }
+                : undefined
+            }
           />
         </div>
       </div>
@@ -384,7 +400,7 @@ export default function ChatPage() {
         onLogged={(tx, extraction) => void handleReceiptLogged(tx, extraction)}
       />
 
-      <UpgradeModal open={upgradeOpen} onClose={() => setUpgradeOpen(false)} source="chat_limit" />
+      <UpgradeModal open={upgradeOpen} onClose={() => setUpgradeOpen(false)} source={upgradeSource} />
 
       <Modal open={clearOpen} onClose={() => !clearing && setClearOpen(false)} title="Start a fresh chat?">
         <p className="text-sm text-muted">
