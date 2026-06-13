@@ -6,6 +6,8 @@ import { Button } from '@/components/ui/button';
 import { getPlans, startCheckout, changePlan, openBillingUrl } from '@/lib/billing-api';
 import { useAuth } from '@/lib/store';
 import { track } from '@/lib/analytics';
+import { PLAN_FEATURES } from '@/lib/plan-features';
+import { PlanFeatureList } from '@/components/billing/PlanFeatureList';
 import type { BillingPlan } from '@/lib/types';
 
 type UpgradeTier = 'PRO' | 'PREMIUM' | 'FAMILY';
@@ -275,16 +277,7 @@ export function UpgradeModal({
 
                   <p className="mb-3 text-2xl font-semibold text-ink">{plan.priceDisplay}</p>
 
-                  <ul className="mb-4 space-y-2">
-                    {plan.highlights.map((h) => (
-                      <li key={h} className="flex items-start gap-2 text-sm text-muted">
-                        <span className="mt-0.5 text-accent" aria-hidden="true">
-                          ✓
-                        </span>
-                        <span>{h}</span>
-                      </li>
-                    ))}
-                  </ul>
+                  <PlanFeatureList className="mb-4" featureSet={PLAN_FEATURES[tier]} />
 
                   <Button
                     variant={isCurrent ? 'ghost' : 'primary'}

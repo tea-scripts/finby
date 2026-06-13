@@ -11,6 +11,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { TierBadge } from '@/components/ui/tier-badge';
 import { UpgradeModal } from '@/components/billing/UpgradeModal';
+import { FeatureRow } from '@/components/billing/PlanFeatureList';
+import { PLAN_FEATURES, condensedFeatures } from '@/lib/plan-features';
 
 // ── Free-tier limit rows (derived from TIER_LIMITS.FREE) ─────────────────────
 
@@ -177,6 +179,9 @@ export function PlanCard() {
             ))}
           </ul>
 
+          {/* Memory-window limitation callout */}
+          <p className="text-xs italic text-muted">{PLAN_FEATURES.FREE.limitation}</p>
+
           {/* Upgrade CTA */}
           <Button
             variant="primary"
@@ -219,6 +224,13 @@ export function PlanCard() {
           </h2>
           <TierBadge tier={sub.tier} />
         </div>
+
+        {/* Condensed feature summary for the current paid plan */}
+        <ul className="space-y-1.5">
+          {condensedFeatures(sub.tier).map((f) => (
+            <FeatureRow key={f.label} feature={f} />
+          ))}
+        </ul>
 
         {/* Billing info */}
         <div className="space-y-1">

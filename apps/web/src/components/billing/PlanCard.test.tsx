@@ -254,4 +254,40 @@ describe('PlanCard', () => {
     render(<PlanCard />);
     await waitFor(() => expect(screen.getByText(/changes to pro/i)).toBeInTheDocument());
   });
+
+  it('free tier: shows the 20-message memory limitation callout', async () => {
+    mockGetSubscription.mockResolvedValue({
+      tier: 'FREE',
+      status: 'ACTIVE',
+      billingProvider: null,
+      currentPeriodEnd: null,
+      cancelAtPeriodEnd: false,
+      pendingTier: null,
+      pendingTierEffectiveAt: null,
+    });
+
+    render(<PlanCard />);
+
+    await waitFor(() =>
+      expect(screen.getByText(/remembers your last 20 messages only/i)).toBeInTheDocument(),
+    );
+  });
+
+  it('pro tier: shows a condensed feature summary', async () => {
+    mockGetSubscription.mockResolvedValue({
+      tier: 'PRO',
+      status: 'ACTIVE',
+      billingProvider: 'STRIPE',
+      currentPeriodEnd: '2026-07-01T00:00:00.000Z',
+      cancelAtPeriodEnd: false,
+      pendingTier: null,
+      pendingTierEffectiveAt: null,
+    });
+
+    render(<PlanCard />);
+
+    await waitFor(() =>
+      expect(screen.getByText('90-day conversation memory')).toBeInTheDocument(),
+    );
+  });
 });

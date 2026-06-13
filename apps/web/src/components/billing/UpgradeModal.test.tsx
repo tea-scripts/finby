@@ -94,8 +94,8 @@ describe('UpgradeModal carousel', () => {
     expect(screen.getByText('$9/mo')).toBeInTheDocument();
     expect(screen.getByText('$19/mo')).toBeInTheDocument();
     expect(screen.getByText('$29/mo')).toBeInTheDocument();
-    // Highlights present
-    expect(screen.getByText('Advanced reports')).toBeInTheDocument();
+    // Feature copy present (now frontend-owned via PLAN_FEATURES, not plan.highlights)
+    expect(screen.getByText('Advanced analytics')).toBeInTheDocument();
   });
 
   it('free mode: each card has an "Upgrade to <tier>" CTA that checks out that tier', async () => {
@@ -226,5 +226,57 @@ describe('UpgradeModal carousel', () => {
     // Pro is a downgrade from Family
     expect(screen.getByRole('button', { name: /switch to pro/i })).toBeInTheDocument();
     expect(screen.getAllByText(/at the end of your billing period/i).length).toBeGreaterThan(0);
+  });
+});
+
+// ── Feature copy (frontend-owned via PLAN_FEATURES) ─────────────────────────
+// The UpgradeModal only renders the paid tiers, so the Free-tier limitation
+// callout is exercised in PlanCard.test.tsx (where Free actually renders).
+
+describe('UpgradeModal feature copy', () => {
+  beforeEach(() => {
+    mockGetPlans.mockResolvedValue({ plans: PLANS });
+  });
+
+  it('Pro card lists "90-day conversation memory"', async () => {
+    render(<UpgradeModal open onClose={vi.fn()} />);
+    await waitFor(() =>
+      expect(screen.getByText('90-day conversation memory')).toBeInTheDocument(),
+    );
+  });
+
+  it('Pro card shows "Voice chat" with a beta badge', async () => {
+    render(<UpgradeModal open onClose={vi.fn()} />);
+    await waitFor(() => expect(screen.getByText('Voice chat')).toBeInTheDocument());
+    expect(screen.getByText('beta')).toBeInTheDocument();
+  });
+
+  it('Premium card shows the permanent memory dossier with its explanation', async () => {
+    render(<UpgradeModal open onClose={vi.fn()} />);
+    await waitFor(() =>
+      expect(screen.getByText('Permanent memory dossier')).toBeInTheDocument(),
+    );
+    expect(screen.getByText(/remembers your full financial history/i)).toBeInTheDocument();
+  });
+
+  it('Premium card shows "50 scans/day" for receipt scanning', async () => {
+    render(<UpgradeModal open onClose={vi.fn()} />);
+    await waitFor(() => expect(screen.getByText(/50 scans\/day/i)).toBeInTheDocument());
+  });
+
+  it('shows the "coming soon" footer on all three paid cards', async () => {
+    render(<UpgradeModal open onClose={vi.fn()} />);
+    await waitFor(() =>
+      expect(screen.getByRole('group', { name: 'Plans' })).toBeInTheDocument(),
+    );
+    expect(screen.getAllByText(/more features on the way/i)).toHaveLength(3);
+  });
+
+  it('flags streak repair with a [soon] badge while it is unbuilt', async () => {
+    render(<UpgradeModal open onClose={vi.fn()} />);
+    await waitFor(() =>
+      expect(screen.getAllByText('Streak repair').length).toBeGreaterThan(0),
+    );
+    expect(screen.getAllByText('soon').length).toBeGreaterThan(0);
   });
 });
