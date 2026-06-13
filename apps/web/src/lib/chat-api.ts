@@ -83,32 +83,41 @@ export async function streamMessage(
   const decoder = new TextDecoder();
   let buffer = '';
 
+  const dispatch = (ev: { event: string; data: string }): void => {
+    const payload: unknown = ev.data ? JSON.parse(ev.data) : {};
+    switch (ev.event) {
+      case 'text':
+        handlers.onText((payload as { text: string }).text);
+        break;
+      case 'action':
+        handlers.onAction((payload as { action: ChatAction }).action);
+        break;
+      case 'pending':
+        handlers.onPending((payload as { confirmation: PendingConfirmation }).confirmation);
+        break;
+      case 'done':
+        handlers.onDone((payload as { message: ChatMessageView }).message);
+        break;
+      case 'error':
+        handlers.onError(payload as { code: string; message: string; details?: unknown });
+        break;
+      // 'start' is a no-op marker that the stream has begun.
+    }
+  };
+
   for (;;) {
     const { done, value } = await reader.read();
     if (done) break;
     buffer += decoder.decode(value, { stream: true });
     const { events, rest } = parseSseFrames(buffer);
     buffer = rest;
-    for (const ev of events) {
-      const payload: unknown = ev.data ? JSON.parse(ev.data) : {};
-      switch (ev.event) {
-        case 'text':
-          handlers.onText((payload as { text: string }).text);
-          break;
-        case 'action':
-          handlers.onAction((payload as { action: ChatAction }).action);
-          break;
-        case 'pending':
-          handlers.onPending((payload as { confirmation: PendingConfirmation }).confirmation);
-          break;
-        case 'done':
-          handlers.onDone((payload as { message: ChatMessageView }).message);
-          break;
-        case 'error':
-          handlers.onError(payload as { code: string; message: string; details?: unknown });
-          break;
-        // 'start' is a no-op marker that the stream has begun.
-      }
-    }
+    for (const ev of events) dispatch(ev);
   }
+
+  // Defensive flush: our server \n\n-terminates every frame, but if a final
+  // frame arrived without the trailing blank line it would otherwise stay
+  // buffered and `done` would never fire (hanging the UI). Appending the
+  // delimiter is a no-op when the buffer is already empty.
+  const { events } = parseSseFrames(buffer + '\n\n');
+  for (const ev of events) dispatch(ev);
 }

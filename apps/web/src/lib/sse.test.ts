@@ -23,4 +23,16 @@ describe('parseSseFrames', () => {
     const { events } = parseSseFrames(':ping\n\nevent: text\ndata: {}\n\n');
     expect(events.map((e) => e.event)).toEqual(['text']);
   });
+
+  it('carries a partial frame across two calls', () => {
+    const first = parseSseFrames('event: text\ndata: {"text":"par');
+    expect(first.events).toEqual([]);
+    const second = parseSseFrames(first.rest + 'tial"}\n\n');
+    expect(second.events).toEqual([{ event: 'text', data: '{"text":"partial"}' }]);
+  });
+
+  it('strips a single leading space after data: and defaults the event name', () => {
+    const { events } = parseSseFrames('data: {"x":1}\n\n');
+    expect(events).toEqual([{ event: 'message', data: '{"x":1}' }]);
+  });
 });
