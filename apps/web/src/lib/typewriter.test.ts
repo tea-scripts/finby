@@ -50,6 +50,21 @@ describe('createTypewriter', () => {
     expect(reveals.length).toBeGreaterThan(1); // progressive, not one dump
   });
 
+  it('accumulates text pushed across frames (mid-stream burst)', async () => {
+    const reveals: string[] = [];
+    const tw = createTypewriter((text) => reveals.push(text), { framesToDrain: 4 });
+    tw.push('first ');
+    // advance one frame so part of 'first ' is already revealed...
+    rafQueue.shift()?.(0);
+    expect(reveals.length).toBe(1);
+    // ...then a later burst arrives while more is still pending.
+    tw.push('second');
+    const done = tw.finish();
+    flush();
+    await done;
+    expect(reveals[reveals.length - 1]).toBe('first second');
+  });
+
   it('finish() resolves immediately when nothing was pushed', async () => {
     const tw = createTypewriter(() => {}, { framesToDrain: 4 });
     await expect(tw.finish()).resolves.toBeUndefined();
