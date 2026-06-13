@@ -42,7 +42,8 @@ export const envSchema = z.object({
   ANTHROPIC_API_KEY: z.string().optional(),
   ANTHROPIC_MODEL: z.string().default('claude-sonnet-4-6'),
 
-  // FX / Frankfurter (Phase 2)
+  // FX rate providers (tried in priority order by FxService)
+  EXCHANGE_RATE_API_URL: z.string().url().default('https://open.er-api.com'),
   FRANKFURTER_API_URL: z.string().url().default('https://api.frankfurter.dev/v1'),
 
   // Market data / Alpha Vantage (Phase 4)
