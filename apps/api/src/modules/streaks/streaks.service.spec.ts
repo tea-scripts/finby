@@ -16,14 +16,16 @@ interface StreakUser {
   currentStreak: number;
   longestStreak: number;
   lastStreakDate: string | null;
+  lastStreakRepairDate: string | null;
 }
 
 function setup(user: StreakUser | null) {
   const update = jest.fn().mockResolvedValue({});
+  const updateMany = jest.fn().mockResolvedValue({ count: 1 });
   const findUnique = jest.fn().mockResolvedValue(user);
-  const prisma = { user: { findUnique, update } } as unknown as PrismaService;
+  const prisma = { user: { findUnique, update, updateMany } } as unknown as PrismaService;
   const service = new StreaksService(prisma);
-  return { service, update, findUnique };
+  return { service, update, updateMany, findUnique };
 }
 
 function today(date: string) {
@@ -42,6 +44,7 @@ describe('StreaksService.onTransactionLogged', () => {
       currentStreak: 0,
       longestStreak: 0,
       lastStreakDate: null,
+      lastStreakRepairDate: null,
     });
 
     const streak = await service.onTransactionLogged('u1');
@@ -60,6 +63,7 @@ describe('StreaksService.onTransactionLogged', () => {
       currentStreak: 3,
       longestStreak: 3,
       lastStreakDate: '2026-06-10',
+      lastStreakRepairDate: null,
     });
 
     const streak = await service.onTransactionLogged('u1');
@@ -75,6 +79,7 @@ describe('StreaksService.onTransactionLogged', () => {
       currentStreak: 1,
       longestStreak: 1,
       lastStreakDate: '2026-06-10',
+      lastStreakRepairDate: null,
     });
 
     const streak = await service.onTransactionLogged('u1');
@@ -93,6 +98,7 @@ describe('StreaksService.onTransactionLogged', () => {
       currentStreak: 5,
       longestStreak: 5,
       lastStreakDate: '2026-06-10', // 10-day gap
+      lastStreakRepairDate: null,
     });
 
     const streak = await service.onTransactionLogged('u1');
@@ -111,6 +117,7 @@ describe('StreaksService.onTransactionLogged', () => {
       currentStreak: 1,
       longestStreak: 9,
       lastStreakDate: '2026-06-10',
+      lastStreakRepairDate: null,
     });
 
     const streak = await service.onTransactionLogged('u1');
@@ -129,6 +136,7 @@ describe('StreaksService.onTransactionLogged', () => {
       currentStreak: 0,
       longestStreak: 0,
       lastStreakDate: null,
+      lastStreakRepairDate: null,
     });
 
     await service.onTransactionLogged('u1');
@@ -142,5 +150,138 @@ describe('StreaksService.onTransactionLogged', () => {
 
     await expect(service.onTransactionLogged('ghost')).resolves.toBe(0);
     expect(update).not.toHaveBeenCalled();
+  });
+});
+
+describe('StreaksService.getStatus', () => {
+  it('flags atRisk when exactly yesterday was missed (today not yet logged)', async () => {
+    today('2026-06-12');
+    const { service } = setup({
+      timezone: 'UTC',
+      currentStreak: 12,
+      longestStreak: 12,
+      lastStreakDate: '2026-06-10', // day before yesterday
+      lastStreakRepairDate: null,
+    });
+
+    const status = await service.getStatus('u1', 'PRO');
+
+    expect(status).toEqual({
+      currentStreak: 12,
+      longestStreak: 12,
+      atRisk: true,
+      repairEligible: true,
+      repairUsedThisMonth: false,
+    });
+  });
+
+  it('is not atRisk on a consecutive day (yesterday logged)', async () => {
+    today('2026-06-12');
+    const { service } = setup({
+      timezone: 'UTC',
+      currentStreak: 12,
+      longestStreak: 12,
+      lastStreakDate: '2026-06-11', // yesterday
+      lastStreakRepairDate: null,
+    });
+
+    const status = await service.getStatus('u1', 'PRO');
+
+    expect(status.atRisk).toBe(false);
+    expect(status.repairEligible).toBe(false);
+  });
+
+  it('is not atRisk when today is already logged', async () => {
+    today('2026-06-12');
+    const { service } = setup({
+      timezone: 'UTC',
+      currentStreak: 12,
+      longestStreak: 12,
+      lastStreakDate: '2026-06-12', // logged today already
+      lastStreakRepairDate: null,
+    });
+
+    const status = await service.getStatus('u1', 'PRO');
+
+    expect(status.atRisk).toBe(false);
+  });
+
+  it('is not atRisk when two or more days were missed', async () => {
+    today('2026-06-12');
+    const { service } = setup({
+      timezone: 'UTC',
+      currentStreak: 12,
+      longestStreak: 12,
+      lastStreakDate: '2026-06-09', // 2-day gap
+      lastStreakRepairDate: null,
+    });
+
+    const status = await service.getStatus('u1', 'PRO');
+
+    expect(status.atRisk).toBe(false);
+  });
+
+  it('atRisk but not eligible for a FREE user', async () => {
+    today('2026-06-12');
+    const { service } = setup({
+      timezone: 'UTC',
+      currentStreak: 12,
+      longestStreak: 12,
+      lastStreakDate: '2026-06-10',
+      lastStreakRepairDate: null,
+    });
+
+    const status = await service.getStatus('u1', 'FREE');
+
+    expect(status.atRisk).toBe(true);
+    expect(status.repairEligible).toBe(false);
+  });
+
+  it('atRisk but not eligible when already repaired this month', async () => {
+    today('2026-06-12');
+    const { service } = setup({
+      timezone: 'UTC',
+      currentStreak: 12,
+      longestStreak: 12,
+      lastStreakDate: '2026-06-10',
+      lastStreakRepairDate: '2026-06-03', // same month
+    });
+
+    const status = await service.getStatus('u1', 'PRO');
+
+    expect(status.atRisk).toBe(true);
+    expect(status.repairUsedThisMonth).toBe(true);
+    expect(status.repairEligible).toBe(false);
+  });
+
+  it('eligible again when the last repair was a previous month', async () => {
+    today('2026-06-12');
+    const { service } = setup({
+      timezone: 'UTC',
+      currentStreak: 12,
+      longestStreak: 12,
+      lastStreakDate: '2026-06-10',
+      lastStreakRepairDate: '2026-05-30', // previous month
+    });
+
+    const status = await service.getStatus('u1', 'PRO');
+
+    expect(status.repairUsedThisMonth).toBe(false);
+    expect(status.repairEligible).toBe(true);
+  });
+
+  it('returns a zeroed status for a missing user', async () => {
+    today('2026-06-12');
+    const { service } = setup(null);
+
+    const status = await service.getStatus('ghost', 'PRO');
+
+    expect(status).toEqual({
+      currentStreak: 0,
+      longestStreak: 0,
+      atRisk: false,
+      repairEligible: false,
+      repairUsedThisMonth: false,
+    });
   });
 });

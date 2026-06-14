@@ -1,6 +1,8 @@
 import { Injectable } from '@nestjs/common';
+import { TIER_LIMITS, type SubscriptionTier } from '@finby/shared';
 import { PrismaService } from '../../prisma/prisma.service';
 import { localDayInfo, previousLocalDate } from '../reminders/reminders.time';
+import type { StreakStatusView } from './streaks.types';
 
 /** Tracks consecutive local days on which a user logged at least one transaction.
  *  The day boundary is resolved in the user's own timezone (via localDayInfo),
@@ -40,5 +42,64 @@ export class StreaksService {
     });
 
     return currentStreak;
+  }
+
+  /** Resolve "today" as a YYYY-MM-DD local date in the user's timezone,
+   *  falling back to UTC on an invalid timezone string. */
+  private localToday(timezone: string | null): string {
+    try {
+      return localDayInfo(new Date(), timezone || 'UTC').date;
+    } catch {
+      return localDayInfo(new Date(), 'UTC').date;
+    }
+  }
+
+  /** A streak is at risk when exactly yesterday was missed (last log was the
+   *  day before yesterday) and today hasn't been logged yet. */
+  private isAtRisk(currentStreak: number, lastStreakDate: string | null, today: string): boolean {
+    if (currentStreak < 1 || !lastStreakDate) return false;
+    const dayBeforeYesterday = previousLocalDate(previousLocalDate(today));
+    return lastStreakDate === dayBeforeYesterday;
+  }
+
+  /** Whether a repair was already used in the current calendar month. */
+  private repairUsedThisMonth(lastStreakRepairDate: string | null, today: string): boolean {
+    return !!lastStreakRepairDate && lastStreakRepairDate.slice(0, 7) === today.slice(0, 7);
+  }
+
+  /** Live streak status for the requesting user (un-gated; tier decides
+   *  repairEligible so Free users can be shown an upsell). */
+  async getStatus(userId: string, tier: SubscriptionTier): Promise<StreakStatusView> {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        timezone: true,
+        currentStreak: true,
+        longestStreak: true,
+        lastStreakDate: true,
+        lastStreakRepairDate: true,
+      },
+    });
+    if (!user) {
+      return {
+        currentStreak: 0,
+        longestStreak: 0,
+        atRisk: false,
+        repairEligible: false,
+        repairUsedThisMonth: false,
+      };
+    }
+
+    const today = this.localToday(user.timezone);
+    const atRisk = this.isAtRisk(user.currentStreak, user.lastStreakDate, today);
+    const repairUsedThisMonth = this.repairUsedThisMonth(user.lastStreakRepairDate, today);
+
+    return {
+      currentStreak: user.currentStreak,
+      longestStreak: user.longestStreak,
+      atRisk,
+      repairUsedThisMonth,
+      repairEligible: atRisk && TIER_LIMITS[tier].streakRepair && !repairUsedThisMonth,
+    };
   }
 }
