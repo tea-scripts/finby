@@ -284,6 +284,21 @@ describe('StreaksService.getStatus', () => {
       repairUsedThisMonth: false,
     });
   });
+
+  it('resolves the day boundary in the user’s timezone', async () => {
+    today('2026-06-12');
+    const { service } = setup({
+      timezone: 'Asia/Manila',
+      currentStreak: 12,
+      longestStreak: 12,
+      lastStreakDate: '2026-06-10',
+      lastStreakRepairDate: null,
+    });
+
+    await service.getStatus('u1', 'PRO');
+
+    expect(localDayInfo).toHaveBeenCalledWith(expect.any(Date), 'Asia/Manila');
+  });
 });
 
 describe('StreaksService.repair', () => {
