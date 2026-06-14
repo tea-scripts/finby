@@ -28,8 +28,6 @@ export interface PlanFeatureSet {
   features: PlanFeature[];
   /** Subtle limitation callout shown below the list (Free tier only). */
   limitation?: string;
-  /** Whether to show the "More features on the way" footer (paid tiers). */
-  comingSoon: boolean;
 }
 
 /**
@@ -49,7 +47,6 @@ export const PLAN_FEATURES: Record<SubscriptionTier, PlanFeatureSet> = {
     ],
     limitation:
       'Free users have a 20-message memory window — the AI remembers your last 20 messages only.',
-    comingSoon: false,
   },
   PRO: {
     features: [
@@ -63,7 +60,6 @@ export const PLAN_FEATURES: Record<SubscriptionTier, PlanFeatureSet> = {
       { label: 'Voice chat', badge: 'beta' },
       { label: 'Priority support' },
     ],
-    comingSoon: true,
   },
   PREMIUM: {
     features: [
@@ -77,7 +73,6 @@ export const PLAN_FEATURES: Record<SubscriptionTier, PlanFeatureSet> = {
       { label: 'Monthly budget review with AI' },
       { label: 'Streak repair', note: 'recover a missed day, once', badge: 'soon' },
     ],
-    comingSoon: true,
   },
   FAMILY: {
     features: [
@@ -86,7 +81,6 @@ export const PLAN_FEATURES: Record<SubscriptionTier, PlanFeatureSet> = {
       { label: 'Shared workspace' },
       { label: 'Per-member spending views' },
     ],
-    comingSoon: true,
   },
 };
 

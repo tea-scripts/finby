@@ -52,13 +52,6 @@ export function PlanFeatureList({
       {featureSet.limitation && (
         <p className="mt-3 text-xs italic text-muted">{featureSet.limitation}</p>
       )}
-
-      {featureSet.comingSoon && (
-        <>
-          <hr className="my-3 border-line" />
-          <p className="text-xs text-muted">More features on the way</p>
-        </>
-      )}
     </div>
   );
 }

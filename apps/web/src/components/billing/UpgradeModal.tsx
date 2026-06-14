@@ -242,7 +242,7 @@ export function UpgradeModal({
           <div
             ref={scrollRef}
             onScroll={onCarouselScroll}
-            className="flex snap-x snap-mandatory gap-3 overflow-x-auto scroll-smooth px-[10%] pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+            className="flex snap-x snap-mandatory gap-3 overflow-x-auto scroll-smooth px-[6%] pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
           >
             {orderedPlans.map((plan) => {
               const tier = plan.tier as UpgradeTier;
@@ -258,10 +258,10 @@ export function UpgradeModal({
                   aria-label={`${TIER_LABEL[tier]} plan`}
                   aria-current={isCurrent ? 'true' : undefined}
                   className={[
-                    'snap-center shrink-0 basis-[80%] rounded-2xl border p-5 transition',
+                    'snap-center shrink-0 basis-[88%] rounded-2xl border p-5 transition',
                     focusedTier === tier
                       ? 'border-accent/60 bg-surface-2 shadow-card'
-                      : 'border-line bg-surface/60 opacity-70',
+                      : 'border-line bg-surface/60 opacity-50',
                   ].join(' ')}
                 >
                   <div className="mb-1 flex items-center justify-between">

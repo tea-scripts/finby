@@ -264,14 +264,6 @@ describe('UpgradeModal feature copy', () => {
     await waitFor(() => expect(screen.getByText(/50 scans\/day/i)).toBeInTheDocument());
   });
 
-  it('shows the "coming soon" footer on all three paid cards', async () => {
-    render(<UpgradeModal open onClose={vi.fn()} />);
-    await waitFor(() =>
-      expect(screen.getByRole('group', { name: 'Plans' })).toBeInTheDocument(),
-    );
-    expect(screen.getAllByText(/more features on the way/i)).toHaveLength(3);
-  });
-
   it('flags streak repair with a [soon] badge while it is unbuilt', async () => {
     render(<UpgradeModal open onClose={vi.fn()} />);
     await waitFor(() =>
