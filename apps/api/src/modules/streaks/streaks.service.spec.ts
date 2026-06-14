@@ -360,6 +360,33 @@ describe('StreaksService.repair', () => {
     });
   });
 
+  it('throws ALREADY_USED when the race is lost to a concurrent repair', async () => {
+    today('2026-06-12');
+    const { service, findUnique, updateMany } = setup({
+      timezone: 'UTC',
+      currentStreak: 12,
+      longestStreak: 12,
+      lastStreakDate: '2026-06-10',
+      lastStreakRepairDate: null,
+    });
+    updateMany.mockResolvedValue({ count: 0 });
+    // 1st read: the at-risk user (still eligible). 2nd read (post lost-race):
+    // the allowance was stamped this month by the concurrent winner.
+    findUnique
+      .mockResolvedValueOnce({
+        timezone: 'UTC',
+        currentStreak: 12,
+        longestStreak: 12,
+        lastStreakDate: '2026-06-10',
+        lastStreakRepairDate: null,
+      })
+      .mockResolvedValueOnce({ lastStreakRepairDate: '2026-06-12' });
+
+    await expect(service.repair('u1')).rejects.toMatchObject({
+      response: { error: 'STREAK_REPAIR_ALREADY_USED' },
+    });
+  });
+
   it('throws NOT_AT_RISK for a missing user', async () => {
     today('2026-06-12');
     const { service, updateMany } = setup(null);

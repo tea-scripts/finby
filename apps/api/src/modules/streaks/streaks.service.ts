@@ -146,7 +146,22 @@ export class StreaksService {
       where: { id: userId, lastStreakDate: dayBeforeYesterday },
       data: { lastStreakDate: yesterday, lastStreakRepairDate: today },
     });
-    if (res.count === 0) throw notAtRisk;
+    if (res.count === 0) {
+      // Lost a race. Re-read to tell apart "a concurrent repair already used
+      // this month's allowance" (ALREADY_USED) from "a transaction was logged,
+      // moving the streak past the at-risk window" (NOT_AT_RISK).
+      const fresh = await this.prisma.user.findUnique({
+        where: { id: userId },
+        select: { lastStreakRepairDate: true },
+      });
+      if (fresh && this.repairUsedThisMonth(fresh.lastStreakRepairDate, today)) {
+        throw new ConflictException({
+          error: STREAK_ERRORS.ALREADY_USED,
+          message: 'You’ve already repaired a streak this month.',
+        });
+      }
+      throw notAtRisk;
+    }
 
     return {
       currentStreak: user.currentStreak,
