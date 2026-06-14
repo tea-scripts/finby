@@ -49,6 +49,10 @@ describe('StreakRepair', () => {
 
     await waitFor(() => expect(mockRepair).toHaveBeenCalledWith('w1'));
     await waitFor(() => expect(setUser).toHaveBeenCalledWith({ currentStreak: 12, longestStreak: 12 }));
+    // After repairing, the user is told how to keep the streak going.
+    await waitFor(() =>
+      expect(screen.getByText(/log a transaction today to keep it going/i)).toBeInTheDocument(),
+    );
   });
 
   it('Free + at-risk: tapping the badge opens the UpgradeModal', async () => {
@@ -68,7 +72,7 @@ describe('StreakRepair', () => {
     expect(mockRepair).not.toHaveBeenCalled();
   });
 
-  it('not at risk: renders a plain badge with no button', async () => {
+  it('not at risk: the badge is not the at-risk repair button', async () => {
     mockGet.mockResolvedValue({
       currentStreak: 12, longestStreak: 12, atRisk: false, repairEligible: false, repairUsedThisMonth: false,
     });
@@ -76,7 +80,41 @@ describe('StreakRepair', () => {
     render(<StreakRepair />);
 
     await waitFor(() => expect(mockGet).toHaveBeenCalledWith('w1'));
+    // No at-risk repair affordance, and tapping never calls repair.
     expect(screen.queryByRole('button', { name: /streak at risk/i })).not.toBeInTheDocument();
+    expect(mockRepair).not.toHaveBeenCalled();
+  });
+
+  it('shows the live store streak count, not a stale fetched one', async () => {
+    // Store says 12 (kept current by the chat page); the fetched status is
+    // behind at 5. The badge must reflect the store so a just-logged
+    // transaction shows immediately.
+    mockGet.mockResolvedValue({
+      currentStreak: 5, longestStreak: 12, atRisk: false, repairEligible: false, repairUsedThisMonth: false,
+    });
+
+    render(<StreakRepair />);
+
+    await waitFor(() => expect(mockGet).toHaveBeenCalledWith('w1'));
+    expect(screen.getByText('🔥 12')).toBeInTheDocument();
+    expect(screen.queryByText('🔥 5')).not.toBeInTheDocument();
+  });
+
+  it('safe streak: tapping the badge shows a congratulatory tooltip', async () => {
+    mockGet.mockResolvedValue({
+      currentStreak: 12, longestStreak: 12, atRisk: false, repairEligible: false, repairUsedThisMonth: false,
+    });
+
+    render(<StreakRepair />);
+
+    await waitFor(() => expect(mockGet).toHaveBeenCalledWith('w1'));
+    expect(screen.queryByRole('status')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /streak: 12 days/i }));
+
+    const tip = await screen.findByRole('status');
+    expect(tip.textContent?.trim().length ?? 0).toBeGreaterThan(0);
+    expect(mockRepair).not.toHaveBeenCalled();
   });
 
   it('Pro + already used this month: tapping shows the used note, not a repair button', async () => {
