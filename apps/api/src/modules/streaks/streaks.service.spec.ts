@@ -285,3 +285,88 @@ describe('StreaksService.getStatus', () => {
     });
   });
 });
+
+describe('StreaksService.repair', () => {
+  it('covers yesterday, stamps the repair date, and leaves the count untouched', async () => {
+    today('2026-06-12');
+    const { service, updateMany } = setup({
+      timezone: 'UTC',
+      currentStreak: 12,
+      longestStreak: 15,
+      lastStreakDate: '2026-06-10',
+      lastStreakRepairDate: null,
+    });
+
+    const status = await service.repair('u1');
+
+    expect(updateMany).toHaveBeenCalledWith({
+      where: { id: 'u1', lastStreakDate: '2026-06-10' },
+      data: { lastStreakDate: '2026-06-11', lastStreakRepairDate: '2026-06-12' },
+    });
+    expect(status).toEqual({
+      currentStreak: 12,
+      longestStreak: 15,
+      atRisk: false,
+      repairEligible: false,
+      repairUsedThisMonth: true,
+    });
+  });
+
+  it('throws NOT_AT_RISK when there is nothing to repair', async () => {
+    today('2026-06-12');
+    const { service, updateMany } = setup({
+      timezone: 'UTC',
+      currentStreak: 12,
+      longestStreak: 12,
+      lastStreakDate: '2026-06-11', // consecutive, not at risk
+      lastStreakRepairDate: null,
+    });
+
+    await expect(service.repair('u1')).rejects.toMatchObject({
+      response: { error: 'STREAK_NOT_AT_RISK' },
+    });
+    expect(updateMany).not.toHaveBeenCalled();
+  });
+
+  it('throws ALREADY_USED when a repair was already used this month', async () => {
+    today('2026-06-12');
+    const { service, updateMany } = setup({
+      timezone: 'UTC',
+      currentStreak: 12,
+      longestStreak: 12,
+      lastStreakDate: '2026-06-10',
+      lastStreakRepairDate: '2026-06-02',
+    });
+
+    await expect(service.repair('u1')).rejects.toMatchObject({
+      response: { error: 'STREAK_REPAIR_ALREADY_USED' },
+    });
+    expect(updateMany).not.toHaveBeenCalled();
+  });
+
+  it('throws NOT_AT_RISK when the guarded update loses a race (count 0)', async () => {
+    today('2026-06-12');
+    const { service, updateMany } = setup({
+      timezone: 'UTC',
+      currentStreak: 12,
+      longestStreak: 12,
+      lastStreakDate: '2026-06-10',
+      lastStreakRepairDate: null,
+    });
+    updateMany.mockResolvedValue({ count: 0 });
+
+    await expect(service.repair('u1')).rejects.toMatchObject({
+      response: { error: 'STREAK_NOT_AT_RISK' },
+    });
+  });
+
+  it('throws NOT_AT_RISK for a missing user', async () => {
+    today('2026-06-12');
+    const { service, updateMany } = setup(null);
+
+    await expect(service.repair('ghost')).rejects.toMatchObject({
+      response: { error: 'STREAK_NOT_AT_RISK' },
+    });
+    expect(updateMany).not.toHaveBeenCalled();
+  });
+});
