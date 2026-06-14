@@ -165,6 +165,8 @@ model User {
   currentStreak     Int      @default(0)
   longestStreak     Int      @default(0)
   lastStreakDate    String?
+  // YYYY-MM-DD local date of the user's last streak repair (monthly cap).
+  lastStreakRepairDate String?
 
   // Relations
   workspaceMemberships  WorkspaceMember[]
