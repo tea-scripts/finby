@@ -290,6 +290,14 @@ export interface BillingPlan {
   highlights: string[];
 }
 
+export interface StreakStatus {
+  currentStreak: number;
+  longestStreak: number;
+  atRisk: boolean;
+  repairEligible: boolean;
+  repairUsedThisMonth: boolean;
+}
+
 // ── Family / Members ─────────────────────────────────────────────────────────
 
 export type WorkspaceMemberRole = 'OWNER' | 'CO_MANAGER' | 'VIEWER';
