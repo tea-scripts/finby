@@ -1,5 +1,5 @@
-import { describe, it, expect } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { describe, it, expect, vi } from 'vitest';
+import { render, screen, fireEvent } from '@testing-library/react';
 import { StreakBadge } from './StreakBadge';
 
 describe('StreakBadge', () => {
@@ -51,5 +51,24 @@ describe('StreakBadge', () => {
   it('renders a compact label at size="sm"', () => {
     render(<StreakBadge streak={7} size="sm" />);
     expect(screen.getByText('🔥 7')).toBeInTheDocument();
+  });
+
+  it('renders as a button with an accessible repair label when atRisk + onClick', () => {
+    const onClick = vi.fn();
+    render(<StreakBadge streak={12} size="sm" atRisk onClick={onClick} />);
+    const btn = screen.getByRole('button', { name: /streak at risk/i });
+    expect(btn).toBeInTheDocument();
+    fireEvent.click(btn);
+    expect(onClick).toHaveBeenCalledTimes(1);
+  });
+
+  it('applies the at-risk treatment', () => {
+    render(<StreakBadge streak={12} size="sm" atRisk onClick={() => {}} />);
+    expect(screen.getByRole('button', { name: /streak at risk/i })).toHaveClass('ring-1');
+  });
+
+  it('renders a plain span (no button) when not atRisk', () => {
+    render(<StreakBadge streak={12} size="sm" />);
+    expect(screen.queryByRole('button')).not.toBeInTheDocument();
   });
 });
