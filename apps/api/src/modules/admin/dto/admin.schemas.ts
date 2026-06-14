@@ -20,6 +20,13 @@ export const metricRangeSchema = z.object({
 });
 export type MetricRangeQuery = z.infer<typeof metricRangeSchema>;
 
+// Funnel query: which predefined funnel to render, and the conversion window (days).
+export const funnelQuerySchema = z.object({
+  funnel: z.enum(['activation', 'monetization']).default('activation'),
+  windowDays: z.coerce.number().int().min(1).max(90).default(30),
+});
+export type FunnelQuery = z.infer<typeof funnelQuerySchema>;
+
 // Users-list query: 1-based page, optional case-insensitive search term,
 // optional plan filter (owned-workspace tier), and joined-date sort direction.
 export const usersQuerySchema = z.object({

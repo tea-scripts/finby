@@ -71,6 +71,28 @@ export interface OpsMetrics {
   sentryUrl: string | null; // link-out; null when unset
 }
 
+export interface FunnelStep {
+  event: string; // PostHog event name
+  label: string; // human-readable step label
+  count: number; // users (or events) who reached this step
+  conversionFromStart: number; // % of step-1 users who reached this step (0–100)
+  conversionFromPrev: number; // % of the previous step's users who reached this step (0–100)
+}
+
+/**
+ * A behavioural funnel sourced from PostHog (HogQL). `configured` is false when
+ * PostHog env vars are unset on the API — the dashboard then shows a hint instead
+ * of an empty chart, and these numbers reflect PostHog (ad-blocker-affected),
+ * unlike the DB-derived metrics above.
+ */
+export interface FunnelMetrics {
+  key: string; // funnel id, e.g. "activation"
+  label: string; // funnel display name
+  windowDays: number; // conversion window
+  steps: FunnelStep[];
+  configured: boolean;
+}
+
 export interface AdminUserRow {
   id: string;
   displayName: string;

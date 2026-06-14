@@ -38,6 +38,14 @@ export const envSchema = z.object({
   ADMIN_SENTRY_URL: z.string().url().optional(), // dashboard link shown in the ops panel
   ADMIN_WEB_URL: z.string().url().default('http://localhost:3002'), // admin app origin (CORS allowlist)
 
+  // PostHog product analytics — HogQL queries powering the admin funnel panel.
+  // All optional: the funnel endpoint returns { configured:false } until KEY + PROJECT_ID
+  // are set. Note: API_HOST is the *app* host (us.posthog.com), NOT the ingestion host
+  // (us.i.posthog.com) — the query API does not live on the ingestion subdomain.
+  POSTHOG_API_KEY: z.string().optional(), // personal API key (phx_…), scope query:read
+  POSTHOG_PROJECT_ID: z.string().optional(),
+  POSTHOG_API_HOST: z.string().url().default('https://us.posthog.com'),
+
   // LLM / Anthropic (Phase 2)
   ANTHROPIC_API_KEY: z.string().optional(),
   ANTHROPIC_MODEL: z.string().default('claude-sonnet-4-6'),

@@ -3,6 +3,7 @@ import { JwtModule } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
 import { AdminAnalyticsController } from './admin-analytics.controller';
 import { AdminAnalyticsService } from './admin-analytics.service';
+import { PosthogService } from './posthog.service';
 import { AdminAuthController } from './admin-auth.controller';
 import { AdminAuthService } from './admin-auth.service';
 import { AdminUsersController } from './admin-users.controller';
@@ -19,6 +20,6 @@ import { SupportModule } from '../support/support.module';
     AdminUsersController,
     AdminTicketsController,
   ],
-  providers: [AdminAuthService, AdminAnalyticsService, AdminUsersService, AdminJwtStrategy],
+  providers: [AdminAuthService, AdminAnalyticsService, PosthogService, AdminUsersService, AdminJwtStrategy],
 })
 export class AdminModule {}

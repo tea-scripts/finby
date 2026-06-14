@@ -2,6 +2,7 @@ import { Controller, Get, Query, UseGuards } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import type {
   EngagementMetrics,
+  FunnelMetrics,
   GrowthMetrics,
   OpsMetrics,
   RevenueMetrics,
@@ -10,8 +11,14 @@ import type {
 import { Public } from '../../common/decorators/public.decorator';
 import { ZodValidationPipe } from '../../common/pipes/zod-validation.pipe';
 import { AdminAnalyticsService } from './admin-analytics.service';
+import { PosthogService } from './posthog.service';
 import { AdminJwtGuard } from './guards/admin-jwt.guard';
-import { metricRangeSchema, type MetricRangeQuery } from './dto/admin.schemas';
+import {
+  funnelQuerySchema,
+  metricRangeSchema,
+  type FunnelQuery,
+  type MetricRangeQuery,
+} from './dto/admin.schemas';
 
 // @Public() bypasses the global *user* JwtAuthGuard; AdminJwtGuard re-secures
 // every route with an admin-scoped token. These routes are NOT unauthenticated.
@@ -23,7 +30,10 @@ import { metricRangeSchema, type MetricRangeQuery } from './dto/admin.schemas';
 @UseGuards(AdminJwtGuard)
 @Controller('admin/metrics')
 export class AdminAnalyticsController {
-  constructor(private readonly analytics: AdminAnalyticsService) {}
+  constructor(
+    private readonly analytics: AdminAnalyticsService,
+    private readonly posthog: PosthogService,
+  ) {}
 
   @Get('growth')
   growth(@Query(new ZodValidationPipe(metricRangeSchema)) q: MetricRangeQuery): Promise<GrowthMetrics> {
@@ -48,5 +58,12 @@ export class AdminAnalyticsController {
   @Get('ops')
   ops(): Promise<OpsMetrics> {
     return this.analytics.ops();
+  }
+
+  // Behavioural funnel from PostHog (HogQL). Returns { configured:false } when
+  // PostHog env vars are unset, so the dashboard degrades gracefully.
+  @Get('funnel')
+  funnel(@Query(new ZodValidationPipe(funnelQuerySchema)) q: FunnelQuery): Promise<FunnelMetrics> {
+    return this.posthog.funnel(q.funnel, q.windowDays);
   }
 }

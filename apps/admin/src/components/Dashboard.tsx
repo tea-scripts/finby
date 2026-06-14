@@ -1,11 +1,12 @@
 'use client';
 import { useEffect, useState } from 'react';
-import type { EngagementMetrics, GrowthMetrics, OpsMetrics, RevenueMetrics } from '@finby/shared';
+import type { EngagementMetrics, FunnelMetrics, GrowthMetrics, OpsMetrics, RevenueMetrics } from '@finby/shared';
 import { api } from '../lib/api';
 import { useAuthStore } from '../lib/auth-store';
 import { AdminShell } from './AdminShell';
 import { StatCard } from './StatCard';
 import { MetricChart } from './MetricChart';
+import { FunnelChart } from './FunnelChart';
 import { Button } from './ui/button';
 
 function SectionHeading({ children }: { children: React.ReactNode }) {
@@ -22,12 +23,21 @@ export function Dashboard() {
   const [eng, setEng] = useState<EngagementMetrics | null>(null);
   const [rev, setRev] = useState<RevenueMetrics | null>(null);
   const [ops, setOps] = useState<OpsMetrics | null>(null);
+  const [funnels, setFunnels] = useState<FunnelMetrics[] | null>(null);
   const [err, setErr] = useState(false);
 
   useEffect(() => {
     Promise.all([api.growth(), api.engagement(), api.revenue(), api.ops()])
       .then(([g, e, r, o]) => { setGrowth(g); setEng(e); setRev(r); setOps(o); })
       .catch(() => setErr(true));
+  }, []);
+
+  // Funnels load independently: a PostHog outage must not blank the DB-backed
+  // metrics above, so failures here are swallowed and the section is hidden.
+  useEffect(() => {
+    Promise.all([api.funnel('activation'), api.funnel('monetization')])
+      .then(setFunnels)
+      .catch(() => setFunnels(null));
   }, []);
 
   if (err)
@@ -100,6 +110,21 @@ export function Dashboard() {
           </a>
         )}
       </section>
+
+      {funnels && (
+        <section className="space-y-3">
+          <SectionHeading>Behavior (PostHog)</SectionHeading>
+          <p className="text-xs text-muted">
+            Sourced from product events — subject to ad-blocker loss, so treat as directional,
+            not authoritative like the database metrics above.
+          </p>
+          <div className="grid gap-3 md:grid-cols-2">
+            {funnels.map((f) => (
+              <FunnelChart key={f.key} data={f} />
+            ))}
+          </div>
+        </section>
+      )}
       </div>
     </AdminShell>
   );
