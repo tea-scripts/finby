@@ -9,7 +9,7 @@ const mockPosthog = vi.hoisted(() => ({
 }));
 vi.mock('posthog-js', () => ({ default: mockPosthog }));
 
-import { sanitizeProps, track, identifyUser, resetAnalytics, capturePageview } from './analytics';
+import { sanitizeProps, track, identifyUser, resetAnalytics, capturePageview, initAnalytics } from './analytics';
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -38,6 +38,22 @@ describe('analytics no-op without a key', () => {
     expect(mockPosthog.capture).not.toHaveBeenCalled();
     expect(mockPosthog.identify).not.toHaveBeenCalled();
     expect(mockPosthog.reset).not.toHaveBeenCalled();
+  });
+});
+
+describe('initAnalytics', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it('routes ingestion through the first-party /ingest reverse proxy', () => {
+    vi.stubEnv('NEXT_PUBLIC_POSTHOG_KEY', 'phc_test');
+    vi.stubGlobal('window', {});
+    initAnalytics();
+    expect(mockPosthog.init).toHaveBeenCalledWith(
+      'phc_test',
+      expect.objectContaining({ api_host: '/ingest', ui_host: 'https://us.posthog.com' }),
+    );
   });
 });
 

@@ -41,7 +41,11 @@ export function initAnalytics(): void {
   if (initialized || !hasKey() || typeof window === 'undefined') return;
   try {
     posthog.init(process.env.NEXT_PUBLIC_POSTHOG_KEY as string, {
-      api_host: process.env.NEXT_PUBLIC_POSTHOG_HOST ?? 'https://us.i.posthog.com',
+      // First-party reverse proxy (see next.config.mjs rewrites): events go to our
+      // own /ingest path, which ad blockers can't drop by domain. ui_host keeps
+      // PostHog toolbar/links pointing at the real app.
+      api_host: process.env.NEXT_PUBLIC_POSTHOG_HOST ?? '/ingest',
+      ui_host: 'https://us.posthog.com',
       autocapture: false, // never capture typed/on-screen values (finance app)
       capture_pageview: false, // we fire pageviews manually on route change
       disable_session_recording: true,
