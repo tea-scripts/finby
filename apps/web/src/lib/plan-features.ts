@@ -30,11 +30,6 @@ export interface PlanFeatureSet {
   limitation?: string;
 }
 
-/**
- * Streak repair is listed on the paid tiers but is not yet built/gated in the
- * backend, so it carries a `soon` badge to stay honest. Remove the badge here
- * once the feature ships and is enforced by TierGuard.
- */
 export const PLAN_FEATURES: Record<SubscriptionTier, PlanFeatureSet> = {
   FREE: {
     features: [
@@ -56,7 +51,7 @@ export const PLAN_FEATURES: Record<SubscriptionTier, PlanFeatureSet> = {
       { label: 'Receipt scanning', note: '20 scans/day' },
       { label: 'Advanced analytics' },
       { label: 'Budget alerts & daily spending summary' },
-      { label: 'Streak repair', note: 'recover a missed day, once', badge: 'soon' },
+      { label: 'Streak repair', note: 'recover a missed day, once' },
       { label: 'Voice chat', badge: 'beta' },
       { label: 'Priority support' },
     ],
@@ -71,7 +66,7 @@ export const PLAN_FEATURES: Record<SubscriptionTier, PlanFeatureSet> = {
       { label: 'Receipt scanning', note: '50 scans/day' },
       { label: 'AI coaching & proactive spending insights' },
       { label: 'Monthly budget review with AI' },
-      { label: 'Streak repair', note: 'recover a missed day, once', badge: 'soon' },
+      { label: 'Streak repair', note: 'recover a missed day, once' },
     ],
   },
   FAMILY: {

@@ -264,11 +264,4 @@ describe('UpgradeModal feature copy', () => {
     await waitFor(() => expect(screen.getByText(/50 scans\/day/i)).toBeInTheDocument());
   });
 
-  it('flags streak repair with a [soon] badge while it is unbuilt', async () => {
-    render(<UpgradeModal open onClose={vi.fn()} />);
-    await waitFor(() =>
-      expect(screen.getAllByText('Streak repair').length).toBeGreaterThan(0),
-    );
-    expect(screen.getAllByText('soon').length).toBeGreaterThan(0);
-  });
 });

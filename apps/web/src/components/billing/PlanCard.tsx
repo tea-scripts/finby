@@ -60,6 +60,7 @@ const COMPARE_FEATURES: { feature: string; format: (l: TierLimitsShape) => strin
   { feature: 'History', format: (l) => numOrUnlimited(l.transactionHistoryDays, ' days') },
   { feature: 'Portfolio', format: (l) => yesNo(l.portfolio) },
   { feature: 'AI coaching', format: (l) => yesNo(l.proactiveCoaching) },
+  { feature: 'Streak repair', format: (l) => yesNo(l.streakRepair) },
   { feature: 'Members', format: (l) => (l.maxMembers === 1 ? '1' : `Up to ${l.maxMembers}`) },
   { feature: 'Data export', format: (l) => yesNo(l.dataExport) },
 ];
