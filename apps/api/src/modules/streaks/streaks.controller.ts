@@ -7,7 +7,7 @@ import { WorkspaceMemberGuard } from '../../common/guards/workspace-member.guard
 import type { WorkspaceContext } from '../../common/context';
 import type { AuthUser } from '../auth/auth.types';
 import { StreaksService } from './streaks.service';
-import type { StreakStatusView } from './streaks.types';
+import type { StreakStatusView, StreakCalendarView } from './streaks.types';
 
 @Controller('workspaces/:workspaceId/streaks')
 @UseGuards(WorkspaceMemberGuard)
@@ -22,6 +22,12 @@ export class StreaksController {
     @CurrentUser() user: AuthUser,
   ): Promise<StreakStatusView> {
     return this.streaks.getStatus(user.userId, workspace.tier);
+  }
+
+  /** Activity calendar (last ~6 months) for the requesting member. Not tier-gated. */
+  @Get('calendar')
+  getCalendar(@CurrentUser() user: AuthUser): Promise<StreakCalendarView> {
+    return this.streaks.getCalendar(user.userId);
   }
 
   /** Recover one missed day. PRO+ only. */

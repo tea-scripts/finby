@@ -298,6 +298,13 @@ export interface StreakStatus {
   repairUsedThisMonth: boolean;
 }
 
+export interface StreakCalendar {
+  from: string;
+  to: string;
+  activeDays: string[];
+  repairedDays: string[];
+}
+
 // ── Family / Members ─────────────────────────────────────────────────────────
 
 export type WorkspaceMemberRole = 'OWNER' | 'CO_MANAGER' | 'VIEWER';

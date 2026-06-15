@@ -162,6 +162,7 @@ export const DEFAULT_PREFERENCES: UserPreferences = {
   lastDailyReminderAt: null,
   dismissedAnnouncements: [],
   lastReengagedAt: null,
+  lastEarlyReminderAt: null,
 };
 
 export interface Currency {

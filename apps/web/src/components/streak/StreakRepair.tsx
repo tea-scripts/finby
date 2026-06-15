@@ -6,6 +6,7 @@ import { useAuth } from '@/lib/store';
 import { getStreakStatus, repairStreak } from '@/lib/streaks-api';
 import { streakCelebration } from '@/lib/streak-messages';
 import { StreakBadge } from '@/components/streak/StreakBadge';
+import { StreakCalendar } from '@/components/streak/StreakCalendar';
 import { UpgradeModal } from '@/components/billing/UpgradeModal';
 import { Modal } from '@/components/ui/modal';
 import { Button } from '@/components/ui/button';
@@ -42,6 +43,7 @@ export function StreakRepair() {
   // Safe-streak encouragement tooltip.
   const [celebrateOpen, setCelebrateOpen] = useState(false);
   const [celebration, setCelebration] = useState('');
+  const [calendarOpen, setCalendarOpen] = useState(false);
   const wrapperRef = useRef<HTMLSpanElement>(null);
 
   const mounted = useRef(true);
@@ -158,6 +160,16 @@ export function StreakRepair() {
             className="absolute right-0 top-full z-20 mt-2 w-56 rounded-xl border border-line bg-surface-2 p-3 text-xs text-ink shadow-card"
           >
             {celebration}
+            <button
+              type="button"
+              onClick={() => {
+                setCelebrateOpen(false);
+                setCalendarOpen(true);
+              }}
+              className="mt-2 text-xs font-medium text-accent hover:underline"
+            >
+              View calendar →
+            </button>
           </div>
         )}
       </span>
@@ -204,6 +216,10 @@ export function StreakRepair() {
             </div>
           </div>
         )}
+      </Modal>
+
+      <Modal open={calendarOpen} onClose={() => setCalendarOpen(false)} title="Your streak">
+        <StreakCalendar />
       </Modal>
 
       <UpgradeModal

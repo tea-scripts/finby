@@ -181,3 +181,24 @@ export function memberInviteEmail(
       <p style="color:#5b6f8c;font-size:13px;line-height:1.5;margin:22px 0 0;">This invitation expires in 7 days. If you weren't expecting it, you can ignore this email.</p>`),
   };
 }
+
+export function earlyReminderEmail(
+  name: string,
+  streak: number,
+  openUrl: string,
+): { subject: string; html: string } {
+  const hasStreak = streak >= 1;
+  const lead = hasStreak
+    ? `You're on a <strong style="color:#e8eef7;">${streak}-day</strong> streak 🔥 — log one thing today to keep it alive.`
+    : `Build the habit in seconds: tell Finby one thing you spent today and start your streak 🔥.`;
+  return {
+    subject: hasStreak ? 'Keep your Finby streak going 🔥' : 'Start your Finby streak 🔥',
+    html: SHELL(
+      `<h1 style="font-size:20px;margin:0 0 12px;color:#e8eef7;">Hey ${esc(name)} 👋</h1>
+      <p style="margin:0 0 10px;line-height:1.5;color:#8da3c0;">${lead}</p>
+      <p style="margin:0 0 22px;line-height:1.5;color:#8da3c0;">Just say <em style="color:#e8eef7;">"spent 12 on lunch"</em>.</p>
+      ${button(openUrl, 'Open Finby')}`,
+      "You're receiving this because reminders are on for your Finby account — you can turn them off any time in Settings.",
+    ),
+  };
+}

@@ -45,6 +45,10 @@ vi.mock('../../lib/push', () => ({
   disablePush: vi.fn(() => Promise.resolve('off')),
 }));
 
+vi.mock('../streak/StreakCalendar', () => ({
+  StreakCalendar: () => <div data-testid="streak-calendar" />,
+}));
+
 import { updateProfile } from '../../lib/settings-api';
 import { usePushStore } from '../../lib/push-store';
 
@@ -109,6 +113,11 @@ describe('PreferencesSection', () => {
     // until push is enabled — otherwise it misleadingly implies reminders are
     // active when no push subscription exists.
     expect(sw).toHaveAttribute('aria-checked', 'false');
+  });
+
+  it('renders the streak calendar in the streak block', () => {
+    render(<PreferencesSection />);
+    expect(screen.getByTestId('streak-calendar')).toBeInTheDocument();
   });
 
   it('enables the switch when push is on and saves dailyReminders on click', async () => {

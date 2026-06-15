@@ -30,4 +30,7 @@ export interface UserPreferences {
   /** Internal: ISO timestamp of the last "we miss you" re-engagement nudge
    *  (push or email). Set server-side; null until first send. */
   lastReengagedAt: string | null;
+  /** Internal: ISO timestamp of the last early-life (first-week) reminder email.
+   *  Set server-side; null until first send. */
+  lastEarlyReminderAt: string | null;
 }

@@ -2,7 +2,12 @@ import { ConflictException, Injectable } from '@nestjs/common';
 import { TIER_LIMITS, type SubscriptionTier } from '@finby/shared';
 import { PrismaService } from '../../prisma/prisma.service';
 import { localDayInfo, previousLocalDate } from '../reminders/reminders.time';
-import { STREAK_ERRORS, type StreakStatusView } from './streaks.types';
+import { STREAK_ERRORS, type StreakCalendarView, type StreakStatusView } from './streaks.types';
+import { bucketLocalDays } from './streaks.calendar';
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+/** ~6 months of history shown in the calendar. */
+const CALENDAR_WINDOW_DAYS = 183;
 
 /** Tracks consecutive local days on which a user logged at least one transaction.
  *  The day boundary is resolved in the user's own timezone (via localDayInfo),
@@ -47,11 +52,47 @@ export class StreaksService {
   /** Resolve "today" as a YYYY-MM-DD local date in the user's timezone,
    *  falling back to UTC on an invalid timezone string. */
   private localToday(timezone: string | null): string {
+    return this.dayInfo(new Date(), timezone).date;
+  }
+
+  /** Full local-day info with the same UTC fallback as localToday. */
+  private dayInfo(now: Date, timezone: string | null): ReturnType<typeof localDayInfo> {
     try {
-      return localDayInfo(new Date(), timezone || 'UTC').date;
+      return localDayInfo(now, timezone || 'UTC');
     } catch {
-      return localDayInfo(new Date(), 'UTC').date;
+      return localDayInfo(now, 'UTC');
     }
+  }
+
+  /** Derive the streak calendar from transaction history over the last
+   *  CALENDAR_WINDOW_DAYS. Active days are bucketed in the user's timezone so
+   *  they line up with the streak count exactly. `now` is injectable for tests. */
+  async getCalendar(userId: string, now = new Date()): Promise<StreakCalendarView> {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { timezone: true, lastStreakRepairDate: true },
+    });
+    const tz = user?.timezone || 'UTC';
+
+    const todayInfo = this.dayInfo(now, tz);
+    const fromMs = todayInfo.startOfDayMs - (CALENDAR_WINDOW_DAYS - 1) * DAY_MS;
+    const fromInfo = this.dayInfo(new Date(fromMs), tz);
+    const from = fromInfo.date;
+    const to = todayInfo.date;
+
+    const txns = await this.prisma.transaction.findMany({
+      where: { loggedByUserId: userId, createdAt: { gte: new Date(fromInfo.startOfDayMs) } },
+      select: { createdAt: true },
+    });
+    const activeDays = bucketLocalDays(
+      txns.map((t) => t.createdAt),
+      tz,
+    ).filter((d: string) => d >= from && d <= to);
+
+    const repair = user?.lastStreakRepairDate ?? null;
+    const repairedDays = repair && repair >= from && repair <= to ? [repair] : [];
+
+    return { from, to, activeDays, repairedDays };
   }
 
   /** A streak is at risk when exactly yesterday was missed (last log was the
