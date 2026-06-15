@@ -1,3 +1,5 @@
+import type { NewAchievement } from '../streaks/streaks.types';
+
 export interface ChatActionPreview {
   amount: string;
   currency: string;
@@ -12,6 +14,8 @@ export interface TransactionCreatedAction {
   preview: ChatActionPreview;
   /** The logger's spending streak after this transaction (null if unavailable). */
   currentStreak: number | null;
+  /** Achievements unlocked by this transaction (empty if none). */
+  newAchievements: NewAchievement[];
 }
 
 export interface BudgetSetAction {

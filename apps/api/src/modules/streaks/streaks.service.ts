@@ -1,8 +1,17 @@
 import { ConflictException, Injectable } from '@nestjs/common';
-import { TIER_LIMITS, type SubscriptionTier } from '@finby/shared';
+import { AchievementCategory, XpEvent } from '@prisma/client';
+import { type SubscriptionTier } from '@finby/shared';
 import { PrismaService } from '../../prisma/prisma.service';
 import { localDayInfo, previousLocalDate } from '../reminders/reminders.time';
-import { STREAK_ERRORS, type StreakCalendarView, type StreakStatusView } from './streaks.types';
+import { AchievementService } from '../gamification/achievement.service';
+import { XpService } from '../gamification/xp.service';
+import { STREAK_MILESTONES, XP_COST } from '../gamification/xp.constants';
+import {
+  STREAK_ERRORS,
+  type NewAchievement,
+  type StreakCalendarView,
+  type StreakStatusView,
+} from './streaks.types';
 import { bucketLocalDays } from './streaks.calendar';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -14,18 +23,25 @@ const CALENDAR_WINDOW_DAYS = 183;
  *  matching the reminder system — never from a raw UTC date. */
 @Injectable()
 export class StreaksService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly xpService: XpService,
+    private readonly achievementService: AchievementService,
+  ) {}
 
   /** Called after a transaction is saved. Idempotent per local day, so multiple
-   *  transactions in one day only count once. Returns the user's current streak
-   *  after the update (or the unchanged value on a same-day repeat / 0 if the
-   *  user is gone) so callers can surface it immediately. */
-  async onTransactionLogged(userId: string): Promise<number> {
+   *  transactions in one day only count (and earn XP) once. Returns the user's
+   *  current streak plus any achievements unlocked by this log so callers can
+   *  surface both immediately. */
+  async onTransactionLogged(
+    userId: string,
+    tier: SubscriptionTier,
+  ): Promise<{ currentStreak: number; newAchievements: NewAchievement[] }> {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
       select: { timezone: true, currentStreak: true, longestStreak: true, lastStreakDate: true },
     });
-    if (!user) return 0;
+    if (!user) return { currentStreak: 0, newAchievements: [] };
 
     let today: string;
     try {
@@ -34,8 +50,10 @@ export class StreaksService {
       today = localDayInfo(new Date(), 'UTC').date; // bad tz string -> treat as UTC
     }
 
-    // Already counted today — return the current streak unchanged.
-    if (user.lastStreakDate === today) return user.currentStreak;
+    // Already counted today — return the current streak unchanged, no new XP.
+    if (user.lastStreakDate === today) {
+      return { currentStreak: user.currentStreak, newAchievements: [] };
+    }
 
     const consecutive = user.lastStreakDate === previousLocalDate(today);
     const currentStreak = consecutive ? user.currentStreak + 1 : 1;
@@ -46,7 +64,26 @@ export class StreaksService {
       data: { currentStreak, longestStreak, lastStreakDate: today },
     });
 
-    return currentStreak;
+    // Gamification: daily XP, milestone bonus, and any streak badges unlocked.
+    await this.xpService.awardXp(userId, tier, XpEvent.STREAK_DAY, { streakDay: currentStreak });
+    if (STREAK_MILESTONES.has(currentStreak)) {
+      await this.xpService.awardXp(userId, tier, XpEvent.STREAK_MILESTONE, {
+        streakDay: currentStreak,
+      });
+    }
+    const unlocked = await this.achievementService.checkAndUnlock(
+      userId,
+      AchievementCategory.STREAK,
+      currentStreak,
+    );
+    const newAchievements: NewAchievement[] = unlocked.map((a) => ({
+      slug: a.achievementDef.slug,
+      tier: a.achievementDef.tier,
+      label: a.achievementDef.label,
+      unlockedAt: a.unlockedAt,
+    }));
+
+    return { currentStreak, newAchievements };
   }
 
   /** Resolve "today" as a YYYY-MM-DD local date in the user's timezone,
@@ -103,14 +140,11 @@ export class StreaksService {
     return lastStreakDate === dayBeforeYesterday;
   }
 
-  /** Whether a repair was already used in the current calendar month. */
-  private repairUsedThisMonth(lastStreakRepairDate: string | null, today: string): boolean {
-    return !!lastStreakRepairDate && lastStreakRepairDate.slice(0, 7) === today.slice(0, 7);
-  }
-
-  /** Live streak status for the requesting user (un-gated; tier decides
-   *  repairEligible so Free users can be shown an upsell). */
-  async getStatus(userId: string, tier: SubscriptionTier): Promise<StreakStatusView> {
+  /** Live streak status for the requesting user. `_tier` is retained on the
+   *  signature (the controller passes the workspace tier) but no longer gates
+   *  repair — eligibility is now purely an XP-balance check, so every tier can
+   *  recover a streak by spending XP. */
+  async getStatus(userId: string, _tier: SubscriptionTier): Promise<StreakStatusView> {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
       select: {
@@ -118,7 +152,6 @@ export class StreaksService {
         currentStreak: true,
         longestStreak: true,
         lastStreakDate: true,
-        lastStreakRepairDate: true,
       },
     });
     if (!user) {
@@ -133,20 +166,21 @@ export class StreaksService {
 
     const today = this.localToday(user.timezone);
     const atRisk = this.isAtRisk(user.currentStreak, user.lastStreakDate, today);
-    const repairUsedThisMonth = this.repairUsedThisMonth(user.lastStreakRepairDate, today);
+    const userXp = await this.prisma.userXp.findUnique({ where: { userId } });
 
     return {
       currentStreak: user.currentStreak,
       longestStreak: user.longestStreak,
       atRisk,
-      repairUsedThisMonth,
-      repairEligible: atRisk && TIER_LIMITS[tier].streakRepair && !repairUsedThisMonth,
+      // Monthly cap removed; field kept for response-shape stability.
+      repairUsedThisMonth: false,
+      repairEligible: atRisk && (userXp?.balance ?? 0) >= XP_COST.STREAK_RECOVERY,
     };
   }
 
-  /** Recover a single missed day. Caller (controller) enforces the PRO+ gate;
-   *  this re-validates at-risk + the monthly cap and applies an atomic,
-   *  state-guarded update so concurrent calls can't double-repair. */
+  /** Recover a single missed day by spending XP. Re-validates at-risk, charges
+   *  the XP cost (spendXp throws 400 if the balance can't cover it), then applies
+   *  an atomic, state-guarded update so concurrent calls can't double-repair. */
   async repair(userId: string): Promise<StreakStatusView> {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
@@ -155,7 +189,6 @@ export class StreaksService {
         currentStreak: true,
         longestStreak: true,
         lastStreakDate: true,
-        lastStreakRepairDate: true,
       },
     });
 
@@ -171,15 +204,15 @@ export class StreaksService {
     if (!this.isAtRisk(user.currentStreak, user.lastStreakDate, today)) {
       throw notAtRisk;
     }
-    if (this.repairUsedThisMonth(user.lastStreakRepairDate, today)) {
-      throw new ConflictException({
-        error: STREAK_ERRORS.ALREADY_USED,
-        message: 'You’ve already repaired a streak this month.',
-      });
-    }
 
     const yesterday = previousLocalDate(today);
     const dayBeforeYesterday = previousLocalDate(yesterday);
+
+    // Charge the XP cost up front. Throws BadRequestException('Insufficient XP')
+    // when the balance is too low — that is the only repair gate now.
+    await this.xpService.spendXp(userId, XP_COST.STREAK_RECOVERY, XpEvent.STREAK_RECOVERY, {
+      recoveredDate: yesterday,
+    });
 
     // State-guarded update: only fires while last activity is still the day
     // before yesterday, so a concurrent repair/log can't double-apply.
@@ -188,19 +221,9 @@ export class StreaksService {
       data: { lastStreakDate: yesterday, lastStreakRepairDate: today },
     });
     if (res.count === 0) {
-      // Lost a race. Re-read to tell apart "a concurrent repair already used
-      // this month's allowance" (ALREADY_USED) from "a transaction was logged,
-      // moving the streak past the at-risk window" (NOT_AT_RISK).
-      const fresh = await this.prisma.user.findUnique({
-        where: { id: userId },
-        select: { lastStreakRepairDate: true },
-      });
-      if (fresh && this.repairUsedThisMonth(fresh.lastStreakRepairDate, today)) {
-        throw new ConflictException({
-          error: STREAK_ERRORS.ALREADY_USED,
-          message: 'You’ve already repaired a streak this month.',
-        });
-      }
+      // Lost a race to a concurrent transaction log that pushed the streak past
+      // the at-risk window. With the monthly cap gone this is the only race
+      // outcome left, so report it as not-at-risk.
       throw notAtRisk;
     }
 
@@ -208,7 +231,7 @@ export class StreaksService {
       currentStreak: user.currentStreak,
       longestStreak: user.longestStreak,
       atRisk: false,
-      repairUsedThisMonth: true,
+      repairUsedThisMonth: false,
       repairEligible: false,
     };
   }

@@ -21,6 +21,7 @@ import { CategoriesModule } from './modules/categories/categories.module';
 import { ChatModule } from './modules/chat/chat.module';
 import { ExportModule } from './modules/export/export.module';
 import { FeedbackModule } from './modules/feedback/feedback.module';
+import { GamificationModule } from './modules/gamification/gamification.module';
 import { SupportModule } from './modules/support/support.module';
 import { JwtAuthGuard } from './modules/auth/guards/jwt-auth.guard';
 import { FxModule } from './modules/fx/fx.module';
@@ -109,6 +110,7 @@ import { RedisModule } from './redis/redis.module';
     SettingsModule,
     MembersModule,
     FeedbackModule,
+    GamificationModule,
     SupportModule,
   ],
   controllers: [AppController],

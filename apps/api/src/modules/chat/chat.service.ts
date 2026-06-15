@@ -458,21 +458,23 @@ export class ChatService {
     }
 
     try {
-      const { transaction: tx, budgetChange, currentStreak } = await this.transactions.create({
-        workspaceId: workspace.id,
-        loggedByUserId: userId,
-        baseCurrency: workspace.baseCurrency,
-        type,
-        amountOriginal,
-        currencyOriginal,
-        transactionDate: date,
-        categoryId: category?.id ?? null,
-        accountId: account?.id ?? null,
-        merchant: asString(input.merchant) ?? null,
-        description: asString(input.description) ?? null,
-        aiConfidence: confidence,
-        sourceMessageId: sourceMessageId ?? null,
-      });
+      const { transaction: tx, budgetChange, currentStreak, newAchievements } =
+        await this.transactions.create({
+          workspaceId: workspace.id,
+          loggedByUserId: userId,
+          baseCurrency: workspace.baseCurrency,
+          tier: workspace.tier,
+          type,
+          amountOriginal,
+          currencyOriginal,
+          transactionDate: date,
+          categoryId: category?.id ?? null,
+          accountId: account?.id ?? null,
+          merchant: asString(input.merchant) ?? null,
+          description: asString(input.description) ?? null,
+          aiConfidence: confidence,
+          sourceMessageId: sourceMessageId ?? null,
+        });
 
       const action: ChatAction = {
         type: 'TRANSACTION_CREATED',
@@ -485,6 +487,7 @@ export class ChatService {
           category: tx.category?.name ?? null,
         },
         currentStreak: currentStreak ?? null,
+        newAchievements,
       };
       return {
         toolResult: JSON.stringify({
@@ -553,10 +556,11 @@ export class ChatService {
     }
 
     try {
-      const { transaction: tx, currentStreak } = await this.transactions.create({
+      const { transaction: tx, currentStreak, newAchievements } = await this.transactions.create({
         workspaceId: workspace.id,
         loggedByUserId: userId,
         baseCurrency: workspace.baseCurrency,
+        tier: workspace.tier,
         type: 'TRANSFER',
         amountOriginal,
         currencyOriginal,
@@ -573,6 +577,7 @@ export class ChatService {
         txType: 'TRANSFER',
         preview: { amount: tx.amountOriginal, currency: tx.currencyOriginal, merchant: null, category: null },
         currentStreak: currentStreak ?? null,
+        newAchievements,
       };
       return {
         toolResult: JSON.stringify({

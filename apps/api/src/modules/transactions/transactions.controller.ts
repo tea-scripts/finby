@@ -56,6 +56,7 @@ export class TransactionsController {
       workspaceId: workspace.id,
       loggedByUserId: user.userId,
       baseCurrency: workspace.baseCurrency,
+      tier: workspace.tier,
       type: body.type,
       amountOriginal: body.amountOriginal,
       currencyOriginal: body.currencyOriginal,
