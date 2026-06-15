@@ -159,14 +159,13 @@ export default function ChatPage() {
               });
               if (a.currentStreak === 1) {
                 void (async () => {
-                  let shown = false;
                   try {
-                    shown = localStorage.getItem(STREAK_START_SHOWN_KEY) === '1';
+                    const shown = localStorage.getItem(STREAK_START_SHOWN_KEY) === '1';
+                    const pushState = await getPushState();
+                    if (shouldPromptStreakStart(1, pushState, shown)) setStreakStartOpen(true);
                   } catch {
-                    /* storage disabled */
+                    /* storage or push lookup unavailable — skip the prompt */
                   }
-                  const pushState = await getPushState();
-                  if (shouldPromptStreakStart(1, pushState, shown)) setStreakStartOpen(true);
                 })();
               }
             }
