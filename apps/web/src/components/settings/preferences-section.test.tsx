@@ -46,11 +46,14 @@ vi.mock('../../lib/push', () => ({
 }));
 
 import { updateProfile } from '../../lib/settings-api';
+import { usePushStore } from '../../lib/push-store';
 
 const mockUpdateProfile = vi.mocked(updateProfile);
 
 beforeEach(() => {
   vi.clearAllMocks();
+  // Shared push store is a module singleton — reset so tests don't leak state.
+  usePushStore.setState({ state: 'off', busy: false });
 });
 
 // ── Tests ──────────────────────────────────────────────────────────────────

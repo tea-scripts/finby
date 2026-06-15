@@ -1,7 +1,9 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { disablePush, enablePush, getPushState, isPushSupported, type PushState } from '@/lib/push';
+import { useEffect } from 'react';
+import { disablePush, enablePush, getPushState, isPushSupported } from '@/lib/push';
+import { usePushStore } from '@/lib/push-store';
+import { toast } from '@/lib/toast';
 import { useAuth } from '@/lib/store';
 
 function BellIcon({ active }: { active: boolean }) {
@@ -20,30 +22,24 @@ function BellIcon({ active }: { active: boolean }) {
   );
 }
 
-export function NotifToggle({ onStateChange }: { onStateChange?: (s: PushState) => void } = {}) {
+export function NotifToggle() {
   const workspace = useAuth((s) => s.workspace);
-  const [state, setState] = useState<PushState>('off');
-  const [busy, setBusy] = useState(false);
+  const state = usePushStore((s) => s.state);
+  const busy = usePushStore((s) => s.busy);
+  const setState = usePushStore((s) => s.setState);
+  const setBusy = usePushStore((s) => s.setBusy);
 
-  const onStateChangeRef = useRef(onStateChange);
-  useEffect(() => {
-    onStateChangeRef.current = onStateChange;
-  });
-
-  const apply = useCallback((s: PushState) => {
-    setState(s);
-    onStateChangeRef.current?.(s);
-  }, []);
-
+  // Sync the shared store to the actual device subscription on mount. Every
+  // instance does this; they all converge on the same value.
   useEffect(() => {
     if (!isPushSupported()) {
-      apply('unsupported');
+      setState('unsupported');
       return;
     }
     getPushState()
-      .then(apply)
+      .then(setState)
       .catch(() => undefined);
-  }, [apply]);
+  }, [setState]);
 
   if (state === 'unsupported' || !workspace) return null;
 
@@ -57,9 +53,18 @@ export function NotifToggle({ onStateChange }: { onStateChange?: (s: PushState) 
 
   async function toggle() {
     if (busy || denied || !workspace) return;
+    const wasOn = on;
     setBusy(true);
     try {
-      apply(on ? await disablePush(workspace.id) : await enablePush(workspace.id));
+      const next = wasOn ? await disablePush(workspace.id) : await enablePush(workspace.id);
+      setState(next);
+      if (next === 'on') {
+        toast.success('Notifications on', "You'll get reminders and updates on this device.");
+      } else if (wasOn) {
+        toast.success('Notifications off', "You won't get push alerts on this device.");
+      } else if (next === 'denied') {
+        toast.error('Notifications blocked', 'Allow notifications in your browser settings to turn them on.');
+      }
     } finally {
       setBusy(false);
     }

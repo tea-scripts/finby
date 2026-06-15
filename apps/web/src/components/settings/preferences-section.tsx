@@ -7,6 +7,7 @@ import { Dropdown } from '@/components/ui/dropdown';
 import { Field } from '@/components/ui/field';
 import { NotifToggle } from '@/components/chat/notif-toggle';
 import { detectIosSafariTab } from '@/lib/ios';
+import { usePushStore } from '@/lib/push-store';
 import { updateProfile } from '@/lib/settings-api';
 import { toast } from '@/lib/toast';
 import { useAuth } from '@/lib/store';
@@ -39,7 +40,9 @@ export function PreferencesSection() {
   const longestStreak = user?.longestStreak ?? 0;
 
   const [saveState, setSaveState] = useState<SaveState>('idle');
-  const [pushOn, setPushOn] = useState(false);
+  // Push on/off comes from the shared store, so toggling the header bell (or
+  // this section's own toggle) reflects here immediately and vice versa.
+  const pushOn = usePushStore((s) => s.state === 'on');
   const [iosTab, setIosTab] = useState(false);
   useEffect(() => {
     setIosTab(detectIosSafariTab());
@@ -135,7 +138,7 @@ export function PreferencesSection() {
               Get alerts on this device for reminders and updates.
             </p>
           </div>
-          <NotifToggle onStateChange={(s) => setPushOn(s === 'on')} />
+          <NotifToggle />
         </div>
 
         <div className="flex items-center justify-between gap-3 border-t border-line pt-4">
