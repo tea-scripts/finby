@@ -1,6 +1,7 @@
 'use client';
 
-import { NotifToggle } from '@/components/chat/notif-toggle';
+import { AlertsBell } from '@/components/alerts/alerts-bell';
+import { AlertsDrawer } from '@/components/alerts/alerts-drawer';
 import { Logo } from '@/components/logo';
 import { StreakRepair } from '@/components/streak/StreakRepair';
 import { TierBadge } from '@/components/ui/tier-badge';
@@ -12,21 +13,27 @@ import { useAuth } from '@/lib/store';
 export function AppHeader() {
   const user = useAuth((s) => s.user);
   const tier = useAuth((s) => s.workspace?.tier) ?? 'FREE';
+  const workspaceId = useAuth((s) => s.workspace?.id);
 
   return (
-    <header className="sticky top-0 z-10 border-b border-line bg-canvas/80 backdrop-blur pt-safe">
-      <div className="flex w-full items-center justify-between gap-2 px-4 py-3">
-        <div className="flex min-w-0 items-center gap-2">
-          <Logo />
-          <TierBadge tier={tier} />
-          <WorkspaceSwitcher />
+    <>
+      <header className="sticky top-0 z-10 border-b border-line bg-canvas/80 backdrop-blur pt-safe">
+        <div className="flex w-full items-center justify-between gap-2 px-4 py-3">
+          <div className="flex min-w-0 items-center gap-2">
+            <Logo />
+            <TierBadge tier={tier} />
+            <WorkspaceSwitcher />
+          </div>
+          <div className="flex shrink-0 items-center gap-3">
+            {user && (
+              <span className="hidden text-sm text-muted sm:inline">{user.displayName}</span>
+            )}
+            <StreakRepair />
+            {workspaceId && <AlertsBell workspaceId={workspaceId} />}
+          </div>
         </div>
-        <div className="flex shrink-0 items-center gap-3">
-          {user && <span className="hidden text-sm text-muted sm:inline">{user.displayName}</span>}
-          <StreakRepair />
-          <NotifToggle />
-        </div>
-      </div>
-    </header>
+      </header>
+      <AlertsDrawer />
+    </>
   );
 }

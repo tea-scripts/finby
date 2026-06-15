@@ -344,3 +344,19 @@ export interface InvitePreview {
   state: 'valid' | 'expired' | 'revoked' | 'accepted';
   hasAccount: boolean;
 }
+
+export interface AlertView {
+  id: string;
+  type: string;
+  status: 'UNREAD' | 'READ' | 'DISMISSED';
+  title: string;
+  body: string;
+  createdAt: string;
+}
+
+export interface AlertListResult {
+  alerts: AlertView[];
+  unreadCount: number;
+  nextCursor: string | null;
+  hasMore: boolean;
+}
