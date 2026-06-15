@@ -6,9 +6,11 @@ import { getStreakCalendar } from '@/lib/streaks-api';
 import { buildCalendarCells, type CalendarCell, type DayState } from '@/lib/streak-calendar';
 
 const STATE_CLASS: Record<DayState, string> = {
-  active: 'bg-accent',
-  repaired: 'bg-accent/50 ring-1 ring-accent',
-  missed: 'bg-line/60',
+  // Logged = amber, matching the flame/streak theme and the WeekRow above it.
+  // Repaired = a distinct blue "rescued" state. Missed = muted grid colour.
+  active: 'bg-amber-500',
+  repaired: 'bg-accent ring-1 ring-accent/50',
+  missed: 'bg-line',
 };
 
 const STATE_LABEL: Record<DayState, string> = {
@@ -74,13 +76,13 @@ export function StreakCalendar() {
 
       <div className="flex flex-wrap items-center gap-3 text-xs text-muted">
         <span className="flex items-center gap-1">
-          <span className="h-3 w-3 rounded-sm bg-accent" /> Logged
+          <span className="h-3 w-3 rounded-sm bg-amber-500" /> Logged
         </span>
         <span className="flex items-center gap-1">
-          <span className="h-3 w-3 rounded-sm bg-accent/50 ring-1 ring-accent" /> Repaired
+          <span className="h-3 w-3 rounded-sm bg-accent ring-1 ring-accent/50" /> Repaired
         </span>
         <span className="flex items-center gap-1">
-          <span className="h-3 w-3 rounded-sm bg-line/60" /> Missed
+          <span className="h-3 w-3 rounded-sm bg-line" /> Missed
         </span>
       </div>
     </div>
