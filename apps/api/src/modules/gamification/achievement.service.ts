@@ -5,12 +5,6 @@ import { PrismaService } from '../../prisma/prisma.service';
 
 type UnlockedAchievement = UserAchievement & { achievementDef: AchievementDef };
 
-const TIER_STYLE: Record<AchievementTier, { fill: string; stroke: string }> = {
-  BRONZE: { fill: '#CD7F32', stroke: '#A0522D' },
-  SILVER: { fill: '#C0C0C0', stroke: '#808080' },
-  GOLD: { fill: '#FFD700', stroke: '#B8860B' },
-};
-
 /** Achievements unlock once when a tracked metric crosses a fixed threshold and
  *  are immutable afterwards. Badge art is generated on the fly (no asset files). */
 @Injectable()
@@ -66,38 +60,36 @@ export class AchievementService {
 
   /** Render a self-contained badge SVG: a tier-coloured diamond over a dark
    *  card, with a category glyph. Pure — no DB access. */
-  renderBadgeSvg(slug: string, tier: AchievementTier, category: AchievementCategory): string {
-    const style = TIER_STYLE[tier];
-    return (
-      `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200"` +
-      ` role="img" aria-label="${slug}" data-slug="${slug}">` +
-      `<rect x="0" y="0" width="200" height="200" rx="24" fill="#1a1a2e"/>` +
-      `<rect x="65" y="65" width="70" height="70" rx="8" transform="rotate(45 100 100)"` +
-      ` fill="${style.fill}" stroke="${style.stroke}" stroke-width="4"/>` +
-      this.categoryIcon(category) +
-      `</svg>`
-    );
-  }
+  renderBadgeSvg(_slug: string, tier: AchievementTier, category: AchievementCategory): string {
+    const tierStyles: Record<AchievementTier, { fill: string; stroke: string }> = {
+      [AchievementTier.BRONZE]: { fill: '#CD7F32', stroke: '#A0522D' },
+      [AchievementTier.SILVER]: { fill: '#C0C0C0', stroke: '#808080' },
+      [AchievementTier.GOLD]: { fill: '#FFD700', stroke: '#B8860B' },
+    };
 
-  private categoryIcon(category: AchievementCategory): string {
-    switch (category) {
-      case AchievementCategory.STREAK:
-        return (
-          `<path d="M100 76 C92 88 84 96 88 108 C90 116 96 120 100 120 C104 120 110 116 112 108` +
-          ` C116 96 108 88 100 76Z M100 95 C97 101 96 107 100 112 C104 107 103 101 100 95Z" fill="#ffffff"/>`
-        );
-      case AchievementCategory.TRANSACTIONS:
-        return (
-          `<rect x="82" y="104" width="8" height="16" rx="2" fill="#ffffff"/>` +
-          `<rect x="96" y="94" width="8" height="26" rx="2" fill="#ffffff"/>` +
-          `<rect x="110" y="84" width="8" height="36" rx="2" fill="#ffffff"/>`
-        );
-      case AchievementCategory.GOALS:
-        return (
-          `<circle cx="100" cy="100" r="20" fill="none" stroke="#ffffff" stroke-width="3"/>` +
-          `<circle cx="100" cy="100" r="12" fill="none" stroke="#ffffff" stroke-width="2"/>` +
-          `<circle cx="100" cy="100" r="4" fill="#ffffff"/>`
-        );
-    }
+    const { fill, stroke } = tierStyles[tier];
+
+    const categoryIcons: Record<AchievementCategory, string> = {
+      [AchievementCategory.STREAK]: `<path d="M100 72 C90 86 80 96 85 110 C88 119 95 124 100 124 C105 124 112 119 115 110 C120 96 110 86 100 72Z" fill="#ffffff"/>
+      <path d="M100 94 C97 102 96 110 100 116 C104 110 103 102 100 94Z" fill="${fill}"/>`,
+
+      [AchievementCategory.TRANSACTIONS]: `<rect x="82" y="106" width="9" height="18" rx="2" fill="#ffffff"/>
+      <rect x="96" y="95"  width="9" height="29" rx="2" fill="#ffffff"/>
+      <rect x="110" y="84" width="9" height="40" rx="2" fill="#ffffff"/>`,
+
+      [AchievementCategory.GOALS]: `<circle cx="100" cy="100" r="22" fill="none" stroke="#ffffff" stroke-width="3"/>
+      <circle cx="100" cy="100" r="13" fill="none" stroke="#ffffff" stroke-width="2"/>
+      <circle cx="100" cy="100" r="5"  fill="#ffffff"/>`,
+    };
+
+    const icon = categoryIcons[category];
+
+    return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200">
+  <rect x="8" y="8" width="184" height="184" rx="28" fill="#12122a"/>
+  <rect x="65" y="65" width="70" height="70" rx="8"
+        transform="rotate(45 100 100)"
+        fill="${fill}" stroke="${stroke}" stroke-width="2.5"/>
+  ${icon}
+</svg>`;
   }
 }
