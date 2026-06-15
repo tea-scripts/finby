@@ -1,5 +1,5 @@
 import { useAuth } from './store';
-import type { StreakStatus } from './types';
+import type { StreakStatus, StreakCalendar } from './types';
 
 function authed<T>(path: string, init?: RequestInit): Promise<T> {
   return useAuth.getState().authed<T>(path, init);
@@ -11,4 +11,8 @@ export function getStreakStatus(workspaceId: string): Promise<StreakStatus> {
 
 export function repairStreak(workspaceId: string): Promise<StreakStatus> {
   return authed<StreakStatus>(`/workspaces/${workspaceId}/streaks/repair`, { method: 'POST' });
+}
+
+export function getStreakCalendar(workspaceId: string): Promise<StreakCalendar> {
+  return authed<StreakCalendar>(`/workspaces/${workspaceId}/streaks/calendar`);
 }
