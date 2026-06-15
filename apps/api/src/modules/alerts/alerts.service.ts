@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import type { Alert } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import type { BudgetSpendChange } from '../budgets/budgets.types';
@@ -54,11 +54,45 @@ function toView(alert: Alert): AlertView {
 
 @Injectable()
 export class AlertsService {
+  private readonly logger = new Logger(AlertsService.name);
+
   // push is optional so unit tests can construct the service with just prisma.
   constructor(
     private readonly prisma: PrismaService,
     private readonly push?: PushService,
   ) {}
+
+  /** Persist a proactive insight alert (anomaly / coaching / monthly summary).
+   *  Push delivery is the caller's responsibility (InsightComputationService).
+   *  Never throws — a single alert-write failure must not abort a batch job. */
+  async createInsightAlert(params: {
+    workspaceId: string;
+    userId: string;
+    type: 'AI_COACHING_NUDGE' | 'UNUSUAL_SPEND' | 'MONTHLY_SUMMARY';
+    title: string;
+    body: string;
+    metadata?: Record<string, unknown>;
+  }): Promise<void> {
+    try {
+      await this.prisma.alert.create({
+        data: {
+          workspaceId: params.workspaceId,
+          userId: params.userId,
+          type: params.type,
+          title: params.title,
+          body: params.body,
+          status: 'UNREAD',
+          metadata: params.metadata ? JSON.stringify(params.metadata) : null,
+        },
+      });
+    } catch (err) {
+      this.logger.error(
+        `Failed to create ${params.type} insight alert for workspace ${params.workspaceId}: ${
+          err instanceof Error ? err.message : String(err)
+        }`,
+      );
+    }
+  }
 
   async generateBudgetAlert(params: {
     workspaceId: string;

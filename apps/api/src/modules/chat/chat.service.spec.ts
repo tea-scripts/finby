@@ -15,7 +15,7 @@ import { ChatService } from './chat.service';
 import { ConversationsService } from './conversations.service';
 import { MemoryCompressionService } from './memory/memory-compression.service';
 import { ContextAssemblerService } from './context/context-assembler.service';
-import { FinancialIntelligenceService } from './context/financial-intelligence.service';
+import { FinancialIntelligenceService } from '../analytics/financial-intelligence.service';
 
 /** Stub FinancialIntelligenceService — returns empty signals; these tests don't
  *  assert on the signals block (covered in financial-intelligence.service.spec). */

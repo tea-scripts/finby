@@ -29,6 +29,7 @@ import { PortfolioModule } from './modules/portfolio/portfolio.module';
 import { PushModule } from './modules/push/push.module';
 import { ReceiptsModule } from './modules/receipts/receipts.module';
 import { RemindersModule } from './modules/reminders/reminders.module';
+import { InsightsModule } from './modules/insights/insights.module';
 import { MembersModule } from './modules/members/members.module';
 import { SettingsModule } from './modules/settings/settings.module';
 import { TransactionsModule } from './modules/transactions/transactions.module';
@@ -102,6 +103,7 @@ import { RedisModule } from './redis/redis.module';
     ExportModule,
     PushModule,
     RemindersModule,
+    InsightsModule,
     ChatModule,
     ReceiptsModule,
     SettingsModule,

@@ -1,5 +1,5 @@
-import { AnalyticsService } from '../../analytics/analytics.service';
-import { BudgetsService } from '../../budgets/budgets.service';
+import { AnalyticsService } from './analytics.service';
+import { BudgetsService } from '../budgets/budgets.service';
 import { FinancialIntelligenceService } from './financial-intelligence.service';
 
 type SummaryOverride = Partial<{

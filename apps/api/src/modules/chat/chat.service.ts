@@ -33,7 +33,7 @@ import type {
 import { estimateTokens } from './memory/token-counter.util';
 import { MemoryCompressionService } from './memory/memory-compression.service';
 import { ContextAssemblerService } from './context/context-assembler.service';
-import { FinancialIntelligenceService } from './context/financial-intelligence.service';
+import { FinancialIntelligenceService } from '../analytics/financial-intelligence.service';
 
 const CONFIDENCE_THRESHOLD = 0.7;
 /** Safety cap on the agentic tool loop (one user turn). */

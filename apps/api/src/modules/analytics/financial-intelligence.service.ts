@@ -1,11 +1,11 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { AnalyticsService } from '../../analytics/analytics.service';
-import { BudgetsService } from '../../budgets/budgets.service';
+import { AnalyticsService } from './analytics.service';
+import { BudgetsService } from '../budgets/budgets.service';
 import type {
   BurnRateForecast,
   FinancialIntelligenceSignals,
   SpendingAnomaly,
-} from '../../llm/llm.types';
+} from '../llm/llm.types';
 
 /** Safe fallback — a signals failure must never break a chat turn. */
 const EMPTY_SIGNALS: FinancialIntelligenceSignals = {
