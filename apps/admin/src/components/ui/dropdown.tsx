@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useId, useRef, useState, type KeyboardEvent } from 'react';
+import { useEffect, useId, useLayoutEffect, useRef, useState, type KeyboardEvent } from 'react';
+import { createPortal } from 'react-dom';
 
 export interface DropdownOption {
   value: string;
@@ -46,15 +47,38 @@ export function Dropdown({
 }: DropdownProps) {
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(0);
+  const [menuRect, setMenuRect] = useState<{ left: number; top: number; width: number } | null>(null);
   const rootRef = useRef<HTMLDivElement>(null);
+  const listRef = useRef<HTMLUListElement>(null);
   const listId = useId();
 
   const selected = options.find((o) => o.value === value);
 
+  // Position the portalled menu under the trigger using fixed coordinates so it is
+  // never clipped by an `overflow` ancestor (e.g. a scrollable table wrapper).
+  useLayoutEffect(() => {
+    if (!open) return;
+    function reposition() {
+      const el = rootRef.current;
+      if (!el) return;
+      const r = el.getBoundingClientRect();
+      setMenuRect({ left: r.left, top: r.bottom + 6, width: r.width });
+    }
+    reposition();
+    window.addEventListener('scroll', reposition, true);
+    window.addEventListener('resize', reposition);
+    return () => {
+      window.removeEventListener('scroll', reposition, true);
+      window.removeEventListener('resize', reposition);
+    };
+  }, [open]);
+
   useEffect(() => {
     if (!open) return;
     function onPointerDown(e: PointerEvent) {
-      if (rootRef.current && !rootRef.current.contains(e.target as Node)) setOpen(false);
+      const t = e.target as Node;
+      if (rootRef.current?.contains(t) || listRef.current?.contains(t)) return;
+      setOpen(false);
     }
     document.addEventListener('pointerdown', onPointerDown);
     return () => document.removeEventListener('pointerdown', onPointerDown);
@@ -114,11 +138,14 @@ export function Dropdown({
         <Chevron open={open} />
       </button>
 
-      {open && (
+      {open && menuRect &&
+        createPortal(
         <ul
+          ref={listRef}
           role="listbox"
           id={listId}
-          className="absolute z-20 mt-1.5 max-h-60 w-full overflow-auto rounded-xl border border-line bg-surface p-1 shadow-card"
+          style={{ position: 'fixed', left: menuRect.left, top: menuRect.top, width: menuRect.width }}
+          className="z-50 max-h-60 overflow-auto rounded-xl border border-line bg-surface p-1 shadow-card"
         >
           {options.map((opt, i) => {
             const isSelected = opt.value === value;
@@ -138,8 +165,9 @@ export function Dropdown({
               </li>
             );
           })}
-        </ul>
-      )}
+        </ul>,
+          document.body,
+        )}
     </div>
   );
 }
