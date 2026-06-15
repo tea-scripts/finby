@@ -15,3 +15,15 @@ export const STREAK_ERRORS = {
   NOT_AT_RISK: 'STREAK_NOT_AT_RISK',
   ALREADY_USED: 'STREAK_REPAIR_ALREADY_USED',
 } as const;
+
+/** Calendar of streak activity over a window, derived from transaction history. */
+export interface StreakCalendarView {
+  /** Inclusive window start, local YYYY-MM-DD. */
+  from: string;
+  /** Inclusive window end (the user's local today), YYYY-MM-DD. */
+  to: string;
+  /** Local days with >=1 logged transaction. */
+  activeDays: string[];
+  /** Local days credited by a streak repair (latest repair if in window). */
+  repairedDays: string[];
+}
