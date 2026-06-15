@@ -1,10 +1,12 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
+import { TIER_LIMITS, type SubscriptionTier } from '@finby/shared';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AnalyticsService } from '../analytics/analytics.service';
 import { FinancialIntelligenceService } from '../analytics/financial-intelligence.service';
 import { AlertsService } from '../alerts/alerts.service';
 import { PushService } from '../push/push.service';
+import { LlmService } from '../llm/llm.service';
 import type { FinancialIntelligenceSignals } from '../llm/llm.types';
 
 type InsightAlertType = 'AI_COACHING_NUDGE' | 'UNUSUAL_SPEND' | 'MONTHLY_SUMMARY';
@@ -55,6 +57,7 @@ export class InsightComputationService {
     private readonly alerts: AlertsService,
     private readonly push: PushService,
     private readonly analytics: AnalyticsService,
+    private readonly llm: LlmService,
   ) {}
 
   @Cron('0 6 * * *') // 6AM UTC daily
@@ -83,6 +86,15 @@ export class InsightComputationService {
   }
 
   private async processWorkspace(workspace: WorkspaceRow, now: Date): Promise<void> {
+    // Tier gate — only tiers with proactiveCoaching enabled get nightly insights.
+    const limits = TIER_LIMITS[workspace.tier as SubscriptionTier];
+    if (!limits?.proactiveCoaching) {
+      this.logger.debug(
+        `Skipping insights for workspace ${workspace.id} — tier ${workspace.tier} has proactiveCoaching disabled`,
+      );
+      return;
+    }
+
     const signals = await this.financialIntelligence.computeSignals(
       workspace.id,
       workspace.baseCurrency,
@@ -135,12 +147,24 @@ export class InsightComputationService {
 
     if (await this.alreadyAlertedToday(workspace.id, 'UNUSUAL_SPEND', now)) return;
 
-    const body = `${anomaly.category} is ${anomaly.multiplier}× your usual spend this month`;
+    const data = {
+      category: anomaly.category,
+      currentAmount: anomaly.currentMonthAmount,
+      average: anomaly.threeMonthAverage,
+      multiplier: anomaly.multiplier,
+      observedMonths: anomaly.observedMonths,
+      currency: workspace.baseCurrency,
+    };
+    const { title, body } = await this.generateInsightCopy(
+      'UNUSUAL_SPEND',
+      data,
+      workspace.baseCurrency,
+    );
     await this.fanOut(workspace.id, allMemberUserIds, notifiableUserIds, {
       type: 'UNUSUAL_SPEND',
-      title: '⚠️ Spending spike detected',
+      title,
       body,
-      pushTitle: '⚠️ Spending spike detected',
+      pushTitle: title,
       pushBody: body,
       url: '/chat',
       metadata: {
@@ -148,6 +172,7 @@ export class InsightComputationService {
         multiplier: anomaly.multiplier,
         currentMonthAmount: anomaly.currentMonthAmount,
         threeMonthAverage: anomaly.threeMonthAverage,
+        observedMonths: anomaly.observedMonths,
       },
     });
   }
@@ -167,14 +192,24 @@ export class InsightComputationService {
     const forecast = [...exceeding].sort((a, b) => b.percentProjected - a.percentProjected)[0];
     if (!forecast) return;
 
-    const body = `${forecast.category} budget on track to exceed by month-end (${Math.round(
-      forecast.percentProjected,
-    )}% projected)`;
+    const data = {
+      category: forecast.category,
+      budgetLimit: forecast.budgetLimit,
+      projectedMonthEnd: forecast.projectedMonthEnd,
+      daysRemaining: forecast.daysRemaining,
+      percentProjected: forecast.percentProjected,
+      currency: workspace.baseCurrency,
+    };
+    const { title, body } = await this.generateInsightCopy(
+      'AI_COACHING_NUDGE',
+      data,
+      workspace.baseCurrency,
+    );
     await this.fanOut(workspace.id, allMemberUserIds, notifiableUserIds, {
       type: 'AI_COACHING_NUDGE',
-      title: `💸 ${forecast.category} budget at risk`,
+      title,
       body,
-      pushTitle: '💸 Budget at risk',
+      pushTitle: title,
       pushBody: body,
       url: '/chat',
       metadata: {
@@ -216,14 +251,26 @@ export class InsightComputationService {
     );
 
     const monthName = MONTHS[lastMonthStart.getUTCMonth()] ?? '';
-    const currency = workspace.baseCurrency;
-    const body = `Income: ${currency} ${summary.totalIncome} | Expenses: ${currency} ${summary.totalExpenses} | Saved: ${currency} ${summary.netSavings} (${summary.savingsRate}%)`;
+    const data = {
+      month: monthName,
+      year: lastMonthStart.getUTCFullYear(),
+      totalIncome: summary.totalIncome,
+      totalExpenses: summary.totalExpenses,
+      netSavings: summary.netSavings,
+      savingsRate: summary.savingsRate,
+      currency: workspace.baseCurrency,
+    };
+    const { title, body } = await this.generateInsightCopy(
+      'MONTHLY_SUMMARY',
+      data,
+      workspace.baseCurrency,
+    );
 
     await this.fanOut(workspace.id, allMemberUserIds, notifiableUserIds, {
       type: 'MONTHLY_SUMMARY',
-      title: `Your ${monthName} financial summary`,
+      title,
       body,
-      pushTitle: `Your ${monthName} financial summary`,
+      pushTitle: title,
       pushBody: body,
       url: '/dashboard',
       metadata: {
@@ -248,6 +295,101 @@ export class InsightComputationService {
       where: { workspaceId, type, createdAt: { gte: startOfToday } },
     });
     return existing !== null;
+  }
+
+  /** Generate warm coaching copy via the LLM. NEVER throws — on any failure
+   *  (LLM down, malformed JSON, wrong shape) it logs and returns the deterministic
+   *  template copy so insights are never blocked. */
+  private async generateInsightCopy(
+    type: InsightAlertType,
+    data: Record<string, unknown>,
+    baseCurrency: string,
+  ): Promise<{ title: string; body: string }> {
+    const prompts: Record<InsightAlertType, string> = {
+      UNUSUAL_SPEND: `You are a friendly personal finance coach for Finby.
+Write a SHORT, warm notification (title + body) about a spending spike.
+Data: ${JSON.stringify(data)}
+Currency: ${baseCurrency}
+
+Rules:
+- Title: max 8 words, no emoji, plain English
+- Body: max 25 words, conversational, non-judgmental, one insight
+- Do not use dollar signs — use the currency code or symbol from the data
+- No financial advice disclaimers
+- Respond ONLY with valid JSON: {"title": "...", "body": "..."}`,
+      AI_COACHING_NUDGE: `You are a friendly personal finance coach for Finby.
+Write a SHORT, warm notification (title + body) about a budget at risk.
+Data: ${JSON.stringify(data)}
+Currency: ${baseCurrency}
+
+Rules:
+- Title: max 8 words, no emoji, plain English
+- Body: max 25 words, conversational, forward-looking, not alarming
+- Respond ONLY with valid JSON: {"title": "...", "body": "..."}`,
+      MONTHLY_SUMMARY: `You are a friendly personal finance coach for Finby.
+Write a SHORT, warm monthly summary notification (title + body).
+Data: ${JSON.stringify(data)}
+Currency: ${baseCurrency}
+
+Rules:
+- Title: max 8 words, reference the month name, no emoji
+- Body: max 30 words, highlight one positive + one area to watch
+- Respond ONLY with valid JSON: {"title": "...", "body": "..."}`,
+    };
+
+    try {
+      const response = await this.llm.createMessage({
+        system:
+          "You are Finby's friendly personal finance coach. Follow the instructions exactly and respond ONLY with the requested JSON object.",
+        messages: [{ role: 'user', content: prompts[type] }],
+        maxTokens: 200,
+      });
+
+      const text = response.textOutput.replace(/```json|```/g, '').trim();
+      const parsed: unknown = JSON.parse(text);
+      if (
+        parsed !== null &&
+        typeof parsed === 'object' &&
+        'title' in parsed &&
+        'body' in parsed &&
+        typeof (parsed as Record<string, unknown>).title === 'string' &&
+        typeof (parsed as Record<string, unknown>).body === 'string'
+      ) {
+        const obj = parsed as { title: string; body: string };
+        return { title: obj.title, body: obj.body };
+      }
+      throw new Error('Invalid LLM response shape');
+    } catch (err) {
+      this.logger.warn(`generateInsightCopy failed for ${type} — using fallback: ${describe(err)}`);
+      return this.fallbackCopy(type, data, baseCurrency);
+    }
+  }
+
+  /** Deterministic template copy (the pre-LLM behavior) — the safe fallback. */
+  private fallbackCopy(
+    type: InsightAlertType,
+    data: Record<string, unknown>,
+    baseCurrency: string,
+  ): { title: string; body: string } {
+    switch (type) {
+      case 'UNUSUAL_SPEND':
+        return {
+          title: '⚠️ Spending spike detected',
+          body: `${String(data.category ?? '')} is ${Number(data.multiplier ?? 0)}× your usual spend this month`,
+        };
+      case 'AI_COACHING_NUDGE':
+        return {
+          title: `💸 ${String(data.category ?? '')} budget at risk`,
+          body: `${String(data.category ?? '')} budget on track to exceed by month-end (${Math.round(
+            Number(data.percentProjected ?? 0),
+          )}% projected)`,
+        };
+      case 'MONTHLY_SUMMARY':
+        return {
+          title: `Your ${String(data.month ?? '')} financial summary`,
+          body: `Income: ${baseCurrency} ${String(data.totalIncome ?? '0')} | Expenses: ${baseCurrency} ${String(data.totalExpenses ?? '0')} | Saved: ${baseCurrency} ${String(data.netSavings ?? '0')} (${String(data.savingsRate ?? '0')}%)`,
+        };
+    }
   }
 
   /** Persist an alert for every accepted member, then best-effort push only to

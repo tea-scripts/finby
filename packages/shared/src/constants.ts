@@ -111,7 +111,7 @@ export const TIER_LIMITS: Record<SubscriptionTier, TierLimits> = {
     memberInvites: false,
     maxMembers: 1,
     dataExport: true,
-    proactiveCoaching: false,
+    proactiveCoaching: true,
     receiptScanning: true,
     receiptScansPerDay: 20,
     streakRepair: true,

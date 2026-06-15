@@ -58,7 +58,10 @@ export interface LlmProvider {
 export interface SpendingAnomaly {
   category: string;
   currentMonthAmount: number;
+  /** Average over the months that actually had spend (total / observedMonths). */
   threeMonthAverage: number;
+  /** How many of the 3 prior months had non-zero spend for this category (1-3). */
+  observedMonths: number;
   /** currentMonthAmount / threeMonthAverage, rounded to 1dp. */
   multiplier: number;
 }

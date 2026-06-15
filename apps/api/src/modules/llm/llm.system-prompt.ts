@@ -41,7 +41,7 @@ export function renderFinancialSignals(
     for (const a of signals.spendingAnomalies) {
       const tag = a.multiplier >= 2 ? 'significantly above trend' : 'above trend';
       lines.push(
-        `⚠️ ${a.category}: ${m(a.currentMonthAmount)} this month vs ${m(a.threeMonthAverage)}/mo avg (${a.multiplier}×) — ${tag}`,
+        `⚠️ ${a.category}: ${m(a.currentMonthAmount)} this month vs ${m(a.threeMonthAverage)}/mo avg over ${a.observedMonths} month${a.observedMonths === 1 ? '' : 's'} (${a.multiplier}×) — ${tag}`,
       );
     }
   }
