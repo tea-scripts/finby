@@ -6,6 +6,7 @@ import { GeistMono } from 'geist/font/mono';
 import { Analytics } from '@vercel/analytics/next';
 import { PostHogProvider } from '@/components/analytics/posthog-provider';
 import { SplashScreen } from '@/components/app/splash-screen';
+import { Toaster } from '@/components/ui/toast';
 import './globals.css';
 
 const display = Bricolage_Grotesque({
@@ -41,6 +42,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <SplashScreen />
         <PostHogProvider>{children}</PostHogProvider>
         <Analytics />
+        <Toaster />
       </body>
     </html>
   );

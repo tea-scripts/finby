@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Field } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { updateProfile } from '@/lib/settings-api';
+import { toast } from '@/lib/toast';
 import { useAuth } from '@/lib/store';
 
 export function ProfileSection() {
@@ -25,6 +26,7 @@ export function ProfileSection() {
     try {
       const updated = await updateProfile({ displayName, timezone });
       setUser(updated);
+      toast.success('Settings saved');
     } catch {
       setError(true);
     } finally {

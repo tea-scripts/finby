@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ReceiptScanner } from '@/components/receipts/ReceiptScanner';
 import { EditTransactionModal } from '@/components/transactions/edit-transaction-modal';
 import { TransactionFilters } from '@/components/transactions/transaction-filters';
@@ -11,6 +11,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { ApiError } from '@/lib/api-client';
 import { currentMonthRange } from '@/lib/format';
 import { listCategories, listTransactions } from '@/lib/transactions-api';
+// Aliased to avoid colliding with the pre-existing local `toast` state below.
+import { toast as notify } from '@/lib/toast';
 import { useAuth } from '@/lib/store';
 import type { Category, Transaction, TransactionQuery } from '@/lib/types';
 
@@ -36,23 +38,12 @@ export default function TransactionsPage() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [editing, setEditing] = useState<Transaction | null>(null);
   const [scannerOpen, setScannerOpen] = useState(false);
-  const [toast, setToast] = useState<string | null>(null);
-  const toastTimer = useRef<number | null>(null);
-
-  useEffect(
-    () => () => {
-      if (toastTimer.current !== null) window.clearTimeout(toastTimer.current);
-    },
-    [],
-  );
 
   // A confirmed receipt scan logged a new transaction: reload page 1 (a fresh
   // filters object retriggers the load effect) and surface a brief toast.
   function handleReceiptLogged() {
     setFilters((f) => ({ ...f }));
-    setToast('Receipt logged — transaction added.');
-    if (toastTimer.current !== null) window.clearTimeout(toastTimer.current);
-    toastTimer.current = window.setTimeout(() => setToast(null), 3000);
+    notify.success('Receipt logged', 'Transaction added.');
   }
 
   // Categories for the filter + edit pickers (load once).
@@ -146,15 +137,6 @@ export default function TransactionsPage() {
         )}
       </div>
 
-      {toast && (
-        <div
-          role="status"
-          className="fixed bottom-24 left-1/2 z-50 -translate-x-1/2 rounded-full border border-line bg-surface px-4 py-2 text-sm text-ink shadow-card"
-        >
-          {toast}
-        </div>
-      )}
-
       <ReceiptScanner
         open={scannerOpen}
         onClose={() => setScannerOpen(false)}
@@ -169,10 +151,12 @@ export default function TransactionsPage() {
           onSaved={(u) => {
             setItems((prev) => prev.map((t) => (t.id === u.id ? u : t)));
             setEditing(null);
+            notify.success('Transaction updated');
           }}
           onVoided={(id) => {
             setItems((prev) => prev.filter((t) => t.id !== id));
             setEditing(null);
+            notify.success('Transaction deleted');
           }}
           onClose={() => setEditing(null)}
         />
