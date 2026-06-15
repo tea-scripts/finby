@@ -6,6 +6,7 @@ import type { CurrencyDisplay, DateFormat, NumberFormat, UserPreferences } from 
 import { Dropdown } from '@/components/ui/dropdown';
 import { Field } from '@/components/ui/field';
 import { NotifToggle } from '@/components/chat/notif-toggle';
+import { StreakCalendar } from '@/components/streak/StreakCalendar';
 import { detectIosSafariTab } from '@/lib/ios';
 import { updateProfile } from '@/lib/settings-api';
 import { toast } from '@/lib/toast';
@@ -171,6 +172,9 @@ export function PreferencesSection() {
           <p className="text-xs text-muted">
             Best: {longestStreak} {longestStreak === 1 ? 'day' : 'days'}
           </p>
+          <div className="mt-4">
+            <StreakCalendar />
+          </div>
         </div>
       </div>
     </section>
