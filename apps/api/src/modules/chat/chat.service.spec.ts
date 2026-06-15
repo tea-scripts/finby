@@ -15,6 +15,21 @@ import { ChatService } from './chat.service';
 import { ConversationsService } from './conversations.service';
 import { MemoryCompressionService } from './memory/memory-compression.service';
 import { ContextAssemblerService } from './context/context-assembler.service';
+import { FinancialIntelligenceService } from './context/financial-intelligence.service';
+
+/** Stub FinancialIntelligenceService — returns empty signals; these tests don't
+ *  assert on the signals block (covered in financial-intelligence.service.spec). */
+function fiMock() {
+  return {
+    computeSignals: jest.fn().mockResolvedValue({
+      spendingAnomalies: [],
+      burnRateForecasts: [],
+      savingsVelocityDelta: null,
+      topMerchants: [],
+      currentMonthSummary: { totalIncome: 0, totalExpenses: 0, netSavings: 0, savingsRate: 0 },
+    }),
+  };
+}
 
 const workspace: WorkspaceContext = {
   id: 'w1',
@@ -64,6 +79,7 @@ function build(overrides?: {
     portfolio as unknown as PortfolioService,
     memory as unknown as MemoryCompressionService,
     contextAssembler as unknown as ContextAssemblerService,
+    fiMock() as unknown as FinancialIntelligenceService,
   );
   return { service, transactions, fx, categories, accounts, budgets, analytics, market, portfolio };
 }
@@ -149,6 +165,7 @@ function buildForHandle(streamMessage: jest.Mock, dailyCount = 2) {
     {} as unknown as PortfolioService,
     memory as unknown as MemoryCompressionService,
     contextAssembler as unknown as ContextAssemblerService,
+    fiMock() as unknown as FinancialIntelligenceService,
   );
   return { service, create, memory, contextAssembler };
 }
@@ -193,6 +210,7 @@ function buildForMaintain(streamMessage: jest.Mock) {
     {} as unknown as PortfolioService,
     memory as unknown as MemoryCompressionService,
     contextAssembler as unknown as ContextAssemblerService,
+    fiMock() as unknown as FinancialIntelligenceService,
   );
   return { service, memory };
 }
@@ -248,6 +266,7 @@ function buildForLoop(streamMessage: jest.Mock) {
     {} as unknown as PortfolioService,
     memory as unknown as MemoryCompressionService,
     contextAssembler as unknown as ContextAssemblerService,
+    fiMock() as unknown as FinancialIntelligenceService,
   );
   return { service, transactions, fx, memory, contextAssembler };
 }
@@ -741,6 +760,7 @@ describe('ChatService.handleMessage — multi-step tool loop', () => {
       {} as unknown as PortfolioService,
       memory as unknown as MemoryCompressionService,
       contextAssembler as unknown as ContextAssemblerService,
+      fiMock() as unknown as FinancialIntelligenceService,
     );
     return { service, transactions };
   }

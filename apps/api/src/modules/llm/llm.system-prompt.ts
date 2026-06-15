@@ -1,4 +1,105 @@
-import type { SystemPromptContext } from './llm.types';
+import type { FinancialIntelligenceSignals, SystemPromptContext } from './llm.types';
+
+const CURRENCY_SYMBOLS: Record<string, string> = {
+  USD: '$',
+  PHP: '₱',
+  NGN: '₦',
+  EUR: '€',
+  GBP: '£',
+  JPY: '¥',
+  INR: '₹',
+  KES: 'KSh',
+  GHS: 'GH₵',
+  AED: 'AED ',
+};
+
+/** Whole-currency formatting for the signals block (amounts rounded to 0dp). */
+function money(amount: number, currency: string): string {
+  const rounded = Math.round(amount).toLocaleString('en-US');
+  const symbol = CURRENCY_SYMBOLS[currency];
+  return symbol ? `${symbol}${rounded}` : `${currency} ${rounded}`;
+}
+
+function round1(value: number): number {
+  return Math.round(value * 10) / 10;
+}
+
+/** Renders the pre-computed financial signals into the compact block Claude reads
+ *  on every turn. Returns '' when no signals were supplied (e.g. prompt tests). */
+export function renderFinancialSignals(
+  signals: FinancialIntelligenceSignals | undefined,
+  baseCurrency: string,
+): string {
+  if (!signals) return '';
+  const m = (amount: number): string => money(amount, baseCurrency);
+  const lines: string[] = ['## FINANCIAL SIGNALS (computed this session)', ''];
+
+  lines.push('### Spending Anomalies');
+  if (signals.spendingAnomalies.length === 0) {
+    lines.push('✅ No anomalies detected');
+  } else {
+    for (const a of signals.spendingAnomalies) {
+      const tag = a.multiplier >= 2 ? 'significantly above trend' : 'above trend';
+      lines.push(
+        `⚠️ ${a.category}: ${m(a.currentMonthAmount)} this month vs ${m(a.threeMonthAverage)}/mo avg (${a.multiplier}×) — ${tag}`,
+      );
+    }
+  }
+  lines.push('');
+
+  lines.push('### Budget Burn Rate');
+  if (signals.burnRateForecasts.length === 0) {
+    lines.push('✅ All budgets on track');
+  } else {
+    for (const f of signals.burnRateForecasts) {
+      const icon = f.willExceed ? '🔴' : '🟡';
+      const verdict = f.willExceed ? 'will exceed' : 'at risk';
+      lines.push(
+        `${icon} ${f.category}: projected ${m(f.projectedMonthEnd)} by month-end vs ${m(f.budgetLimit)} limit (${Math.round(f.percentProjected)}% — ${verdict})`,
+      );
+    }
+  }
+  lines.push('');
+
+  // Savings velocity is omitted entirely when there is no income to rate against.
+  if (signals.currentMonthSummary.totalIncome > 0 && signals.savingsVelocityDelta !== null) {
+    const delta = signals.savingsVelocityDelta;
+    const rate = round1(signals.currentMonthSummary.savingsRate);
+    lines.push('### Savings Velocity');
+    if (delta >= 1) {
+      lines.push(
+        `↑ Savings rate improving: +${delta} percentage points vs last month (current: ${rate}%)`,
+      );
+    } else if (delta <= -1) {
+      lines.push(
+        `↓ Savings rate declining: ${delta} percentage points vs last month (current: ${rate}%)`,
+      );
+    } else {
+      lines.push(`→ Savings rate stable vs last month (current: ${rate}%)`);
+    }
+    lines.push('');
+  }
+
+  lines.push('### Top Merchants (last 30 days)');
+  if (signals.topMerchants.length === 0) {
+    lines.push('No merchant activity in the last 30 days');
+  } else {
+    lines.push(
+      signals.topMerchants
+        .map((t) => `${t.name}: ${m(t.total)} (${t.visits} visit${t.visits === 1 ? '' : 's'})`)
+        .join(' | '),
+    );
+  }
+  lines.push('');
+
+  const s = signals.currentMonthSummary;
+  lines.push('### This Month So Far');
+  lines.push(
+    `Income: ${m(s.totalIncome)} | Expenses: ${m(s.totalExpenses)} | Net savings: ${m(s.netSavings)} | Savings rate: ${round1(s.savingsRate)}%`,
+  );
+
+  return lines.join('\n');
+}
 
 /** Builds the Finby system prompt (contract template) with live workspace/user context. */
 export function buildSystemPrompt(ctx: SystemPromptContext): string {
@@ -38,6 +139,11 @@ export function buildSystemPrompt(ctx: SystemPromptContext): string {
     `- Timezone: ${ctx.user.timezone}`,
     `- Today's date: ${ctx.today}`,
   ];
+
+  const signalsBlock = renderFinancialSignals(ctx.signals, ctx.workspace.baseCurrency);
+  if (signalsBlock) {
+    lines.push('', signalsBlock);
+  }
 
   if (ctx.rollingContextSummary) {
     lines.push('', 'FINANCIAL HISTORY SUMMARY:', ctx.rollingContextSummary);

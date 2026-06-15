@@ -14,6 +14,7 @@ import { ConversationsService } from './conversations.service';
 import { MemoryPolicyService } from './memory/memory-policy.service';
 import { MemoryCompressionService } from './memory/memory-compression.service';
 import { ContextAssemblerService } from './context/context-assembler.service';
+import { FinancialIntelligenceService } from './context/financial-intelligence.service';
 
 @Module({
   imports: [
@@ -28,6 +29,6 @@ import { ContextAssemblerService } from './context/context-assembler.service';
     PortfolioModule,
   ],
   controllers: [ConversationsController],
-  providers: [ConversationsService, ChatService, MemoryPolicyService, MemoryCompressionService, ContextAssemblerService],
+  providers: [ConversationsService, ChatService, MemoryPolicyService, MemoryCompressionService, ContextAssemblerService, FinancialIntelligenceService],
 })
 export class ChatModule {}
