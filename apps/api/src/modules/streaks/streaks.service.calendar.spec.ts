@@ -1,4 +1,6 @@
 import type { PrismaService } from '../../prisma/prisma.service';
+import type { AchievementService } from '../gamification/achievement.service';
+import type { XpService } from '../gamification/xp.service';
 import { StreaksService } from './streaks.service';
 
 // Fixed "now" passed in so the window is deterministic without mocking time.
@@ -20,7 +22,9 @@ function setupCalendar(opts: {
     user: { findUnique },
     transaction: { findMany: txnFindMany },
   } as unknown as PrismaService;
-  return { service: new StreaksService(prisma), txnFindMany };
+  const xpService = {} as unknown as XpService;
+  const achievementService = {} as unknown as AchievementService;
+  return { service: new StreaksService(prisma, xpService, achievementService), txnFindMany };
 }
 
 describe('StreaksService.getCalendar', () => {

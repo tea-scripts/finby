@@ -173,6 +173,9 @@ model User {
   refreshTokens         RefreshToken[]
   feedback              Feedback[]
   supportTickets        SupportTicket[]
+  xp             UserXp?
+  xpTransactions XpTransaction[]
+  achievements   UserAchievement[]
 
   @@index([email])
   @@map("users")
@@ -854,4 +857,84 @@ model AdminTotpSecret {
   enrolledAt DateTime @default(now())
 
   @@map("admin_totp_secrets")
+}
+
+// ============================================================
+// GAMIFICATION — XP + ACHIEVEMENTS
+// XP is a per-user balance earned from streak/transaction/goal
+// events (scaled by the workspace's subscription tier) and spent
+// on streak recovery. Achievements unlock at fixed thresholds.
+// ============================================================
+
+model UserXp {
+  id          String   @id @default(cuid())
+  userId      String   @unique
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  balance     Int      @default(0)
+  totalEarned Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("user_xp")
+}
+
+model XpTransaction {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  event     XpEvent
+  delta     Int
+  meta      Json?
+  createdAt DateTime @default(now())
+
+  @@index([userId, createdAt])
+  @@map("xp_transactions")
+}
+
+enum XpEvent {
+  STREAK_DAY
+  STREAK_MILESTONE
+  TRANSACTION_LOGGED
+  GOAL_HIT
+  STREAK_RECOVERY
+  REFERRAL_BONUS
+}
+
+model AchievementDef {
+  id               String              @id @default(cuid())
+  slug             String              @unique
+  category         AchievementCategory
+  tier             AchievementTier
+  threshold        Int
+  label            String
+  description      String
+  createdAt        DateTime            @default(now())
+  userAchievements UserAchievement[]
+
+  @@map("achievement_defs")
+}
+
+model UserAchievement {
+  id               String         @id @default(cuid())
+  userId           String
+  user             User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  achievementDefId String
+  achievementDef   AchievementDef @relation(fields: [achievementDefId], references: [id])
+  unlockedAt       DateTime       @default(now())
+
+  @@unique([userId, achievementDefId])
+  @@index([userId])
+  @@map("user_achievements")
+}
+
+enum AchievementCategory {
+  STREAK
+  TRANSACTIONS
+  GOALS
+}
+
+enum AchievementTier {
+  BRONZE
+  SILVER
+  GOLD
 }

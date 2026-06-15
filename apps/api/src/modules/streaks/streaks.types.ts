@@ -1,3 +1,14 @@
+import type { AchievementTier } from '@prisma/client';
+
+/** An achievement unlocked as a side effect of logging a transaction, surfaced
+ *  to the client so it can celebrate immediately. */
+export interface NewAchievement {
+  slug: string;
+  tier: AchievementTier;
+  label: string;
+  unlockedAt: Date;
+}
+
 /** Live streak status for the requesting user. */
 export interface StreakStatusView {
   currentStreak: number;
@@ -9,11 +20,10 @@ export interface StreakStatusView {
   repairUsedThisMonth: boolean;
 }
 
-/** Error codes returned by the repair endpoint (HTTP 409). Consumed by
- *  StreaksService.repair + the controller (next task). */
+/** Error codes returned by the repair endpoint. NOT_AT_RISK is a 409 conflict;
+ *  insufficient XP surfaces separately as a 400 from XpService.spendXp. */
 export const STREAK_ERRORS = {
   NOT_AT_RISK: 'STREAK_NOT_AT_RISK',
-  ALREADY_USED: 'STREAK_REPAIR_ALREADY_USED',
 } as const;
 
 /** Calendar of streak activity over a window, derived from transaction history. */

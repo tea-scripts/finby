@@ -16,7 +16,9 @@ function buildAlerts() {
 }
 
 function buildStreaks() {
-  return { onTransactionLogged: jest.fn().mockResolvedValue(1) };
+  return {
+    onTransactionLogged: jest.fn().mockResolvedValue({ currentStreak: 1, newAchievements: [] }),
+  };
 }
 
 function buildPrisma() {
@@ -76,6 +78,7 @@ const baseParams = {
   workspaceId: 'w1',
   loggedByUserId: 'u1',
   baseCurrency: 'USD',
+  tier: 'FREE' as const,
   amountOriginal: '50',
   currencyOriginal: 'USD',
   transactionDate: '2026-06-02',

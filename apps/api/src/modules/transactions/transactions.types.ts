@@ -1,4 +1,6 @@
+import type { SubscriptionTier } from '@finby/shared';
 import type { BudgetSpendChange } from '../budgets/budgets.types';
+import type { NewAchievement } from '../streaks/streaks.types';
 
 export type TransactionTypeP2 = 'EXPENSE' | 'INCOME' | 'TRANSFER';
 export type TransactionStatusP2 = 'CONFIRMED' | 'PENDING';
@@ -7,6 +9,8 @@ export interface CreateTransactionParams {
   workspaceId: string;
   loggedByUserId: string;
   baseCurrency: string;
+  /** Workspace subscription tier — scales XP awarded for the streak this log feeds. */
+  tier: SubscriptionTier;
   type: TransactionTypeP2;
   amountOriginal: string;
   currencyOriginal: string;
@@ -54,4 +58,6 @@ export interface CreateTransactionResult {
   /** The logger's spending streak after this transaction, or null if the
    *  streak update failed (it never blocks the transaction itself). */
   currentStreak: number | null;
+  /** Achievements unlocked by this log (empty if none / on streak failure). */
+  newAchievements: NewAchievement[];
 }

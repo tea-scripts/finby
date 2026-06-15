@@ -47,6 +47,8 @@ export interface TierLimits {
   receiptScansPerDay: number;
   /** May recover one missed streak day per calendar month. */
   streakRepair: boolean;
+  /** Multiplier applied to base XP awards for this tier. */
+  xpMultiplier: number;
 }
 
 /**
@@ -97,6 +99,7 @@ export const TIER_LIMITS: Record<SubscriptionTier, TierLimits> = {
     receiptScanning: false,
     receiptScansPerDay: 0,
     streakRepair: false,
+    xpMultiplier: 1,
   },
   PRO: {
     chatMessagesPerDay: null,
@@ -115,6 +118,7 @@ export const TIER_LIMITS: Record<SubscriptionTier, TierLimits> = {
     receiptScanning: true,
     receiptScansPerDay: 20,
     streakRepair: true,
+    xpMultiplier: 3,
   },
   PREMIUM: {
     chatMessagesPerDay: null,
@@ -133,6 +137,7 @@ export const TIER_LIMITS: Record<SubscriptionTier, TierLimits> = {
     receiptScanning: true,
     receiptScansPerDay: 50,
     streakRepair: true,
+    xpMultiplier: 5,
   },
   FAMILY: {
     chatMessagesPerDay: null,
@@ -151,6 +156,7 @@ export const TIER_LIMITS: Record<SubscriptionTier, TierLimits> = {
     receiptScanning: true,
     receiptScansPerDay: 50,
     streakRepair: true,
+    xpMultiplier: 5,
   },
 };
 

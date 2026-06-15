@@ -7,6 +7,7 @@ import { FxService } from '../fx/fx.service';
 import { BudgetsService } from '../budgets/budgets.service';
 import { AlertsService } from '../alerts/alerts.service';
 import { StreaksService } from '../streaks/streaks.service';
+import type { NewAchievement } from '../streaks/streaks.types';
 import type { BudgetSpendChange } from '../budgets/budgets.types';
 import type { ListTransactionsQuery, UpdateTransactionInput } from './dto/transactions.schemas';
 import type {
@@ -143,19 +144,23 @@ export class TransactionsService {
       }
     }
 
-    // Update the spending streak and surface it in the result so callers (chat)
-    // can reflect it immediately. A streak failure must never fail the
-    // transaction, so it's caught and reported as a null streak.
+    // Update the spending streak (which also awards XP and unlocks achievements)
+    // and surface the results so callers (chat) can reflect them immediately. A
+    // streak/gamification failure must never fail the transaction, so it's caught
+    // and reported as a null streak with no new achievements.
     let currentStreak: number | null = null;
+    let newAchievements: NewAchievement[] = [];
     try {
-      currentStreak = await this.streaks.onTransactionLogged(params.loggedByUserId);
+      const streak = await this.streaks.onTransactionLogged(params.loggedByUserId, params.tier);
+      currentStreak = streak.currentStreak;
+      newAchievements = streak.newAchievements;
     } catch (error) {
       this.logger.error(
         `Streak update failed: ${error instanceof Error ? error.message : String(error)}`,
       );
     }
 
-    return { transaction: this.toView(created), budgetChange, currentStreak };
+    return { transaction: this.toView(created), budgetChange, currentStreak, newAchievements };
   }
 
   async list(

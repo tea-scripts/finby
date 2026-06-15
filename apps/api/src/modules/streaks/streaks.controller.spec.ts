@@ -39,9 +39,9 @@ describe('StreaksController', () => {
     expect(service.repair).toHaveBeenCalledWith('u1');
   });
 
-  it('the repair endpoint is gated to PRO and above', () => {
+  it('the repair endpoint is not tier-gated (XP balance is the only gate now)', () => {
     const tier = Reflect.getMetadata(REQUIRED_TIER_KEY, StreaksController.prototype.repair);
-    expect(tier).toBe('PRO');
+    expect(tier).toBeUndefined();
   });
 
   it('getStatus is not tier-gated', () => {

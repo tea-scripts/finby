@@ -1,8 +1,6 @@
 import { Controller, Get, Post, UseGuards } from '@nestjs/common';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
-import { RequireTier } from '../../common/decorators/require-tier.decorator';
 import { Workspace } from '../../common/decorators/workspace.decorator';
-import { TierGuard } from '../../common/guards/tier.guard';
 import { WorkspaceMemberGuard } from '../../common/guards/workspace-member.guard';
 import type { WorkspaceContext } from '../../common/context';
 import type { AuthUser } from '../auth/auth.types';
@@ -30,10 +28,9 @@ export class StreaksController {
     return this.streaks.getCalendar(user.userId);
   }
 
-  /** Recover one missed day. PRO+ only. */
+  /** Recover one missed day by spending XP. Available on every tier; the XP
+   *  cost (and a sufficient balance) is the only gate — enforced in the service. */
   @Post('repair')
-  @UseGuards(TierGuard)
-  @RequireTier('PRO')
   repair(@CurrentUser() user: AuthUser): Promise<StreakStatusView> {
     return this.streaks.repair(user.userId);
   }
