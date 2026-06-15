@@ -29,6 +29,7 @@ export function ProfileSection() {
       toast.success('Settings saved');
     } catch {
       setError(true);
+      toast.error("Couldn't save", 'Please try again.');
     } finally {
       setSaving(false);
     }

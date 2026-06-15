@@ -8,6 +8,7 @@ import { Dropdown } from '@/components/ui/dropdown';
 import { Input } from '@/components/ui/input';
 import { listAccounts } from '@/lib/dashboard-api';
 import { createAccount, updateAccount } from '@/lib/accounts-api';
+import { toast } from '@/lib/toast';
 import { useAuth } from '@/lib/store';
 import { useFormatters } from '@/lib/use-formatters';
 import type { AccountView } from '@/lib/types';
@@ -157,8 +158,16 @@ function AccountRow({
       const updated = await updateAccount(workspaceId, account.id, patch);
       onUpdated(updated);
       setEditing(false);
+      toast.success(
+        patch.isArchived === undefined
+          ? 'Account updated'
+          : patch.isArchived
+            ? 'Account archived'
+            : 'Account unarchived',
+      );
     } catch {
       setError(true);
+      toast.error("Couldn't update account", 'Please try again.');
     } finally {
       setBusy(false);
     }
@@ -284,8 +293,10 @@ function AddAccountForm({
       onCreated(created);
       reset();
       setOpen(false);
+      toast.success('Account added');
     } catch {
       setError(true);
+      toast.error("Couldn't add account", 'Please try again.');
     } finally {
       setBusy(false);
     }

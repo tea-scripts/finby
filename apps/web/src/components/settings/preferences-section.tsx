@@ -8,6 +8,7 @@ import { Field } from '@/components/ui/field';
 import { NotifToggle } from '@/components/chat/notif-toggle';
 import { detectIosSafariTab } from '@/lib/ios';
 import { updateProfile } from '@/lib/settings-api';
+import { toast } from '@/lib/toast';
 import { useAuth } from '@/lib/store';
 
 const DATE_FORMAT_OPTIONS: { value: DateFormat; label: string }[] = [
@@ -55,8 +56,10 @@ export function PreferencesSection() {
       const updated = await updateProfile({ preferences: patch });
       setUser(updated);
       setSaveState('saved');
+      toast.success('Preferences saved');
     } catch {
       setSaveState('error');
+      toast.error("Couldn't save preferences", 'Please try again.');
     }
   }
 

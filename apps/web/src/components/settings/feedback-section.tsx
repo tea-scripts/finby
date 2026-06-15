@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { submitFeedback } from '@/lib/feedback-api';
 import { track } from '@/lib/analytics';
+import { toast } from '@/lib/toast';
 
 type Status = 'idle' | 'submitting' | 'done' | 'error';
 
@@ -39,8 +40,10 @@ export function FeedbackSection() {
       await submitFeedback(rating, comment);
       track('feedback_submitted', { rating });
       setStatus('done');
+      toast.success('Thanks for your review!');
     } catch {
       setStatus('error');
+      toast.error("Couldn't send your review", 'Please try again.');
     }
   }
 

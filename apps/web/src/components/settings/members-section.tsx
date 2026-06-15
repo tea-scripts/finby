@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/lib/store';
+import { toast } from '@/lib/toast';
 import { Dropdown } from '@/components/ui/dropdown';
 import {
   changeMemberRole, cancelInvite, inviteMember, leaveWorkspace,
@@ -65,18 +66,26 @@ export function MembersSection() {
       await inviteMember(wsId, email.trim(), role);
       setEmail('');
       await refresh();
+      toast.success('Invite sent');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not send invite.');
+      toast.error('Could not send invite', err instanceof Error ? err.message : undefined);
     } finally {
       setBusy(false);
     }
   }
 
-  async function act(fn: () => Promise<unknown>) {
+  async function act(fn: () => Promise<unknown>, successMessage?: string) {
     setBusy(true); setError(null);
-    try { await fn(); await refresh(); }
-    catch (err) { setError(err instanceof Error ? err.message : 'Action failed.'); }
-    finally { setBusy(false); }
+    try {
+      await fn();
+      await refresh();
+      if (successMessage) toast.success(successMessage);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Action failed.';
+      setError(msg);
+      toast.error('Action failed', msg);
+    } finally { setBusy(false); }
   }
 
   // Leaving is special: don't refresh() the workspace you just left (it would 404).
@@ -90,8 +99,10 @@ export function MembersSection() {
       await fetchWorkspaces();
       const remaining = useAuth.getState().workspaces.find((w) => w.workspaceId !== wsId);
       if (remaining) setActiveWorkspace(remaining.workspaceId);
+      toast.success('You left the family');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not leave this family.');
+      toast.error('Could not leave', err instanceof Error ? err.message : undefined);
     } finally {
       setBusy(false);
     }
@@ -119,7 +130,7 @@ export function MembersSection() {
                   <Dropdown
                     value={m.role}
                     disabled={busy}
-                    onChange={(v) => act(() => changeMemberRole(wsId!, m.id, v as WorkspaceMemberRole))}
+                    onChange={(v) => act(() => changeMemberRole(wsId!, m.id, v as WorkspaceMemberRole), 'Role updated')}
                     options={ROLE_OPTIONS}
                     aria-label={`Role for ${m.displayName}`}
                     className="w-36"
@@ -132,7 +143,7 @@ export function MembersSection() {
                 {isOwner && m.role !== 'OWNER' && (
                   <button
                     type="button" disabled={busy}
-                    onClick={() => act(() => removeMember(wsId!, m.id))}
+                    onClick={() => act(() => removeMember(wsId!, m.id), 'Member removed')}
                     className="text-xs text-red-400 hover:text-red-300"
                   >
                     Remove
@@ -176,8 +187,8 @@ export function MembersSection() {
                 <li key={inv.id} className="flex items-center justify-between py-2">
                   <span className="text-sm text-ink">{inv.email}</span>
                   <div className="flex items-center gap-3">
-                    <button type="button" disabled={busy} onClick={() => act(() => resendInvite(wsId!, inv.id))} className="text-xs text-accent hover:text-accent-hover">Resend</button>
-                    <button type="button" disabled={busy} onClick={() => act(() => cancelInvite(wsId!, inv.id))} className="text-xs text-red-400 hover:text-red-300">Cancel</button>
+                    <button type="button" disabled={busy} onClick={() => act(() => resendInvite(wsId!, inv.id), 'Invite resent')} className="text-xs text-accent hover:text-accent-hover">Resend</button>
+                    <button type="button" disabled={busy} onClick={() => act(() => cancelInvite(wsId!, inv.id), 'Invite canceled')} className="text-xs text-red-400 hover:text-red-300">Cancel</button>
                   </div>
                 </li>
               ))}

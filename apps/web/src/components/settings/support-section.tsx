@@ -13,6 +13,7 @@ import { Input } from '@/components/ui/input';
 import { Modal } from '@/components/ui/modal';
 import { Textarea } from '@/components/ui/textarea';
 import { createSupportTicket, listSupportTickets } from '@/lib/support-api';
+import { toast } from '@/lib/toast';
 import type { SupportTicketView } from '@/lib/types';
 
 function formatDate(iso: string): string {
@@ -68,8 +69,10 @@ export function SupportSection() {
       setMessage('');
       setCategory(SUPPORT_CATEGORIES[0]);
       setSent(true);
+      toast.success('Ticket sent', "We'll reply by email.");
     } catch {
       setError(true);
+      toast.error("Couldn't send ticket", 'Please try again.');
     } finally {
       setSubmitting(false);
     }

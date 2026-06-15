@@ -6,6 +6,7 @@ import type { SubscriptionTier } from '@finby/shared';
 import { Button } from '@/components/ui/button';
 import { UpgradeGate } from '@/components/billing/UpgradeGate';
 import { updateCurrencies } from '@/lib/settings-api';
+import { toast } from '@/lib/toast';
 import { useAuth } from '@/lib/store';
 
 const RANK: Record<SubscriptionTier, number> = {
@@ -59,8 +60,10 @@ export function CurrenciesSection() {
       const result = await updateCurrencies(workspace.id, Array.from(selected));
       setPreferredCurrencies(result.preferredCurrencies);
       setSelected(new Set(result.preferredCurrencies));
+      toast.success('Currencies updated');
     } catch {
       setError(true);
+      toast.error("Couldn't update currencies", 'Please try again.');
     } finally {
       setSaving(false);
     }

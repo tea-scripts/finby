@@ -5,6 +5,7 @@ import { CURRENCIES } from '@finby/shared';
 import { Button } from '@/components/ui/button';
 import { Dropdown } from '@/components/ui/dropdown';
 import { updateBaseCurrency } from '@/lib/settings-api';
+import { toast } from '@/lib/toast';
 import { useAuth } from '@/lib/store';
 
 const OPTIONS = CURRENCIES.map((c) => ({ value: c.code, label: `${c.code} — ${c.name}` }));
@@ -39,8 +40,13 @@ export function BaseCurrencySection() {
       setSelected(result.baseCurrency);
       setConfirming(false);
       setRecomputed(result.recomputed);
+      toast.success(
+        'Base currency updated',
+        `Recalculated ${result.recomputed} transaction${result.recomputed === 1 ? '' : 's'} into ${result.baseCurrency}.`,
+      );
     } catch {
       setError(true);
+      toast.error("Couldn't change base currency", 'Please try again.');
     } finally {
       setSaving(false);
     }
