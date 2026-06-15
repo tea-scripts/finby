@@ -25,6 +25,7 @@ import {
   streamMessage,
 } from '@/lib/chat-api';
 import { useAuth } from '@/lib/store';
+import { useGamificationStore } from '@/lib/gamification-store';
 import { track } from '@/lib/analytics';
 import type {
   ChatAction,
@@ -58,6 +59,7 @@ export default function ChatPage() {
   const user = useAuth((s) => s.user);
   const setUser = useAuth((s) => s.setUser);
   const refreshUser = useAuth((s) => s.refreshUser);
+  const setMilestoneAchievements = useGamificationStore((s) => s.setMilestoneAchievements);
 
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [messages, setMessages] = useState<UiMessage[]>([]);
@@ -168,6 +170,11 @@ export default function ChatPage() {
                   }
                 })();
               }
+            }
+            // A milestone/achievement unlock opens the streak sheet to celebrate
+            // (the header reads this and auto-opens in milestone state).
+            if (a.newAchievements && a.newAchievements.length > 0) {
+              setMilestoneAchievements(a.newAchievements);
             }
           } else if (a.type === 'BUDGET_SET') {
             track('budget_set', { currency: a.preview.currency });

@@ -111,31 +111,51 @@ describe('AchievementService.getUserAchievements', () => {
 describe('AchievementService.renderBadgeSvg', () => {
   const service = new AchievementService({} as unknown as PrismaService);
 
-  it('uses the BRONZE colour', () => {
+  it('uses the BRONZE tier colour', () => {
     expect(
       service.renderBadgeSvg('streak-bronze', AchievementTier.BRONZE, AchievementCategory.STREAK),
-    ).toContain('#CD7F32');
+    ).toContain('fill="#CD7F32"');
   });
 
-  it('uses the SILVER colour', () => {
+  it('uses the SILVER tier colour', () => {
     expect(
       service.renderBadgeSvg('streak-silver', AchievementTier.SILVER, AchievementCategory.STREAK),
-    ).toContain('#C0C0C0');
+    ).toContain('fill="#C0C0C0"');
   });
 
-  it('uses the GOLD colour', () => {
+  it('uses the GOLD tier colour', () => {
     expect(
       service.renderBadgeSvg('streak-gold', AchievementTier.GOLD, AchievementCategory.STREAK),
-    ).toContain('#FFD700');
+    ).toContain('fill="#FFD700"');
   });
 
-  it('returns a string that begins with <svg', () => {
-    const svg = service.renderBadgeSvg('txn-bronze', AchievementTier.BRONZE, AchievementCategory.TRANSACTIONS);
+  it('renders a flame (path) for the STREAK category', () => {
+    expect(
+      service.renderBadgeSvg('streak-bronze', AchievementTier.BRONZE, AchievementCategory.STREAK),
+    ).toContain('<path');
+  });
+
+  it('renders bars (rect) for the TRANSACTIONS category', () => {
+    expect(
+      service.renderBadgeSvg('txn-bronze', AchievementTier.BRONZE, AchievementCategory.TRANSACTIONS),
+    ).toContain('<rect');
+  });
+
+  it('renders a target (circle) for the GOALS category', () => {
+    expect(
+      service.renderBadgeSvg('goal-bronze', AchievementTier.BRONZE, AchievementCategory.GOALS),
+    ).toContain('<circle');
+  });
+
+  it('includes the SVG xmlns and begins with <svg', () => {
+    const svg = service.renderBadgeSvg('streak-gold', AchievementTier.GOLD, AchievementCategory.STREAK);
     expect(svg.startsWith('<svg')).toBe(true);
+    expect(svg).toContain('xmlns="http://www.w3.org/2000/svg"');
   });
 
-  it('renders the flame glyph for the STREAK category', () => {
-    const svg = service.renderBadgeSvg('streak-bronze', AchievementTier.BRONZE, AchievementCategory.STREAK);
-    expect(svg).toContain('M100 76 C92 88');
+  it('uses no CSS variables or currentColor (renders standalone)', () => {
+    const svg = service.renderBadgeSvg('goal-gold', AchievementTier.GOLD, AchievementCategory.GOALS);
+    expect(svg).not.toContain('currentColor');
+    expect(svg).not.toContain('var(');
   });
 });

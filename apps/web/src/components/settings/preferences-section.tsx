@@ -6,7 +6,7 @@ import type { CurrencyDisplay, DateFormat, NumberFormat, UserPreferences } from 
 import { Dropdown } from '@/components/ui/dropdown';
 import { Field } from '@/components/ui/field';
 import { NotifToggle } from '@/components/chat/notif-toggle';
-import { StreakCalendar } from '@/components/streak/StreakCalendar';
+import { StreakSummaryRow } from '@/features/gamification/components/StreakSummaryRow';
 import { detectIosSafariTab } from '@/lib/ios';
 import { usePushStore } from '@/lib/push-store';
 import { updateProfile } from '@/lib/settings-api';
@@ -36,9 +36,8 @@ type SaveState = 'idle' | 'saving' | 'saved' | 'error';
 export function PreferencesSection() {
   const user = useAuth((s) => s.user);
   const setUser = useAuth((s) => s.setUser);
+  const workspaceId = useAuth((s) => s.workspace?.id);
   const prefs: UserPreferences = user?.preferences ?? DEFAULT_PREFERENCES;
-  const currentStreak = user?.currentStreak ?? 0;
-  const longestStreak = user?.longestStreak ?? 0;
 
   const [saveState, setSaveState] = useState<SaveState>('idle');
   // Push on/off comes from the shared store, so toggling the header bell (or
@@ -168,17 +167,7 @@ export function PreferencesSection() {
           </button>
         </div>
 
-        <div className="border-t border-line pt-4">
-          <p className="text-sm font-medium text-ink">
-            🔥 Current streak: {currentStreak} {currentStreak === 1 ? 'day' : 'days'}
-          </p>
-          <p className="text-xs text-muted">
-            Best: {longestStreak} {longestStreak === 1 ? 'day' : 'days'}
-          </p>
-          <div className="mt-4">
-            <StreakCalendar />
-          </div>
-        </div>
+        {workspaceId && <StreakSummaryRow workspaceId={workspaceId} />}
       </div>
     </section>
   );

@@ -6,9 +6,11 @@ import { getStreakCalendar } from '@/lib/streaks-api';
 import { buildCalendarCells, type CalendarCell, type DayState } from '@/lib/streak-calendar';
 
 const STATE_CLASS: Record<DayState, string> = {
-  active: 'bg-accent',
-  repaired: 'bg-accent/50 ring-1 ring-accent',
-  missed: 'bg-line/60',
+  // Logged = amber, matching the flame/streak theme and the WeekRow above it.
+  // Repaired = a distinct blue "rescued" state. Missed = muted grid colour.
+  active: 'bg-amber-500',
+  repaired: 'bg-accent ring-1 ring-accent/50',
+  missed: 'bg-line',
 };
 
 const STATE_LABEL: Record<DayState, string> = {
@@ -45,11 +47,19 @@ export function StreakCalendar() {
   if (failed) return <p className="text-xs text-muted">Couldn&apos;t load your calendar.</p>;
   if (!cells) return <p className="text-xs text-faint">Loading…</p>;
 
+  // Number of week-columns, including the leading offset to the first cell's
+  // weekday. The grid stretches these columns to fill the container width so the
+  // whole ~6-month heatmap fits without horizontal scrolling on any screen.
+  const numWeeks = Math.ceil(((cells[0]?.weekday ?? 0) + cells.length) / 7);
+
   return (
     <div className="space-y-3">
       <div
-        className="grid grid-flow-col gap-1"
-        style={{ gridTemplateRows: 'repeat(7, minmax(0, 1fr))' }}
+        className="grid w-full grid-flow-col gap-[3px]"
+        style={{
+          gridTemplateRows: 'repeat(7, auto)',
+          gridTemplateColumns: `repeat(${numWeeks}, minmax(0, 1fr))`,
+        }}
         role="list"
         aria-label="Streak activity calendar"
       >
@@ -58,21 +68,21 @@ export function StreakCalendar() {
             key={cell.date}
             role="listitem"
             aria-label={`${cell.date}: ${STATE_LABEL[cell.state]}`}
-            className={`h-3 w-3 rounded-sm ${STATE_CLASS[cell.state]}`}
+            className={`aspect-square w-full rounded-sm ${STATE_CLASS[cell.state]}`}
             style={i === 0 ? { gridRowStart: cell.weekday + 1 } : undefined}
           />
         ))}
       </div>
 
-      <div className="flex items-center gap-3 text-xs text-muted">
+      <div className="flex flex-wrap items-center gap-3 text-xs text-muted">
         <span className="flex items-center gap-1">
-          <span className="h-3 w-3 rounded-sm bg-accent" /> Logged
+          <span className="h-3 w-3 rounded-sm bg-amber-500" /> Logged
         </span>
         <span className="flex items-center gap-1">
-          <span className="h-3 w-3 rounded-sm bg-accent/50 ring-1 ring-accent" /> Repaired
+          <span className="h-3 w-3 rounded-sm bg-accent ring-1 ring-accent/50" /> Repaired
         </span>
         <span className="flex items-center gap-1">
-          <span className="h-3 w-3 rounded-sm bg-line/60" /> Missed
+          <span className="h-3 w-3 rounded-sm bg-line" /> Missed
         </span>
       </div>
     </div>

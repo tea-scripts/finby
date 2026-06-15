@@ -3,7 +3,7 @@
 import { AlertsBell } from '@/components/alerts/alerts-bell';
 import { AlertsDrawer } from '@/components/alerts/alerts-drawer';
 import { Logo } from '@/components/logo';
-import { StreakRepair } from '@/components/streak/StreakRepair';
+import { StreakBadgeButton } from '@/features/gamification/components/StreakBadgeButton';
 import { TierBadge } from '@/components/ui/tier-badge';
 import { WorkspaceSwitcher } from '@/components/workspace/workspace-switcher';
 import { useAuth } from '@/lib/store';
@@ -28,7 +28,7 @@ export function AppHeader() {
             {user && (
               <span className="hidden text-sm text-muted sm:inline">{user.displayName}</span>
             )}
-            <StreakRepair />
+            <StreakBadgeButton />
             {workspaceId && <AlertsBell workspaceId={workspaceId} />}
           </div>
         </div>
