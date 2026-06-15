@@ -2,6 +2,7 @@ import { Inject, Injectable } from '@nestjs/common';
 import { EMAIL_PROVIDER } from './email.constants';
 import type { EmailProvider } from './email.provider';
 import {
+  earlyReminderEmail,
   feedbackNotificationEmail,
   memberInviteEmail,
   passwordResetEmail,
@@ -35,6 +36,11 @@ export class EmailService {
 
   async sendReengagement(to: string, name: string, openUrl: string): Promise<void> {
     const { subject, html } = reengagementEmail(name, openUrl);
+    await this.provider.send({ to, subject, html });
+  }
+
+  async sendEarlyReminder(to: string, name: string, streak: number, openUrl: string): Promise<void> {
+    const { subject, html } = earlyReminderEmail(name, streak, openUrl);
     await this.provider.send({ to, subject, html });
   }
 
