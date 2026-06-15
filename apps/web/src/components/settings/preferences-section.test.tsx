@@ -45,8 +45,10 @@ vi.mock('../../lib/push', () => ({
   disablePush: vi.fn(() => Promise.resolve('off')),
 }));
 
-vi.mock('../streak/StreakCalendar', () => ({
-  StreakCalendar: () => <div data-testid="streak-calendar" />,
+vi.mock('@/features/gamification/components/StreakSummaryRow', () => ({
+  StreakSummaryRow: ({ workspaceId }: { workspaceId: string }) => (
+    <div data-testid="streak-summary-row">{workspaceId}</div>
+  ),
 }));
 
 import { updateProfile } from '../../lib/settings-api';
@@ -76,10 +78,9 @@ describe('PreferencesSection', () => {
     });
   });
 
-  it('shows the current and best streak from the user', () => {
+  it('renders the streak summary row with the workspace id', () => {
     render(<PreferencesSection />);
-    expect(screen.getByText(/Current streak: 7 days/)).toBeInTheDocument();
-    expect(screen.getByText(/Best: 12 days/)).toBeInTheDocument();
+    expect(screen.getByTestId('streak-summary-row')).toHaveTextContent('w1');
   });
 
   it('changing the date format saves { preferences: { dateFormat } } then setUser', async () => {
@@ -113,11 +114,6 @@ describe('PreferencesSection', () => {
     // until push is enabled — otherwise it misleadingly implies reminders are
     // active when no push subscription exists.
     expect(sw).toHaveAttribute('aria-checked', 'false');
-  });
-
-  it('renders the streak calendar in the streak block', () => {
-    render(<PreferencesSection />);
-    expect(screen.getByTestId('streak-calendar')).toBeInTheDocument();
   });
 
   it('enables the switch when push is on and saves dailyReminders on click', async () => {

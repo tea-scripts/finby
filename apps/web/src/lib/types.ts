@@ -78,6 +78,8 @@ export interface TransactionCreatedAction {
   preview: ChatActionPreview;
   /** The logger's spending streak after this transaction (null if unavailable). */
   currentStreak: number | null;
+  /** Achievements unlocked by this transaction (absent/empty if none). */
+  newAchievements?: NewAchievement[];
 }
 
 export interface BudgetSetAction {
@@ -303,6 +305,70 @@ export interface StreakCalendar {
   to: string;
   activeDays: string[];
   repairedDays: string[];
+}
+
+// ── Gamification (XP + achievements) ──────────────────────────────────────────
+
+/** Mirror of the API's XpEvent Prisma enum. */
+export type XpEvent =
+  | 'STREAK_DAY'
+  | 'STREAK_MILESTONE'
+  | 'TRANSACTION_LOGGED'
+  | 'GOAL_HIT'
+  | 'STREAK_RECOVERY'
+  | 'REFERRAL_BONUS';
+
+export type AchievementTierName = 'BRONZE' | 'SILVER' | 'GOLD';
+export type AchievementCategoryName = 'STREAK' | 'TRANSACTIONS' | 'GOALS';
+
+/** GET /workspaces/:id/gamification/xp */
+export interface XpSummary {
+  balance: number;
+  totalEarned: number;
+  todayEarned: number;
+}
+
+/** An entry in the XP ledger (GET /gamification/xp/history). */
+export interface XpTransactionView {
+  id: string;
+  event: XpEvent;
+  delta: number;
+  meta: unknown;
+  createdAt: string;
+}
+
+/** An achievement definition as exposed to the web. */
+export interface AchievementDefView {
+  id: string;
+  slug: string;
+  category: string;
+  tier: string;
+  threshold: number;
+  label: string;
+  description: string;
+}
+
+export interface UnlockedAchievement {
+  id: string;
+  achievementDef: AchievementDefView;
+  unlockedAt: string;
+}
+
+export type LockedAchievement = AchievementDefView;
+
+/** GET /workspaces/:id/gamification/achievements */
+export interface AchievementsResult {
+  unlocked: UnlockedAchievement[];
+  locked: LockedAchievement[];
+}
+
+/** Pushed in the chat TRANSACTION_CREATED action when a log unlocks a badge. */
+export interface NewAchievement {
+  slug: string;
+  tier: AchievementTierName;
+  label: string;
+  /** ISO timestamp (Date serialized over the wire). */
+  unlockedAt: string;
 }
 
 // ── Family / Members ─────────────────────────────────────────────────────────
