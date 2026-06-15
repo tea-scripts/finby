@@ -20,6 +20,8 @@ vi.mock('../../lib/store', () => ({
   useAuth: vi.fn((selector: any) => selector(state)),
 }));
 
+vi.mock('./StreakCalendar', () => ({ StreakCalendar: () => <div data-testid="streak-calendar" /> }));
+
 import { getStreakStatus, repairStreak } from '../../lib/streaks-api';
 
 const mockGet = vi.mocked(getStreakStatus);
@@ -132,6 +134,20 @@ describe('StreakRepair', () => {
     );
     expect(screen.queryByRole('button', { name: /^repair$/i })).not.toBeInTheDocument();
     expect(mockRepair).not.toHaveBeenCalled();
+  });
+
+  it('safe streak: opening the tooltip exposes a View calendar action that shows the calendar', async () => {
+    mockGet.mockResolvedValue({
+      currentStreak: 12, longestStreak: 12, atRisk: false, repairEligible: false, repairUsedThisMonth: false,
+    });
+
+    render(<StreakRepair />);
+
+    const badge = await screen.findByRole('button', { name: /streak/i });
+    fireEvent.click(badge); // opens celebration tooltip
+    fireEvent.click(await screen.findByRole('button', { name: /view calendar/i }));
+
+    expect(await screen.findByTestId('streak-calendar')).toBeInTheDocument();
   });
 
   it('Pro + eligible: a failed repair shows an error and does not update the user', async () => {
