@@ -8,6 +8,9 @@ import { MessageBubble } from '@/components/chat/message-bubble';
 import { TypingDots } from '@/components/chat/typing-dots';
 import { ReceiptScanner } from '@/components/receipts/ReceiptScanner';
 import { UpgradeModal } from '@/components/billing/UpgradeModal';
+import { StreakStartPrompt } from '@/components/streak/StreakStartPrompt';
+import { shouldPromptStreakStart, STREAK_START_SHOWN_KEY } from '@/lib/streak-start';
+import { getPushState } from '@/lib/push';
 import { Button } from '@/components/ui/button';
 import { Lottie } from '@/components/ui/lottie';
 import { Modal } from '@/components/ui/modal';
@@ -65,6 +68,7 @@ export default function ChatPage() {
   const [clearOpen, setClearOpen] = useState(false);
   const [clearing, setClearing] = useState(false);
   const [scannerOpen, setScannerOpen] = useState(false);
+  const [streakStartOpen, setStreakStartOpen] = useState(false);
 
   const initialized = useRef(false);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -153,6 +157,18 @@ export default function ChatPage() {
                 currentStreak: a.currentStreak,
                 longestStreak: Math.max(user?.longestStreak ?? 0, a.currentStreak),
               });
+              if (a.currentStreak === 1) {
+                void (async () => {
+                  let shown = false;
+                  try {
+                    shown = localStorage.getItem(STREAK_START_SHOWN_KEY) === '1';
+                  } catch {
+                    /* storage disabled */
+                  }
+                  const pushState = await getPushState();
+                  if (shouldPromptStreakStart(1, pushState, shown)) setStreakStartOpen(true);
+                })();
+              }
             }
           } else if (a.type === 'BUDGET_SET') {
             track('budget_set', { currency: a.preview.currency });
@@ -385,6 +401,12 @@ export default function ChatPage() {
       />
 
       <UpgradeModal open={upgradeOpen} onClose={() => setUpgradeOpen(false)} source="chat_limit" />
+
+      <StreakStartPrompt
+        open={streakStartOpen}
+        onClose={() => setStreakStartOpen(false)}
+        streak={1}
+      />
 
       <Modal open={clearOpen} onClose={() => !clearing && setClearOpen(false)} title="Start a fresh chat?">
         <p className="text-sm text-muted">
