@@ -133,4 +133,27 @@ describe('StreakSheet', () => {
     const link = await screen.findByRole('link', { name: /see full history/i });
     expect(link).toHaveAttribute('href', '/streaks');
   });
+
+  it('renders "day streak" (singular) when the streak is 1', async () => {
+    setStatus({ currentStreak: 1 });
+    renderSheet();
+    expect(await screen.findByText('day streak')).toBeInTheDocument();
+  });
+
+  it('renders "days streak" (plural) when the streak is 3', async () => {
+    setStatus({ currentStreak: 3 });
+    renderSheet();
+    expect(await screen.findByText('days streak')).toBeInTheDocument();
+  });
+
+  it('shows "Log to earn" in the XP card when nothing was earned today', async () => {
+    vi.mocked(getXpSummary).mockResolvedValue({ balance: 50, totalEarned: 100, todayEarned: 0 });
+    renderSheet();
+    expect(await screen.findByText('Log to earn')).toBeInTheDocument();
+  });
+
+  it('shows "+5 XP" in the XP card when 5 XP was earned today', async () => {
+    renderSheet();
+    expect(await screen.findByText('+5 XP')).toBeInTheDocument();
+  });
 });

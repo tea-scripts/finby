@@ -178,7 +178,7 @@ export function StreakSheet({ open, onClose, workspaceId, milestoneAchievements 
                   🔥
                 </span>
                 <p className="mt-4 text-7xl font-bold text-ink">{streak}</p>
-                <p className="text-xl text-muted">days streak</p>
+                <p className="text-xl text-muted">{streak === 1 ? 'day' : 'days'} streak</p>
               </div>
             )}
 
@@ -254,7 +254,9 @@ export function StreakSheet({ open, onClose, workspaceId, milestoneAchievements 
 
             {state === 'milestone' && milestone && (
               <div className="flex w-full max-w-sm flex-col items-center gap-3 text-center">
-                <p className="text-2xl font-bold text-ink">{streak} days streak!</p>
+                <p className="text-2xl font-bold text-ink">
+                  {streak} {streak === 1 ? 'day' : 'days'} streak!
+                </p>
                 <p className="text-sm text-muted">You&apos;ve unlocked: {milestone.label}</p>
                 <div className="flex flex-col items-center gap-2">
                   <Button variant="primary" onClick={() => setMilestoneDismissed(true)}>
@@ -276,7 +278,9 @@ export function StreakSheet({ open, onClose, workspaceId, milestoneAchievements 
               <div className="flex w-full max-w-sm justify-between rounded-2xl border border-line bg-surface p-4">
                 <div>
                   <p className="text-xs text-muted">Today</p>
-                  <p className="text-lg font-semibold text-ink">+{xp?.todayEarned ?? 0} XP</p>
+                  <p className="text-lg font-semibold text-ink">
+                    {(xp?.todayEarned ?? 0) > 0 ? `+${xp?.todayEarned ?? 0} XP` : 'Log to earn'}
+                  </p>
                 </div>
                 <div className="text-right">
                   <p className="text-xs text-muted">Total</p>

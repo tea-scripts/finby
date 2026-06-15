@@ -130,12 +130,16 @@ export default function StreaksPage() {
                   </span>
                   <div>
                     <p className="text-3xl font-bold text-ink">{status?.currentStreak ?? 0}</p>
-                    <p className="text-sm text-muted">day streak</p>
+                    <p className="text-sm text-muted">
+                      {(status?.currentStreak ?? 0) === 1 ? 'day' : 'days'} streak
+                    </p>
                   </div>
                 </div>
                 <div className="text-right">
                   <p className="text-sm text-muted">Best</p>
-                  <p className="text-lg font-semibold text-ink">{status?.longestStreak ?? 0} days</p>
+                  <p className="text-lg font-semibold text-ink">
+                    {status?.longestStreak ?? 0} {(status?.longestStreak ?? 0) === 1 ? 'day' : 'days'}
+                  </p>
                 </div>
               </div>
               {calendar && (
@@ -151,8 +155,16 @@ export default function StreaksPage() {
             <div className="grid grid-cols-2 gap-4">
               <Stat icon="📅" value={String(totalLoggedDays)} label="Total days logged" />
               <Stat icon="🔥" value={`${status?.longestStreak ?? 0}`} label="Longest streak" />
-              <Stat icon="⚡" value={`${xp?.totalEarned ?? 0} XP`} label="Total XP earned" />
-              <Stat icon="💰" value={`${xp?.balance ?? 0} XP`} label="Available XP" />
+              <Stat
+                icon="⚡"
+                value={(xp?.totalEarned ?? 0) > 0 ? `${xp?.totalEarned} XP` : '—'}
+                label="Total XP earned"
+              />
+              <Stat
+                icon="💰"
+                value={(xp?.balance ?? 0) > 0 ? `${xp?.balance} XP` : '—'}
+                label="Available XP"
+              />
             </div>
 
             {/* Section 3: calendar heatmap */}
