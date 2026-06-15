@@ -41,6 +41,7 @@ export function StreakCalendar() {
     };
   }, [workspaceId]);
 
+  if (!workspaceId) return null;
   if (failed) return <p className="text-xs text-muted">Couldn&apos;t load your calendar.</p>;
   if (!cells) return <p className="text-xs text-faint">Loading…</p>;
 
@@ -49,12 +50,13 @@ export function StreakCalendar() {
       <div
         className="grid grid-flow-col gap-1"
         style={{ gridTemplateRows: 'repeat(7, minmax(0, 1fr))' }}
-        role="grid"
+        role="list"
         aria-label="Streak activity calendar"
       >
         {cells.map((cell, i) => (
           <span
             key={cell.date}
+            role="listitem"
             aria-label={`${cell.date}: ${STATE_LABEL[cell.state]}`}
             className={`h-3 w-3 rounded-sm ${STATE_CLASS[cell.state]}`}
             style={i === 0 ? { gridRowStart: cell.weekday + 1 } : undefined}

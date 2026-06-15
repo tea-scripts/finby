@@ -49,6 +49,11 @@ describe('StreaksController', () => {
     expect(tier).toBeUndefined();
   });
 
+  it('the calendar endpoint is not tier-gated', () => {
+    const tier = Reflect.getMetadata(REQUIRED_TIER_KEY, StreaksController.prototype.getCalendar);
+    expect(tier).toBeUndefined();
+  });
+
   it('GET calendar delegates to the service for the current user', async () => {
     const calendar = { from: '2025-12-15', to: '2026-06-15', activeDays: [], repairedDays: [] };
     const streaks = { getCalendar: jest.fn().mockResolvedValue(calendar) };
