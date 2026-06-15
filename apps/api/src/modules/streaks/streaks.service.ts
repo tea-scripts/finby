@@ -52,11 +52,7 @@ export class StreaksService {
   /** Resolve "today" as a YYYY-MM-DD local date in the user's timezone,
    *  falling back to UTC on an invalid timezone string. */
   private localToday(timezone: string | null): string {
-    try {
-      return localDayInfo(new Date(), timezone || 'UTC').date;
-    } catch {
-      return localDayInfo(new Date(), 'UTC').date;
-    }
+    return this.dayInfo(new Date(), timezone).date;
   }
 
   /** Full local-day info with the same UTC fallback as localToday. */
@@ -80,11 +76,12 @@ export class StreaksService {
 
     const todayInfo = this.dayInfo(now, tz);
     const fromMs = todayInfo.startOfDayMs - (CALENDAR_WINDOW_DAYS - 1) * DAY_MS;
-    const from = this.dayInfo(new Date(fromMs), tz).date;
+    const fromInfo = this.dayInfo(new Date(fromMs), tz);
+    const from = fromInfo.date;
     const to = todayInfo.date;
 
     const txns = await this.prisma.transaction.findMany({
-      where: { loggedByUserId: userId, createdAt: { gte: new Date(fromMs) } },
+      where: { loggedByUserId: userId, createdAt: { gte: new Date(fromInfo.startOfDayMs) } },
       select: { createdAt: true },
     });
     const activeDays = bucketLocalDays(
