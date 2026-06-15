@@ -12,6 +12,7 @@ export const preferencesSchema = z
     lastDailyReminderAt: z.string().nullable(),
     dismissedAnnouncements: z.array(z.string()),
     lastReengagedAt: z.string().nullable(),
+    lastEarlyReminderAt: z.string().nullable(),
   })
   .partial();
 
