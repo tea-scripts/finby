@@ -19,6 +19,8 @@ describe('buildCalendarCells', () => {
 
   it('tags each cell with its UTC weekday (0=Sun..6=Sat)', () => {
     // 2026-06-10 is a Wednesday (weekday 3).
-    expect(buildCalendarCells('2026-06-10', '2026-06-10', [], [])[0].weekday).toBe(3);
+    const cells = buildCalendarCells('2026-06-10', '2026-06-10', [], []);
+    expect(cells).toHaveLength(1);
+    expect(cells[0]?.weekday).toBe(3);
   });
 });
