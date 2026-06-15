@@ -54,6 +54,44 @@ export interface LlmProvider {
   streamMessage(params: LlmCreateParams): AsyncIterable<LlmStreamEvent>;
 }
 
+/** A category whose current-month spend is far above its recent trend. */
+export interface SpendingAnomaly {
+  category: string;
+  currentMonthAmount: number;
+  threeMonthAverage: number;
+  /** currentMonthAmount / threeMonthAverage, rounded to 1dp. */
+  multiplier: number;
+}
+
+/** A projection of an active budget to month-end, surfaced when it is at risk. */
+export interface BurnRateForecast {
+  category: string;
+  budgetLimit: number;
+  projectedMonthEnd: number;
+  daysRemaining: number;
+  willExceed: boolean;
+  percentProjected: number;
+}
+
+/** Pre-computed financial signals injected into the chat system prompt so the
+ *  model can answer "why" / "what should I do" from grounded data. */
+export interface FinancialIntelligenceSignals {
+  /** Categories spending >= 1.5x their recent average (top 5 by multiplier). */
+  spendingAnomalies: SpendingAnomaly[];
+  /** Active budgets likely to exceed or run hot by month-end. */
+  burnRateForecasts: BurnRateForecast[];
+  /** Current-month savings rate minus last month's, in percentage points. Null
+   *  when either month has no income (division-by-zero would be meaningless). */
+  savingsVelocityDelta: number | null;
+  topMerchants: Array<{ name: string; total: number; visits: number }>;
+  currentMonthSummary: {
+    totalIncome: number;
+    totalExpenses: number;
+    netSavings: number;
+    savingsRate: number;
+  };
+}
+
 export interface SystemPromptContext {
   user: { displayName: string; timezone: string };
   workspace: { baseCurrency: string; tier: string };
@@ -62,4 +100,6 @@ export interface SystemPromptContext {
   budgets: Array<{ category: string; spent: string; limit: string; utilizationPercent: number }>;
   today: string;
   rollingContextSummary?: string | null;
+  /** Optional — present on live chat turns, omitted in lightweight prompt tests. */
+  signals?: FinancialIntelligenceSignals;
 }

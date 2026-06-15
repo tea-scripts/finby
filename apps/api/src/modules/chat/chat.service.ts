@@ -33,6 +33,7 @@ import type {
 import { estimateTokens } from './memory/token-counter.util';
 import { MemoryCompressionService } from './memory/memory-compression.service';
 import { ContextAssemblerService } from './context/context-assembler.service';
+import { FinancialIntelligenceService } from './context/financial-intelligence.service';
 
 const CONFIDENCE_THRESHOLD = 0.7;
 /** Safety cap on the agentic tool loop (one user turn). */
@@ -73,6 +74,7 @@ export class ChatService {
     private readonly portfolio: PortfolioService,
     private readonly memory: MemoryCompressionService,
     private readonly contextAssembler: ContextAssemblerService,
+    private readonly financialIntelligence: FinancialIntelligenceService,
   ) {}
 
   /** JSON entry point — drains the streaming generator and assembles the
@@ -1122,9 +1124,16 @@ export class ChatService {
     workspace: WorkspaceContext,
     user: { displayName: string; timezone: string } | null,
   ): Promise<string> {
-    const accounts = await this.accounts.list(workspace.id);
-    const categories = await this.categories.list(workspace.id);
-    const budgets = await this.budgets.list(workspace.id, {});
+    const [accounts, categories, budgets, signals] = await Promise.all([
+      this.accounts.list(workspace.id),
+      this.categories.list(workspace.id),
+      this.budgets.list(workspace.id, {}),
+      this.financialIntelligence.computeSignals(
+        workspace.id,
+        workspace.baseCurrency,
+        workspace.tier,
+      ),
+    ]);
     return this.llm.buildSystemPrompt({
       user: {
         displayName: user?.displayName ?? 'there',
@@ -1144,6 +1153,7 @@ export class ChatService {
           utilizationPercent: b.utilizationPercent,
         })),
       today: today(),
+      signals,
     });
   }
 
