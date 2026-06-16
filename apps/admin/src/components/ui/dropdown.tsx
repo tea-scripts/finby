@@ -1,6 +1,14 @@
 'use client';
 
-import { useEffect, useId, useLayoutEffect, useRef, useState, type KeyboardEvent } from 'react';
+import {
+  useEffect,
+  useId,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type CSSProperties,
+  type KeyboardEvent,
+} from 'react';
 import { createPortal } from 'react-dom';
 
 export interface DropdownOption {
@@ -47,22 +55,36 @@ export function Dropdown({
 }: DropdownProps) {
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(0);
-  const [menuRect, setMenuRect] = useState<{ left: number; top: number; width: number } | null>(null);
+  const [menuStyle, setMenuStyle] = useState<CSSProperties | null>(null);
   const rootRef = useRef<HTMLDivElement>(null);
   const listRef = useRef<HTMLUListElement>(null);
   const listId = useId();
 
   const selected = options.find((o) => o.value === value);
 
-  // Position the portalled menu under the trigger using fixed coordinates so it is
-  // never clipped by an `overflow` ancestor (e.g. a scrollable table wrapper).
+  // Position the portalled menu with fixed coordinates so it is never clipped by
+  // an `overflow` ancestor (e.g. a scrollable table wrapper). Opens downward, but
+  // flips upward when the trigger sits near the bottom of the viewport so the
+  // options never overflow off-screen. Height is capped to the available space.
   useLayoutEffect(() => {
     if (!open) return;
     function reposition() {
       const el = rootRef.current;
       if (!el) return;
       const r = el.getBoundingClientRect();
-      setMenuRect({ left: r.left, top: r.bottom + 6, width: r.width });
+      const gap = 6;
+      const margin = 8;
+      const spaceBelow = window.innerHeight - r.bottom - gap - margin;
+      const spaceAbove = r.top - gap - margin;
+      const flipUp = spaceBelow < 240 && spaceAbove > spaceBelow;
+      const maxHeight = Math.max(140, Math.min(240, flipUp ? spaceAbove : spaceBelow));
+      setMenuStyle({
+        position: 'fixed',
+        left: r.left,
+        width: r.width,
+        maxHeight,
+        ...(flipUp ? { bottom: window.innerHeight - r.top + gap } : { top: r.bottom + gap }),
+      });
     }
     reposition();
     window.addEventListener('scroll', reposition, true);
@@ -138,14 +160,14 @@ export function Dropdown({
         <Chevron open={open} />
       </button>
 
-      {open && menuRect &&
+      {open && menuStyle &&
         createPortal(
         <ul
           ref={listRef}
           role="listbox"
           id={listId}
-          style={{ position: 'fixed', left: menuRect.left, top: menuRect.top, width: menuRect.width }}
-          className="z-50 max-h-60 overflow-auto rounded-xl border border-line bg-surface p-1 shadow-card"
+          style={menuStyle}
+          className="z-50 overflow-auto rounded-xl border border-line bg-surface p-1 shadow-card"
         >
           {options.map((opt, i) => {
             const isSelected = opt.value === value;
