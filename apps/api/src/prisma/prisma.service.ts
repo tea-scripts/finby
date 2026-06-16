@@ -43,17 +43,21 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
 
   /** One-time migration: copy each user's legacy preferences.dismissedAnnouncements
    *  into AnnouncementInteraction rows (matched by announcement.key) so existing
-   *  users never re-see what they already dismissed. Runs once: skipped as soon as
-   *  any interaction row exists. */
+   *  users never re-see what they already dismissed. Idempotent and crash-resilient:
+   *  it only scans users who have NO interaction rows yet, so a backfill interrupted
+   *  partway is completed on the next boot, and already-migrated users are skipped. */
   private async backfillAnnouncementDismissals(): Promise<void> {
-    const existing = await this.announcementInteraction.count();
-    if (existing > 0) return;
-
     const byKey = new Map<string, string>();
     const announcements = await this.announcement.findMany({ select: { id: true, key: true } });
     for (const a of announcements) byKey.set(a.key, a.id);
+    if (byKey.size === 0) return;
 
-    const users = await this.user.findMany({ select: { id: true, preferences: true } });
+    // Only un-migrated users: anyone with at least one interaction row has already
+    // been processed (or has moved onto the new system) and is left untouched.
+    const users = await this.user.findMany({
+      where: { announcementInteractions: { none: {} } },
+      select: { id: true, preferences: true },
+    });
     const now = new Date();
     for (const u of users) {
       const prefs = u.preferences as { dismissedAnnouncements?: string[] } | null;
