@@ -9,6 +9,8 @@ import { AdminAuthService } from './admin-auth.service';
 import { AdminUsersController } from './admin-users.controller';
 import { AdminUsersService } from './admin-users.service';
 import { AdminTicketsController } from './admin-tickets.controller';
+import { AdminAnnouncementsController } from './admin-announcements.controller';
+import { AdminAnnouncementsService } from './admin-announcements.service';
 import { AdminJwtStrategy } from './strategies/admin-jwt.strategy';
 import { SupportModule } from '../support/support.module';
 
@@ -19,7 +21,8 @@ import { SupportModule } from '../support/support.module';
     AdminAnalyticsController,
     AdminUsersController,
     AdminTicketsController,
+    AdminAnnouncementsController,
   ],
-  providers: [AdminAuthService, AdminAnalyticsService, PosthogService, AdminUsersService, AdminJwtStrategy],
+  providers: [AdminAuthService, AdminAnalyticsService, PosthogService, AdminUsersService, AdminAnnouncementsService, AdminJwtStrategy],
 })
 export class AdminModule {}
