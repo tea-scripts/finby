@@ -1,9 +1,27 @@
 import { PrismaClient } from '@prisma/client';
 import { DEFAULT_CATEGORIES } from '@finby/shared';
+import { ANNOUNCEMENT_DEFS } from '../src/modules/announcements/seeds/announcement-defs.seed';
 
 const prisma = new PrismaClient();
 
 const DEMO_WORKSPACE_SLUG = 'finby-demo';
+
+/**
+ * Seed the launch announcements via the CLI (`pnpm --filter finby-api prisma:seed`).
+ * Mirrors the boot-time seed in PrismaService — create-only upsert by `key`, so it
+ * is idempotent and never clobbers edits made from the admin dashboard.
+ */
+async function seedAnnouncements(): Promise<void> {
+  for (const def of ANNOUNCEMENT_DEFS) {
+    await prisma.announcement.upsert({
+      where: { key: def.key },
+      create: def,
+      update: {},
+    });
+  }
+  const count = await prisma.announcement.count();
+  console.log(`Seeded announcements — ${count} total in the database.`);
+}
 
 /**
  * Local-dev seed only. Creates one idempotent demo workspace so the
@@ -39,6 +57,8 @@ async function main(): Promise<void> {
   console.log(
     `Seeded workspace "${workspace.name}" (${workspace.slug}) with ${count} default categories.`,
   );
+
+  await seedAnnouncements();
 }
 
 main()
