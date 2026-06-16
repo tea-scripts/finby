@@ -1,6 +1,7 @@
 import { Injectable, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
 import { PrismaClient } from '@prisma/client';
 import { ACHIEVEMENT_DEFS } from '../modules/gamification/seeds/achievement-defs.seed';
+import { ANNOUNCEMENT_DEFS } from '../modules/announcements/seeds/announcement-defs.seed';
 
 /**
  * Thin wrapper over PrismaClient that ties the connection lifecycle
@@ -11,6 +12,8 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
   async onModuleInit(): Promise<void> {
     await this.$connect();
     await this.seedAchievementDefs();
+    await this.seedAnnouncements();
+    await this.backfillAnnouncementDismissals();
   }
 
   /** Keep the achievement catalogue in sync on boot. Idempotent (upsert by
@@ -22,6 +25,47 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
         create: def,
         update: { label: def.label, description: def.description, threshold: def.threshold },
       });
+    }
+  }
+
+  /** Keep the launch announcements in sync on boot. Idempotent (upsert by key). */
+  private async seedAnnouncements(): Promise<void> {
+    for (const def of ANNOUNCEMENT_DEFS) {
+      const { key, ...rest } = def;
+      await this.announcement.upsert({
+        where: { key },
+        create: def,
+        update: rest,
+      });
+    }
+  }
+
+  /** One-time migration: copy each user's legacy preferences.dismissedAnnouncements
+   *  into AnnouncementInteraction rows (matched by announcement.key) so existing
+   *  users never re-see what they already dismissed. Runs once: skipped as soon as
+   *  any interaction row exists. */
+  private async backfillAnnouncementDismissals(): Promise<void> {
+    const existing = await this.announcementInteraction.count();
+    if (existing > 0) return;
+
+    const byKey = new Map<string, string>();
+    const announcements = await this.announcement.findMany({ select: { id: true, key: true } });
+    for (const a of announcements) byKey.set(a.key, a.id);
+
+    const users = await this.user.findMany({ select: { id: true, preferences: true } });
+    const now = new Date();
+    for (const u of users) {
+      const prefs = u.preferences as { dismissedAnnouncements?: string[] } | null;
+      const keys = prefs?.dismissedAnnouncements ?? [];
+      for (const key of keys) {
+        const announcementId = byKey.get(key);
+        if (!announcementId) continue;
+        await this.announcementInteraction.upsert({
+          where: { announcementId_userId: { announcementId, userId: u.id } },
+          create: { announcementId, userId: u.id, dismissedAt: now },
+          update: { dismissedAt: now },
+        });
+      }
     }
   }
 
