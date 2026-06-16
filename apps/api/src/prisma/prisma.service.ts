@@ -28,14 +28,15 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
     }
   }
 
-  /** Keep the launch announcements in sync on boot. Idempotent (upsert by key). */
+  /** Seed the launch announcements on boot. Create-only: once a row exists, the
+   *  admin dashboard owns it, so re-seeding must NOT clobber admin edits. The
+   *  empty update keeps the upsert idempotent (no duplicates) without overwriting. */
   private async seedAnnouncements(): Promise<void> {
     for (const def of ANNOUNCEMENT_DEFS) {
-      const { key, ...rest } = def;
       await this.announcement.upsert({
-        where: { key },
+        where: { key: def.key },
         create: def,
-        update: rest,
+        update: {},
       });
     }
   }
