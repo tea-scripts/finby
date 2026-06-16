@@ -8,10 +8,22 @@ import type {
   LottieAsset,
 } from '@finby/shared';
 import { Button } from './ui/button';
+import { DatePicker } from './ui/date-picker';
 import { Dropdown } from './ui/dropdown';
 import { Field } from './ui/field';
 import { Input } from './ui/input';
 import { Toggle } from './ui/toggle';
+
+/** A stored timestamp ('2026-07-01T00:00:00.000Z') → the date-only value the
+ *  picker uses ('2026-07-01'). */
+function toDateInput(iso: string | null | undefined): string {
+  return iso ? iso.slice(0, 10) : '';
+}
+
+/** A picked date ('2026-07-01') → a UTC-midnight ISO timestamp, or null. */
+function toTimestamp(date: string): string | null {
+  return date ? `${date}T00:00:00.000Z` : null;
+}
 
 interface Props {
   assets: LottieAsset[];
@@ -59,8 +71,8 @@ export function AnnouncementForm({ assets, initial, onSubmit, onCancel }: Props)
   );
   const [targetTier, setTargetTier] = useState<string>(initial?.targetTier ?? '');
   const [order, setOrder] = useState(String(initial?.order ?? 0));
-  const [publishAt, setPublishAt] = useState(initial?.publishAt ?? '');
-  const [expiresAt, setExpiresAt] = useState(initial?.expiresAt ?? '');
+  const [publishAt, setPublishAt] = useState(toDateInput(initial?.publishAt));
+  const [expiresAt, setExpiresAt] = useState(toDateInput(initial?.expiresAt));
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
 
@@ -108,8 +120,8 @@ export function AnnouncementForm({ assets, initial, onSubmit, onCancel }: Props)
         primaryKind,
         targetTier: targetTier ? (targetTier as AdminAnnouncementInput['targetTier']) : null,
         order: Number(order) || 0,
-        publishAt: publishAt.trim() || null,
-        expiresAt: expiresAt.trim() || null,
+        publishAt: toTimestamp(publishAt),
+        expiresAt: toTimestamp(expiresAt),
       });
     } finally {
       setBusy(false);
@@ -243,20 +255,24 @@ export function AnnouncementForm({ assets, initial, onSubmit, onCancel }: Props)
       </div>
 
       <div className="grid grid-cols-2 gap-4">
-        <Field label="Publish at (ISO, optional)" htmlFor="ann-publish-at">
-          <Input
+        <Field label="Publish on (optional)" htmlFor="ann-publish-at">
+          <DatePicker
             id="ann-publish-at"
-            placeholder="2026-07-01T00:00:00Z"
+            aria-label="Publish on"
+            clearable
+            placeholder="Show immediately"
             value={publishAt}
-            onChange={(e) => setPublishAt(e.target.value)}
+            onChange={setPublishAt}
           />
         </Field>
-        <Field label="Expires at (ISO, optional)" htmlFor="ann-expires-at">
-          <Input
+        <Field label="Expires on (optional)" htmlFor="ann-expires-at">
+          <DatePicker
             id="ann-expires-at"
-            placeholder="2026-08-01T00:00:00Z"
+            aria-label="Expires on"
+            clearable
+            placeholder="Never expires"
             value={expiresAt}
-            onChange={(e) => setExpiresAt(e.target.value)}
+            onChange={setExpiresAt}
           />
         </Field>
       </div>
