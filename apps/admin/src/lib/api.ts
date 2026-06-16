@@ -58,4 +58,20 @@ export const api = {
       method: 'PATCH',
       body: JSON.stringify({ status }),
     }),
+  announcements: () =>
+    request<import('@finby/shared').AdminAnnouncement[]>('/admin/announcements'),
+  announcementAssets: () =>
+    request<{ lottie: import('@finby/shared').LottieAsset[] }>('/admin/announcements/assets'),
+  createAnnouncement: (body: import('@finby/shared').AdminAnnouncementInput) =>
+    request<import('@finby/shared').AdminAnnouncement>('/admin/announcements', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }),
+  updateAnnouncement: (id: string, body: Partial<import('@finby/shared').AdminAnnouncementInput>) =>
+    request<import('@finby/shared').AdminAnnouncement>(`/admin/announcements/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(body),
+    }),
+  deleteAnnouncement: (id: string) =>
+    request<void>(`/admin/announcements/${id}`, { method: 'DELETE' }),
 };
