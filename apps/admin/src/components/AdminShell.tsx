@@ -10,6 +10,7 @@ const NAV = [
   { href: '/users', label: 'Users' },
   { href: '/streaks', label: 'Streaks' },
   { href: '/tickets', label: 'Tickets' },
+  { href: '/announcements', label: 'Announcements' },
 ] as const;
 
 function NavLink({ href, label, active }: { href: string; label: string; active: boolean }) {
