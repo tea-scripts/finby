@@ -39,6 +39,7 @@ const MODE_OPTS = [
 const STATUS_OPTS = [
   { value: 'DRAFT', label: 'Draft' },
   { value: 'PUBLISHED', label: 'Published' },
+  { value: 'ARCHIVED', label: 'Archived' },
 ];
 const KIND_OPTS = [
   { value: 'DISMISS', label: 'Dismiss' },

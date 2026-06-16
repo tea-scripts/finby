@@ -1,4 +1,4 @@
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import type { AdminAnnouncement } from '@finby/shared';
 import { AnnouncementsTable } from './AnnouncementsTable';
@@ -7,12 +7,14 @@ vi.mock('next/navigation', () => ({ usePathname: () => '/announcements' }));
 
 const announcements = vi.fn();
 const announcementAssets = vi.fn();
-const deleteAnnouncement = vi.fn();
+const archiveAnnouncement = vi.fn();
+const restoreAnnouncement = vi.fn();
 vi.mock('../lib/api', () => ({
   api: {
     announcements: () => announcements(),
     announcementAssets: () => announcementAssets(),
-    deleteAnnouncement: (id: string) => deleteAnnouncement(id),
+    archiveAnnouncement: (id: string) => archiveAnnouncement(id),
+    restoreAnnouncement: (id: string) => restoreAnnouncement(id),
     createAnnouncement: vi.fn(),
     updateAnnouncement: vi.fn(),
   },
@@ -27,11 +29,14 @@ const row: AdminAnnouncement = {
   seenCount: 1240, dismissedCount: 880,
 };
 
+const archivedRow: AdminAnnouncement = { ...row, id: 'an2', title: 'Old promo', status: 'ARCHIVED' };
+
 describe('AnnouncementsTable', () => {
   beforeEach(() => {
     announcements.mockReset().mockResolvedValue([row]);
     announcementAssets.mockReset().mockResolvedValue({ lottie: [] });
-    deleteAnnouncement.mockReset().mockResolvedValue(undefined);
+    archiveAnnouncement.mockReset().mockResolvedValue(undefined);
+    restoreAnnouncement.mockReset().mockResolvedValue(undefined);
   });
 
   it('renders rows with title, status, and seen/dismissed counts', async () => {
@@ -42,12 +47,37 @@ describe('AnnouncementsTable', () => {
     expect(screen.getByText(/880/)).toBeInTheDocument();
   });
 
-  it('deletes a row after confirmation and refetches', async () => {
-    vi.spyOn(window, 'confirm').mockReturnValue(true);
+  it('archives a row only after confirming in the modal, then refetches', async () => {
     render(<AnnouncementsTable />);
     await screen.findByText('Streaks are here');
-    fireEvent.click(screen.getByRole('button', { name: /delete/i }));
-    expect(deleteAnnouncement).toHaveBeenCalledWith('an1');
+
+    // Clicking Archive opens a confirmation modal but does NOT archive yet.
+    fireEvent.click(screen.getByRole('button', { name: 'Archive' }));
+    expect(archiveAnnouncement).not.toHaveBeenCalled();
+    const dialog = screen.getByRole('dialog', { name: 'Archive announcement' });
+    expect(dialog).toBeInTheDocument();
+
+    // Confirming inside the modal archives and refetches.
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Archive' }));
+    expect(archiveAnnouncement).toHaveBeenCalledWith('an1');
+    await waitFor(() => expect(announcements).toHaveBeenCalledTimes(2));
+  });
+
+  it('cancelling the confirmation modal does not archive', async () => {
+    render(<AnnouncementsTable />);
+    await screen.findByText('Streaks are here');
+    fireEvent.click(screen.getByRole('button', { name: 'Archive' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    expect(archiveAnnouncement).not.toHaveBeenCalled();
+    expect(screen.queryByRole('dialog', { name: 'Archive announcement' })).not.toBeInTheDocument();
+  });
+
+  it('restores an archived row immediately (no confirm) and refetches', async () => {
+    announcements.mockReset().mockResolvedValue([archivedRow]);
+    render(<AnnouncementsTable />);
+    await screen.findByText('Old promo');
+    fireEvent.click(screen.getByRole('button', { name: 'Restore' }));
+    expect(restoreAnnouncement).toHaveBeenCalledWith('an2');
     await waitFor(() => expect(announcements).toHaveBeenCalledTimes(2));
   });
 

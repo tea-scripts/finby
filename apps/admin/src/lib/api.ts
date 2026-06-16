@@ -72,6 +72,12 @@ export const api = {
       method: 'PATCH',
       body: JSON.stringify(body),
     }),
-  deleteAnnouncement: (id: string) =>
-    request<void>(`/admin/announcements/${id}`, { method: 'DELETE' }),
+  archiveAnnouncement: (id: string) =>
+    request<import('@finby/shared').AdminAnnouncement>(`/admin/announcements/${id}/archive`, {
+      method: 'POST',
+    }),
+  restoreAnnouncement: (id: string) =>
+    request<import('@finby/shared').AdminAnnouncement>(`/admin/announcements/${id}/restore`, {
+      method: 'POST',
+    }),
 };

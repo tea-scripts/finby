@@ -11,12 +11,19 @@ import { Modal } from './ui/modal';
 const HEADERS = ['Title', 'Status', 'Tier', 'Order', 'Engagement', ''] as const;
 
 function StatusPill({ status }: { status: AdminAnnouncement['status'] }) {
-  const published = status === 'PUBLISHED';
+  const styles: Record<AdminAnnouncement['status'], string> = {
+    PUBLISHED: 'bg-accent-soft text-accent',
+    DRAFT: 'bg-line text-muted',
+    ARCHIVED: 'bg-surface-2 text-faint',
+  };
+  const labels: Record<AdminAnnouncement['status'], string> = {
+    PUBLISHED: 'Published',
+    DRAFT: 'Draft',
+    ARCHIVED: 'Archived',
+  };
   return (
-    <span
-      className={`rounded-full px-2 py-0.5 text-xs font-medium ${published ? 'bg-accent-soft text-accent' : 'bg-line text-muted'}`}
-    >
-      {published ? 'Published' : 'Draft'}
+    <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${styles[status]}`}>
+      {labels[status]}
     </span>
   );
 }
@@ -27,6 +34,8 @@ export function AnnouncementsTable() {
   const [err, setErr] = useState(false);
   const [editing, setEditing] = useState<AdminAnnouncement | null>(null);
   const [creating, setCreating] = useState(false);
+  const [confirmArchive, setConfirmArchive] = useState<AdminAnnouncement | null>(null);
+  const [busy, setBusy] = useState(false);
 
   const load = useCallback(() => {
     api
@@ -46,9 +55,20 @@ export function AnnouncementsTable() {
       .catch(() => undefined);
   }, [load]);
 
-  async function handleDelete(id: string) {
-    if (!window.confirm('Delete this announcement? This cannot be undone.')) return;
-    await api.deleteAnnouncement(id);
+  async function handleArchive() {
+    if (!confirmArchive) return;
+    setBusy(true);
+    try {
+      await api.archiveAnnouncement(confirmArchive.id);
+      setConfirmArchive(null);
+      load();
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleRestore(id: string) {
+    await api.restoreAnnouncement(id);
     load();
   }
 
@@ -113,13 +133,23 @@ export function AnnouncementsTable() {
                         <Button variant="ghost" className="px-3 py-1.5" onClick={() => setEditing(a)}>
                           Edit
                         </Button>
-                        <Button
-                          variant="ghost"
-                          className="px-3 py-1.5"
-                          onClick={() => handleDelete(a.id)}
-                        >
-                          Delete
-                        </Button>
+                        {a.status === 'ARCHIVED' ? (
+                          <Button
+                            variant="ghost"
+                            className="px-3 py-1.5"
+                            onClick={() => handleRestore(a.id)}
+                          >
+                            Restore
+                          </Button>
+                        ) : (
+                          <Button
+                            variant="ghost"
+                            className="px-3 py-1.5"
+                            onClick={() => setConfirmArchive(a)}
+                          >
+                            Archive
+                          </Button>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -148,6 +178,28 @@ export function AnnouncementsTable() {
             onCancel={closeForm}
           />
         )}
+      </Modal>
+
+      <Modal
+        open={confirmArchive !== null}
+        onClose={() => setConfirmArchive(null)}
+        title="Archive announcement"
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-muted">
+            Archive <span className="font-medium text-ink">“{confirmArchive?.title}”</span>? It will
+            stop showing to users immediately, but its record and engagement analytics are kept — you
+            can restore it as a draft any time.
+          </p>
+          <div className="flex justify-end gap-2">
+            <Button variant="ghost" onClick={() => setConfirmArchive(null)}>
+              Cancel
+            </Button>
+            <Button onClick={handleArchive} loading={busy}>
+              Archive
+            </Button>
+          </div>
+        </div>
       </Modal>
     </AdminShell>
   );
