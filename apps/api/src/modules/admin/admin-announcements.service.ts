@@ -57,7 +57,21 @@ export class AdminAnnouncementsService {
     return this.toAdmin(a, seen, dismissed);
   }
 
-  async delete(id: string): Promise<void> {
-    await this.prisma.announcement.delete({ where: { id } });
+  private async setStatus(id: string, status: 'ARCHIVED' | 'DRAFT'): Promise<AdminAnnouncement> {
+    const a = await this.prisma.announcement.update({ where: { id }, data: { status } });
+    const { seen, dismissed } = await this.countsFor(a.id);
+    return this.toAdmin(a, seen, dismissed);
+  }
+
+  /** Soft-delete: stop showing the announcement to users while keeping the row
+   *  and its analytics. Recoverable via restore(). */
+  archive(id: string): Promise<AdminAnnouncement> {
+    return this.setStatus(id, 'ARCHIVED');
+  }
+
+  /** Bring an archived announcement back as a Draft (admin re-publishes
+   *  deliberately, so it never silently re-appears to users). */
+  restore(id: string): Promise<AdminAnnouncement> {
+    return this.setStatus(id, 'DRAFT');
   }
 }

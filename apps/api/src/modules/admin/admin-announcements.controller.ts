@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, HttpCode, Param, Patch, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch, Post, UseGuards } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import { LOTTIE_REGISTRY, type AdminAnnouncement, type LottieAsset } from '@finby/shared';
 import { Public } from '../../common/decorators/public.decorator';
@@ -44,9 +44,13 @@ export class AdminAnnouncementsController {
     return this.service.update(id, body);
   }
 
-  @Delete(':id')
-  @HttpCode(204)
-  async remove(@Param('id') id: string): Promise<void> {
-    await this.service.delete(id);
+  @Post(':id/archive')
+  archive(@Param('id') id: string): Promise<AdminAnnouncement> {
+    return this.service.archive(id);
+  }
+
+  @Post(':id/restore')
+  restore(@Param('id') id: string): Promise<AdminAnnouncement> {
+    return this.service.restore(id);
   }
 }

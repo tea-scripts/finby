@@ -45,7 +45,7 @@ const announcementStepSchema = z.object({
 
 export const createAnnouncementSchema = z.object({
   key: z.string().trim().min(1).max(80).regex(/^[a-z0-9-]+$/, 'lowercase, digits, hyphens only'),
-  status: z.enum(['DRAFT', 'PUBLISHED']).default('DRAFT'),
+  status: z.enum(['DRAFT', 'PUBLISHED', 'ARCHIVED']).default('DRAFT'),
   mode: z.enum(['SIMPLE', 'STEPS']).default('SIMPLE'),
   title: z.string().trim().min(1).max(120),
   body: z.string().trim().min(1).max(600),

@@ -3,7 +3,7 @@ import { AdminAnnouncementsService } from './admin-announcements.service';
 
 function buildPrisma() {
   return {
-    announcement: { findMany: jest.fn(), create: jest.fn(), update: jest.fn(), delete: jest.fn() },
+    announcement: { findMany: jest.fn(), create: jest.fn(), update: jest.fn() },
     announcementInteraction: { groupBy: jest.fn(), count: jest.fn() },
   };
 }
@@ -63,10 +63,33 @@ describe('AdminAnnouncementsService mutations', () => {
     expect(result).toMatchObject({ id: 'an1', seenCount: 12, dismissedCount: 5 });
   });
 
-  it('delete removes by id', async () => {
+  it('archive sets status ARCHIVED and returns real counts (no row deletion)', async () => {
     const prisma = buildPrisma();
+    prisma.announcement.update.mockResolvedValue({ ...row, status: 'ARCHIVED' });
+    prisma.announcementInteraction.count.mockResolvedValueOnce(12).mockResolvedValueOnce(5);
     const service = new AdminAnnouncementsService(prisma as unknown as PrismaService);
-    await service.delete('an1');
-    expect(prisma.announcement.delete).toHaveBeenCalledWith({ where: { id: 'an1' } });
+
+    const result = await service.archive('an1');
+
+    expect(prisma.announcement.update).toHaveBeenCalledWith({
+      where: { id: 'an1' },
+      data: { status: 'ARCHIVED' },
+    });
+    expect(result).toMatchObject({ id: 'an1', status: 'ARCHIVED', seenCount: 12, dismissedCount: 5 });
+  });
+
+  it('restore brings an archived announcement back as a Draft', async () => {
+    const prisma = buildPrisma();
+    prisma.announcement.update.mockResolvedValue({ ...row, status: 'DRAFT' });
+    prisma.announcementInteraction.count.mockResolvedValueOnce(12).mockResolvedValueOnce(5);
+    const service = new AdminAnnouncementsService(prisma as unknown as PrismaService);
+
+    const result = await service.restore('an1');
+
+    expect(prisma.announcement.update).toHaveBeenCalledWith({
+      where: { id: 'an1' },
+      data: { status: 'DRAFT' },
+    });
+    expect(result).toMatchObject({ id: 'an1', status: 'DRAFT' });
   });
 });
