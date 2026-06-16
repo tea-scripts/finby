@@ -47,4 +47,18 @@ export const ANNOUNCEMENT_DEFS: Prisma.AnnouncementCreateInput[] = [
     ],
     primaryLabel: 'Got it', primaryKind: 'DISMISS',
   },
+  {
+    key: 'gamification-xp-launch', status: 'PUBLISHED', mode: 'SIMPLE', order: 4,
+    title: 'Earn XP for every habit',
+    body: 'Log transactions, maintain streaks, and hit goals to earn XP. Use it to recover missed streak days — no more monthly limits.',
+    emoji: '⚡', lottieKey: 'xp-bolt', hashtag: 'New', confetti: true,
+    primaryLabel: 'Got it', primaryKind: 'DISMISS',
+  },
+  {
+    key: 'gamification-achievements-launch', status: 'PUBLISHED', mode: 'SIMPLE', order: 5,
+    title: 'Achievements are here',
+    body: 'Unlock badges for streaks, transactions logged, and goals hit. Flex your progress and share your milestones.',
+    emoji: '🏆', lottieKey: 'achievement-trophy', hashtag: 'New', confetti: true,
+    primaryLabel: 'Got it', primaryKind: 'DISMISS',
+  },
 ];
