@@ -2,7 +2,7 @@ import type { SubscriptionTier } from './types';
 
 export type AnnouncementMode = 'SIMPLE' | 'STEPS';
 export type AnnouncementPrimaryKind = 'DISMISS' | 'ENABLE_PUSH';
-export type AnnouncementStatus = 'DRAFT' | 'PUBLISHED';
+export type AnnouncementStatus = 'DRAFT' | 'PUBLISHED' | 'ARCHIVED';
 
 export interface AnnouncementStepView {
   label: string;

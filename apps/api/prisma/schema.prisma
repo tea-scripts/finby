@@ -44,6 +44,7 @@ enum SubscriptionStatus {
 enum AnnouncementStatus {
   DRAFT
   PUBLISHED
+  ARCHIVED
 }
 
 enum AnnouncementMode {
