@@ -4,7 +4,7 @@ import { AdminAnnouncementsService } from './admin-announcements.service';
 function buildPrisma() {
   return {
     announcement: { findMany: jest.fn(), create: jest.fn(), update: jest.fn(), delete: jest.fn() },
-    announcementInteraction: { groupBy: jest.fn() },
+    announcementInteraction: { groupBy: jest.fn(), count: jest.fn() },
   };
 }
 
@@ -44,6 +44,23 @@ describe('AdminAnnouncementsService mutations', () => {
     } as never);
 
     expect(prisma.announcement.create).toHaveBeenCalledWith({ data: expect.objectContaining({ key: 'x' }) });
+  });
+
+  it('update returns the announcement with its real interaction counts', async () => {
+    const prisma = buildPrisma();
+    prisma.announcement.update.mockResolvedValue(row);
+    prisma.announcementInteraction.count
+      .mockResolvedValueOnce(12)  // seen
+      .mockResolvedValueOnce(5);  // dismissed
+    const service = new AdminAnnouncementsService(prisma as unknown as PrismaService);
+
+    const result = await service.update('an1', { title: 'New title' } as never);
+
+    expect(prisma.announcement.update).toHaveBeenCalledWith({
+      where: { id: 'an1' },
+      data: expect.objectContaining({ title: 'New title' }),
+    });
+    expect(result).toMatchObject({ id: 'an1', seenCount: 12, dismissedCount: 5 });
   });
 
   it('delete removes by id', async () => {

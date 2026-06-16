@@ -42,9 +42,19 @@ export class AdminAnnouncementsService {
     return this.toAdmin(a, 0, 0);
   }
 
+  /** Seen + dismissed counts for a single announcement. */
+  private async countsFor(announcementId: string): Promise<{ seen: number; dismissed: number }> {
+    const [seen, dismissed] = await Promise.all([
+      this.prisma.announcementInteraction.count({ where: { announcementId } }),
+      this.prisma.announcementInteraction.count({ where: { announcementId, dismissedAt: { not: null } } }),
+    ]);
+    return { seen, dismissed };
+  }
+
   async update(id: string, input: UpdateAnnouncementInput): Promise<AdminAnnouncement> {
     const a = await this.prisma.announcement.update({ where: { id }, data: input as never });
-    return this.toAdmin(a, 0, 0);
+    const { seen, dismissed } = await this.countsFor(a.id);
+    return this.toAdmin(a, seen, dismissed);
   }
 
   async delete(id: string): Promise<void> {
