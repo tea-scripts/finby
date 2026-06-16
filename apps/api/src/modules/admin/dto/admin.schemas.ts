@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { LOTTIE_KEYS } from '@finby/shared';
 
 export const adminLoginSchema = z.object({
   email: z.string().trim().email().toLowerCase(),
@@ -36,3 +37,32 @@ export const usersQuerySchema = z.object({
   sort: z.enum(['newest', 'oldest']).default('newest'),
 });
 export type UsersQuery = z.infer<typeof usersQuerySchema>;
+
+const announcementStepSchema = z.object({
+  label: z.string().trim().min(1).max(120),
+  caption: z.string().trim().min(1).max(200),
+});
+
+export const createAnnouncementSchema = z.object({
+  key: z.string().trim().min(1).max(80).regex(/^[a-z0-9-]+$/, 'lowercase, digits, hyphens only'),
+  status: z.enum(['DRAFT', 'PUBLISHED']).default('DRAFT'),
+  mode: z.enum(['SIMPLE', 'STEPS']).default('SIMPLE'),
+  title: z.string().trim().min(1).max(120),
+  body: z.string().trim().min(1).max(600),
+  emoji: z.string().trim().max(8).nullish(),
+  imageUrl: z.string().trim().url().max(500).nullish(),
+  lottieKey: z.string().trim().refine((v) => LOTTIE_KEYS.includes(v), 'unknown lottie key').nullish(),
+  hashtag: z.string().trim().max(40).nullish(),
+  confetti: z.boolean().default(false),
+  steps: z.array(announcementStepSchema).max(6).nullish(),
+  primaryLabel: z.string().trim().min(1).max(60),
+  primaryKind: z.enum(['DISMISS', 'ENABLE_PUSH']).default('DISMISS'),
+  targetTier: z.enum(['FREE', 'PRO', 'PREMIUM', 'FAMILY']).nullish(),
+  order: z.coerce.number().int().min(0).default(0),
+  publishAt: z.coerce.date().nullish(),
+  expiresAt: z.coerce.date().nullish(),
+});
+export type CreateAnnouncementInput = z.infer<typeof createAnnouncementSchema>;
+
+export const updateAnnouncementSchema = createAnnouncementSchema.partial();
+export type UpdateAnnouncementInput = z.infer<typeof updateAnnouncementSchema>;
