@@ -35,6 +35,10 @@ describe('AnnouncementsService.getActive', () => {
         where: expect.objectContaining({
           status: 'PUBLISHED',
           OR: [{ targetTier: null }, { targetTier: 'PRO' }],
+          AND: expect.arrayContaining([
+            { OR: [{ publishAt: null }, { publishAt: { lte: expect.any(Date) } }] },
+            { OR: [{ expiresAt: null }, { expiresAt: { gt: expect.any(Date) } }] },
+          ]),
           interactions: { none: { userId: 'u1', dismissedAt: { not: null } } },
         }),
         orderBy: [{ order: 'asc' }, { createdAt: 'asc' }],
