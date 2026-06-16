@@ -31,6 +31,12 @@ const row: AdminAnnouncement = {
 
 const archivedRow: AdminAnnouncement = { ...row, id: 'an2', title: 'Old promo', status: 'ARCHIVED' };
 
+/** Drive the custom (non-native) status-filter dropdown. */
+function selectFilter(label: string) {
+  fireEvent.click(screen.getByRole('button', { name: 'Filter by status' }));
+  fireEvent.click(screen.getByRole('option', { name: label }));
+}
+
 describe('AnnouncementsTable', () => {
   beforeEach(() => {
     announcements.mockReset().mockResolvedValue([row]);
@@ -72,10 +78,29 @@ describe('AnnouncementsTable', () => {
     expect(screen.queryByRole('dialog', { name: 'Archive announcement' })).not.toBeInTheDocument();
   });
 
+  it('hides archived announcements by default and reveals them via the filter', async () => {
+    announcements.mockReset().mockResolvedValue([row, archivedRow]);
+    render(<AnnouncementsTable />);
+    await screen.findByText('Streaks are here');
+    // Archived row is hidden under the default "Active" filter.
+    expect(screen.queryByText('Old promo')).not.toBeInTheDocument();
+
+    selectFilter('Archived');
+    expect(screen.queryByText('Streaks are here')).not.toBeInTheDocument();
+    expect(screen.getByText('Old promo')).toBeInTheDocument();
+
+    selectFilter('All');
+    expect(screen.getByText('Streaks are here')).toBeInTheDocument();
+    expect(screen.getByText('Old promo')).toBeInTheDocument();
+  });
+
   it('restores an archived row immediately (no confirm) and refetches', async () => {
     announcements.mockReset().mockResolvedValue([archivedRow]);
     render(<AnnouncementsTable />);
-    await screen.findByText('Old promo');
+    await waitFor(() => expect(announcements).toHaveBeenCalled());
+    // Hidden by default; reveal via the filter, then restore.
+    expect(screen.queryByText('Old promo')).not.toBeInTheDocument();
+    selectFilter('Archived');
     fireEvent.click(screen.getByRole('button', { name: 'Restore' }));
     expect(restoreAnnouncement).toHaveBeenCalledWith('an2');
     await waitFor(() => expect(announcements).toHaveBeenCalledTimes(2));

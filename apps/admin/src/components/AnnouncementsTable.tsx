@@ -6,9 +6,25 @@ import { api } from '../lib/api';
 import { AdminShell } from './AdminShell';
 import { AnnouncementForm } from './AnnouncementForm';
 import { Button } from './ui/button';
+import { Dropdown } from './ui/dropdown';
 import { Modal } from './ui/modal';
 
 const HEADERS = ['Title', 'Status', 'Tier', 'Order', 'Engagement', ''] as const;
+
+const FILTER_OPTIONS = [
+  { value: 'active', label: 'Active' },
+  { value: 'PUBLISHED', label: 'Published' },
+  { value: 'DRAFT', label: 'Draft' },
+  { value: 'ARCHIVED', label: 'Archived' },
+  { value: 'all', label: 'All' },
+];
+
+/** 'active' hides archived (the default); a status value matches exactly; 'all' shows everything. */
+function matchesFilter(status: AdminAnnouncement['status'], filter: string): boolean {
+  if (filter === 'all') return true;
+  if (filter === 'active') return status !== 'ARCHIVED';
+  return status === filter;
+}
 
 function StatusPill({ status }: { status: AdminAnnouncement['status'] }) {
   const styles: Record<AdminAnnouncement['status'], string> = {
@@ -36,6 +52,7 @@ export function AnnouncementsTable() {
   const [creating, setCreating] = useState(false);
   const [confirmArchive, setConfirmArchive] = useState<AdminAnnouncement | null>(null);
   const [busy, setBusy] = useState(false);
+  const [filter, setFilter] = useState('active');
 
   const load = useCallback(() => {
     api
@@ -85,6 +102,7 @@ export function AnnouncementsTable() {
   }
 
   const formOpen = creating || editing !== null;
+  const visible = (rows ?? []).filter((a) => matchesFilter(a.status, filter));
 
   return (
     <AdminShell>
@@ -93,6 +111,14 @@ export function AnnouncementsTable() {
           <h1 className="font-display text-xl font-bold tracking-tight text-ink">Announcements</h1>
           <Button onClick={() => setCreating(true)}>New announcement</Button>
         </div>
+
+        <Dropdown
+          aria-label="Filter by status"
+          className="w-44"
+          value={filter}
+          options={FILTER_OPTIONS}
+          onChange={setFilter}
+        />
 
         {err && <p className="text-sm text-danger">Failed to load announcements.</p>}
 
@@ -114,7 +140,7 @@ export function AnnouncementsTable() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-line">
-                {rows.map((a) => (
+                {visible.map((a) => (
                   <tr key={a.id} className="transition hover:bg-canvas/40">
                     <td className="px-4 py-3">
                       <p className="font-medium text-ink">{a.title}</p>
@@ -159,8 +185,12 @@ export function AnnouncementsTable() {
           </div>
         )}
 
-        {rows !== null && rows.length === 0 && (
-          <p className="py-12 text-center text-muted">No announcements yet.</p>
+        {rows !== null && visible.length === 0 && (
+          <p className="py-12 text-center text-muted">
+            {rows.length === 0
+              ? 'No announcements yet.'
+              : 'No announcements match this filter.'}
+          </p>
         )}
       </div>
 
