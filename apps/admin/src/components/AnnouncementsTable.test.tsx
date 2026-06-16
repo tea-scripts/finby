@@ -3,6 +3,8 @@ import { describe, expect, it, vi, beforeEach } from 'vitest';
 import type { AdminAnnouncement } from '@finby/shared';
 import { AnnouncementsTable } from './AnnouncementsTable';
 
+vi.mock('next/navigation', () => ({ usePathname: () => '/announcements' }));
+
 const announcements = vi.fn();
 const announcementAssets = vi.fn();
 const deleteAnnouncement = vi.fn();
@@ -47,5 +49,13 @@ describe('AnnouncementsTable', () => {
     fireEvent.click(screen.getByRole('button', { name: /delete/i }));
     expect(deleteAnnouncement).toHaveBeenCalledWith('an1');
     await waitFor(() => expect(announcements).toHaveBeenCalledTimes(2));
+  });
+
+  it('opens the editor in a modal when "New announcement" is clicked', async () => {
+    render(<AnnouncementsTable />);
+    await screen.findByText('Streaks are here');
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /new announcement/i }));
+    expect(screen.getByRole('dialog', { name: 'New announcement' })).toBeInTheDocument();
   });
 });
