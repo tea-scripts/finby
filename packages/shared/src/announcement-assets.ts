@@ -12,6 +12,8 @@ export const LOTTIE_REGISTRY: readonly LottieAsset[] = [
   { key: 'notif-bell', label: 'Notification bell', path: '/lottie/notif-bell.json' },
   { key: 'receipt-scan', label: 'Receipt scan', path: '/lottie/receipt-scan.json' },
   { key: 'account-cards', label: 'Account cards', path: '/lottie/account-cards.json' },
+  { key: 'xp-bolt', label: 'XP bolt', path: '/lottie/xp-bolt.json' },
+  { key: 'achievement-trophy', label: 'Achievement trophy', path: '/lottie/achievement-trophy.json' },
 ] as const;
 
 export const LOTTIE_KEYS: readonly string[] = LOTTIE_REGISTRY.map((a) => a.key);
