@@ -14,6 +14,7 @@ import { AccountsModule } from './modules/accounts/accounts.module';
 import { AdminModule } from './modules/admin/admin.module';
 import { AlertsModule } from './modules/alerts/alerts.module';
 import { AnalyticsModule } from './modules/analytics/analytics.module';
+import { AnnouncementsModule } from './modules/announcements/announcements.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { BillingModule } from './modules/billing/billing.module';
 import { BudgetsModule } from './modules/budgets/budgets.module';
@@ -111,6 +112,7 @@ import { RedisModule } from './redis/redis.module';
     MembersModule,
     FeedbackModule,
     GamificationModule,
+    AnnouncementsModule,
     SupportModule,
   ],
   controllers: [AppController],
