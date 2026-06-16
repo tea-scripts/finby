@@ -41,6 +41,21 @@ enum SubscriptionStatus {
   PAUSED
 }
 
+enum AnnouncementStatus {
+  DRAFT
+  PUBLISHED
+}
+
+enum AnnouncementMode {
+  SIMPLE
+  STEPS
+}
+
+enum AnnouncementPrimaryKind {
+  DISMISS
+  ENABLE_PUSH
+}
+
 enum WorkspaceMemberRole {
   OWNER        // Full control — billing, settings, invites
   CO_MANAGER   // Can log, edit, manage budgets. Cannot manage billing or members.
@@ -170,6 +185,7 @@ model User {
 
   // Relations
   workspaceMemberships  WorkspaceMember[]
+  announcementInteractions AnnouncementInteraction[]
   refreshTokens         RefreshToken[]
   feedback              Feedback[]
   supportTickets        SupportTicket[]
@@ -937,4 +953,43 @@ enum AchievementTier {
   BRONZE
   SILVER
   GOLD
+}
+
+model Announcement {
+  id           String   @id @default(cuid())
+  key          String   @unique
+  status       AnnouncementStatus      @default(DRAFT)
+  mode         AnnouncementMode        @default(SIMPLE)
+  title        String
+  body         String
+  emoji        String?
+  imageUrl     String?
+  lottieKey    String?
+  hashtag      String?
+  confetti     Boolean  @default(false)
+  steps        Json?
+  primaryLabel String
+  primaryKind  AnnouncementPrimaryKind  @default(DISMISS)
+  targetTier   SubscriptionTier?
+  order        Int      @default(0)
+  publishAt    DateTime?
+  expiresAt    DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  interactions AnnouncementInteraction[]
+
+  @@index([status, order])
+}
+
+model AnnouncementInteraction {
+  id             String       @id @default(cuid())
+  announcementId String
+  announcement   Announcement @relation(fields: [announcementId], references: [id], onDelete: Cascade)
+  userId         String
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  seenAt         DateTime     @default(now())
+  dismissedAt    DateTime?
+
+  @@unique([announcementId, userId])
+  @@index([announcementId])
 }
