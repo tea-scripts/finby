@@ -21,6 +21,7 @@ const emailMock = {
 
 const dailyLoginMock = {
   awardIfFirstToday: jest.fn().mockResolvedValue(true),
+  awardForContext: jest.fn().mockResolvedValue(true),
 };
 
 function createPrismaMock() {
@@ -658,24 +659,30 @@ describe('AuthService.getMe daily-login XP', () => {
     preferences: {},
     currentStreak: 0,
     longestStreak: 0,
+    lastDailyXpDate: null,
+    workspaceMemberships: [{ workspace: { tier: 'FREE' } }],
   };
 
-  beforeEach(() => dailyLoginMock.awardIfFirstToday.mockReset().mockResolvedValue(true));
+  beforeEach(() => dailyLoginMock.awardForContext.mockReset().mockResolvedValue(true));
 
-  it('awards daily-login XP for the authenticated user', async () => {
+  it('awards daily-login XP from the already-loaded user row (no extra query)', async () => {
     const prisma = createPrismaMock();
     prisma.user.findUnique.mockResolvedValue(meUser);
     const service = buildService(prisma);
 
     await service.getMe('u1');
 
-    expect(dailyLoginMock.awardIfFirstToday).toHaveBeenCalledWith('u1');
+    expect(dailyLoginMock.awardForContext).toHaveBeenCalledWith('u1', {
+      timezone: 'UTC',
+      tier: 'FREE',
+      lastDailyXpDate: null,
+    });
   });
 
   it('still returns the user view when the award throws', async () => {
     const prisma = createPrismaMock();
     prisma.user.findUnique.mockResolvedValue(meUser);
-    dailyLoginMock.awardIfFirstToday.mockRejectedValue(new Error('xp boom'));
+    dailyLoginMock.awardForContext.mockRejectedValue(new Error('xp boom'));
     const service = buildService(prisma);
 
     const result = await service.getMe('u1');
