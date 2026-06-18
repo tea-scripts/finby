@@ -183,6 +183,9 @@ model User {
   lastStreakDate    String?
   // YYYY-MM-DD local date of the user's last streak repair (monthly cap).
   lastStreakRepairDate String?
+  // YYYY-MM-DD local date of the user's last daily-login XP award. Mirrors the
+  // lastStreakDate convention; the once-per-local-day idempotency key.
+  lastDailyXpDate   String?
 
   // Relations
   workspaceMemberships  WorkspaceMember[]
@@ -915,6 +918,7 @@ enum XpEvent {
   GOAL_HIT
   STREAK_RECOVERY
   REFERRAL_BONUS
+  DAILY_LOGIN
 }
 
 model AchievementDef {
