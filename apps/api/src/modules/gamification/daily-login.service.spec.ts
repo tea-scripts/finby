@@ -99,3 +99,56 @@ describe('DailyLoginService.awardIfFirstToday', () => {
     expect(awardXp).not.toHaveBeenCalled();
   });
 });
+
+describe('DailyLoginService.awardForContext', () => {
+  it('awards from pre-loaded context without an extra findUnique', async () => {
+    const { prisma, xpService, userFindUnique, userUpdateMany, awardXp } = build();
+    const service = new DailyLoginService(prisma, xpService);
+
+    const awarded = await service.awardForContext('u1', {
+      timezone: 'Asia/Manila',
+      tier: 'PRO',
+      lastDailyXpDate: null,
+    });
+
+    expect(userFindUnique).not.toHaveBeenCalled();
+    expect(localDayInfo).toHaveBeenCalledWith(expect.any(Date), 'Asia/Manila');
+    expect(userUpdateMany).toHaveBeenCalledWith({
+      where: { id: 'u1', lastDailyXpDate: { not: '2026-06-18' } },
+      data: { lastDailyXpDate: '2026-06-18' },
+    });
+    expect(awardXp).toHaveBeenCalledWith('u1', 'PRO', XpEvent.DAILY_LOGIN, { date: '2026-06-18' });
+    expect(awarded).toBe(true);
+  });
+
+  it('short-circuits with no write when the context shows today already awarded', async () => {
+    const { prisma, xpService, userFindUnique, userUpdateMany, awardXp } = build();
+    const service = new DailyLoginService(prisma, xpService);
+
+    const awarded = await service.awardForContext('u1', {
+      timezone: 'UTC',
+      tier: 'FREE',
+      lastDailyXpDate: '2026-06-18',
+    });
+
+    expect(userFindUnique).not.toHaveBeenCalled();
+    expect(userUpdateMany).not.toHaveBeenCalled();
+    expect(awardXp).not.toHaveBeenCalled();
+    expect(awarded).toBe(false);
+  });
+
+  it('returns false when the context has no tier', async () => {
+    const { prisma, xpService, userUpdateMany, awardXp } = build();
+    const service = new DailyLoginService(prisma, xpService);
+
+    const awarded = await service.awardForContext('u1', {
+      timezone: 'UTC',
+      tier: null,
+      lastDailyXpDate: null,
+    });
+
+    expect(awarded).toBe(false);
+    expect(userUpdateMany).not.toHaveBeenCalled();
+    expect(awardXp).not.toHaveBeenCalled();
+  });
+});

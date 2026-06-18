@@ -371,15 +371,26 @@ export class AuthService {
         preferences: true,
         currentStreak: true,
         longestStreak: true,
+        lastDailyXpDate: true,
+        workspaceMemberships: {
+          orderBy: { joinedAt: 'asc' },
+          take: 1,
+          select: { workspace: { select: { tier: true } } },
+        },
       },
     });
     if (!user) {
       throw new UnauthorizedException('User not found.');
     }
-    // First authenticated activity of the day earns daily-login XP. Best-effort:
-    // a gamification failure must never break auth, so swallow and log.
+    // First authenticated activity of the day earns daily-login XP, reusing the
+    // row already loaded above (no extra query). Best-effort: a gamification
+    // failure must never break auth, so swallow and log.
     try {
-      await this.dailyLogin.awardIfFirstToday(userId);
+      await this.dailyLogin.awardForContext(userId, {
+        timezone: user.timezone,
+        tier: user.workspaceMemberships?.[0]?.workspace.tier ?? null,
+        lastDailyXpDate: user.lastDailyXpDate,
+      });
     } catch (err) {
       this.logger.warn(`Daily login XP failed for userId=${userId}: ${String(err)}`);
     }
