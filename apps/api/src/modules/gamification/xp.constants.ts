@@ -19,6 +19,7 @@ export const XP_BASE: Record<XpEvent, number> = {
   GOAL_HIT: 2,
   STREAK_RECOVERY: 0,
   REFERRAL_BONUS: 0,
+  DAILY_LOGIN: 1,
 };
 
 /** Fixed XP costs for spend actions. */

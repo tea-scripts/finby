@@ -8,6 +8,7 @@ import { DEFAULT_CATEGORIES, DEFAULT_PREFERENCES, type SubscriptionTier } from '
 import { PrismaService } from '../../prisma/prisma.service';
 import type { Env } from '../../config/env.schema';
 import { EmailService } from '../email/email.service';
+import { DailyLoginService } from '../gamification/daily-login.service';
 import type { LoginInput, RegisterInput, UpdateProfileInput } from './dto/auth.schemas';
 import type {
   AccessTokenPayload,
@@ -48,6 +49,7 @@ export class AuthService {
     private readonly jwt: JwtService,
     private readonly config: ConfigService<Env, true>,
     private readonly email: EmailService,
+    private readonly dailyLogin: DailyLoginService,
   ) {}
 
   async register(input: RegisterInput): Promise<AuthResult> {
@@ -374,6 +376,14 @@ export class AuthService {
     if (!user) {
       throw new UnauthorizedException('User not found.');
     }
+    // First authenticated activity of the day earns daily-login XP. Best-effort:
+    // a gamification failure must never break auth, so swallow and log.
+    try {
+      await this.dailyLogin.awardIfFirstToday(userId);
+    } catch (err) {
+      this.logger.warn(`Daily login XP failed for userId=${userId}: ${String(err)}`);
+    }
+
     return this.toUserView(user);
   }
 
