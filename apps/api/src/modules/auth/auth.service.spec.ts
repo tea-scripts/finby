@@ -19,6 +19,10 @@ const emailMock = {
   sendPasswordReset: jest.fn().mockResolvedValue(undefined),
 };
 
+const dailyLoginMock = {
+  awardIfFirstToday: jest.fn().mockResolvedValue(true),
+};
+
 function createPrismaMock() {
   const model = () => ({
     create: jest.fn(),
@@ -67,6 +71,7 @@ function buildService(prisma: PrismaMock): AuthService {
     new JwtService({}),
     configMock,
     emailMock as unknown as EmailService,
+    dailyLoginMock as unknown as import('../gamification/daily-login.service').DailyLoginService,
   );
 }
 
@@ -296,6 +301,7 @@ describe('AuthService', () => {
         jwt,
         configMock,
         emailMock as unknown as EmailService,
+        dailyLoginMock as unknown as import('../gamification/daily-login.service').DailyLoginService,
       );
       await service.logout(rawToken);
 
@@ -638,5 +644,42 @@ describe('AuthService', () => {
         lastEarlyReminderAt: null,
       });
     });
+  });
+});
+
+describe('AuthService.getMe daily-login XP', () => {
+  const meUser = {
+    id: 'u1',
+    displayName: 'Aisha Bello',
+    email: 'aisha@example.com',
+    emailVerified: true,
+    timezone: 'UTC',
+    accountNumber: 'FB-1',
+    preferences: {},
+    currentStreak: 0,
+    longestStreak: 0,
+  };
+
+  beforeEach(() => dailyLoginMock.awardIfFirstToday.mockReset().mockResolvedValue(true));
+
+  it('awards daily-login XP for the authenticated user', async () => {
+    const prisma = createPrismaMock();
+    prisma.user.findUnique.mockResolvedValue(meUser);
+    const service = buildService(prisma);
+
+    await service.getMe('u1');
+
+    expect(dailyLoginMock.awardIfFirstToday).toHaveBeenCalledWith('u1');
+  });
+
+  it('still returns the user view when the award throws', async () => {
+    const prisma = createPrismaMock();
+    prisma.user.findUnique.mockResolvedValue(meUser);
+    dailyLoginMock.awardIfFirstToday.mockRejectedValue(new Error('xp boom'));
+    const service = buildService(prisma);
+
+    const result = await service.getMe('u1');
+
+    expect(result.id).toBe('u1');
   });
 });
