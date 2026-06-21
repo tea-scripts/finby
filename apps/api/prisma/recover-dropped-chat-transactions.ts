@@ -11,8 +11,15 @@
  * Reconstruction replays the original message through the LLM, so the run needs
  * ANTHROPIC_API_KEY in the environment in addition to the DB URL.
  *
+ * This bootstraps the full Nest app graph (to reuse the real services), so it
+ * MUST run with TS_NODE_TRANSPILE_ONLY=1 — otherwise ts-node type-checks the
+ * entire project in memory and OOMs on a constrained host. Types are verified
+ * separately via `tsc --noEmit`, so transpile-only is safe.
+ *
  * Run (preview, last 7 days):
- *   DATABASE_URL="$DIRECT_DATABASE_URL" ANTHROPIC_API_KEY=… pnpm --filter finby-api exec \
+ *   DATABASE_URL="$DIRECT_DATABASE_URL" ANTHROPIC_API_KEY=… \
+ *   TS_NODE_TRANSPILE_ONLY=1 NODE_OPTIONS=--max-old-space-size=2048 \
+ *     pnpm --filter finby-api exec \
  *     ts-node --project tsconfig.seed.json prisma/recover-dropped-chat-transactions.ts
  * Run (commit):  …same… prisma/recover-dropped-chat-transactions.ts --commit
  * Override window:  …same… --since=2026-06-14
