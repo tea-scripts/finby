@@ -648,45 +648,91 @@ describe('AuthService', () => {
   });
 });
 
-describe('AuthService.getMe daily-login XP', () => {
-  const meUser = {
-    id: 'u1',
-    displayName: 'Aisha Bello',
-    email: 'aisha@example.com',
-    emailVerified: true,
-    timezone: 'UTC',
-    accountNumber: 'FB-1',
-    preferences: {},
-    currentStreak: 0,
-    longestStreak: 0,
-    lastDailyXpDate: null,
-    workspaceMemberships: [{ workspace: { tier: 'FREE' } }],
-  };
+describe('AuthService daily-login XP trigger', () => {
+  async function loginUser(password: string) {
+    return {
+      id: 'u1',
+      email: 'aisha@example.com',
+      displayName: 'Aisha Bello',
+      emailVerified: true,
+      timezone: 'Asia/Manila',
+      accountNumber: '1234567890',
+      preferences: {},
+      lastDailyXpDate: null,
+      passwordHash: await bcrypt.hash(password, 4),
+      workspaceMemberships: [{ workspace: { id: 'w1', name: 'W', slug: 'w', tier: 'PRO', baseCurrency: 'USD', preferredCurrencies: ['USD'] } }],
+    };
+  }
 
-  beforeEach(() => dailyLoginMock.awardForContext.mockReset().mockResolvedValue(true));
+  beforeEach(() => {
+    dailyLoginMock.awardForContext.mockReset().mockResolvedValue(true);
+    dailyLoginMock.awardIfFirstToday.mockReset().mockResolvedValue(true);
+  });
 
-  it('awards daily-login XP from the already-loaded user row (no extra query)', async () => {
+  it('login awards daily-login XP from the signed-in user context (best-effort)', async () => {
     const prisma = createPrismaMock();
-    prisma.user.findUnique.mockResolvedValue(meUser);
+    prisma.user.findUnique.mockResolvedValue(await loginUser('SuperSecret123!'));
+    prisma.user.update.mockResolvedValue({});
+    prisma.refreshToken.create.mockResolvedValue({ id: 'rt1' });
+    const service = buildService(prisma);
+
+    await service.login({ email: 'aisha@example.com', password: 'SuperSecret123!' });
+
+    expect(dailyLoginMock.awardForContext).toHaveBeenCalledWith(
+      'u1',
+      expect.objectContaining({ timezone: 'Asia/Manila', tier: 'PRO', lastDailyXpDate: null }),
+    );
+  });
+
+  it('login still returns tokens when the daily-login award throws', async () => {
+    const prisma = createPrismaMock();
+    prisma.user.findUnique.mockResolvedValue(await loginUser('SuperSecret123!'));
+    prisma.user.update.mockResolvedValue({});
+    prisma.refreshToken.create.mockResolvedValue({ id: 'rt1' });
+    dailyLoginMock.awardForContext.mockRejectedValue(new Error('xp boom'));
+    const service = buildService(prisma);
+
+    const result = await service.login({ email: 'aisha@example.com', password: 'SuperSecret123!' });
+
+    expect(result.accessToken).toEqual(expect.any(String));
+  });
+
+  it('refresh awards daily-login XP for the user (best-effort)', async () => {
+    const prisma = createPrismaMock();
+    prisma.user.findUnique.mockResolvedValue({ email: 'aisha@example.com' });
+    prisma.refreshToken.update.mockResolvedValue({});
+    prisma.refreshToken.create.mockResolvedValue({ id: 'rt2' });
+    const service = buildService(prisma);
+
+    await service.rotateRefreshToken('u1', 'rt1');
+
+    expect(dailyLoginMock.awardIfFirstToday).toHaveBeenCalledWith('u1');
+  });
+
+  it('refresh still issues a new pair when the daily-login award throws', async () => {
+    const prisma = createPrismaMock();
+    prisma.user.findUnique.mockResolvedValue({ email: 'aisha@example.com' });
+    prisma.refreshToken.update.mockResolvedValue({});
+    prisma.refreshToken.create.mockResolvedValue({ id: 'rt2' });
+    dailyLoginMock.awardIfFirstToday.mockRejectedValue(new Error('xp boom'));
+    const service = buildService(prisma);
+
+    const pair = await service.rotateRefreshToken('u1', 'rt1');
+
+    expect(pair.accessToken).toEqual(expect.any(String));
+  });
+
+  it('getMe does NOT award daily-login XP (trigger moved off /auth/me)', async () => {
+    const prisma = createPrismaMock();
+    prisma.user.findUnique.mockResolvedValue({
+      id: 'u1', displayName: 'Aisha', email: 'a@b.com', emailVerified: true,
+      timezone: 'UTC', accountNumber: 'FB-1', preferences: {}, currentStreak: 0, longestStreak: 0,
+    });
     const service = buildService(prisma);
 
     await service.getMe('u1');
 
-    expect(dailyLoginMock.awardForContext).toHaveBeenCalledWith('u1', {
-      timezone: 'UTC',
-      tier: 'FREE',
-      lastDailyXpDate: null,
-    });
-  });
-
-  it('still returns the user view when the award throws', async () => {
-    const prisma = createPrismaMock();
-    prisma.user.findUnique.mockResolvedValue(meUser);
-    dailyLoginMock.awardForContext.mockRejectedValue(new Error('xp boom'));
-    const service = buildService(prisma);
-
-    const result = await service.getMe('u1');
-
-    expect(result.id).toBe('u1');
+    expect(dailyLoginMock.awardForContext).not.toHaveBeenCalled();
+    expect(dailyLoginMock.awardIfFirstToday).not.toHaveBeenCalled();
   });
 });

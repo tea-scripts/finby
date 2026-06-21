@@ -239,6 +239,19 @@ export class AuthService {
       data: { lastLoginAt: new Date() },
     });
 
+    // Daily-login XP: first sign-in of the user's local day. Best-effort — a
+    // gamification failure must never break login. Reuses the row already loaded
+    // (timezone, tier, lastDailyXpDate) so no extra query is needed.
+    try {
+      await this.dailyLogin.awardForContext(user.id, {
+        timezone: user.timezone,
+        tier: membership.workspace.tier,
+        lastDailyXpDate: user.lastDailyXpDate,
+      });
+    } catch (err) {
+      this.logger.warn(`Daily login XP failed for userId=${user.id}: ${String(err)}`);
+    }
+
     const tokens = await this.issueTokenPair(user.id, user.email);
     return {
       user: this.toUserView(user),
@@ -261,6 +274,15 @@ export class AuthService {
       where: { id: oldTokenId },
       data: { revokedAt: new Date() },
     });
+
+    // Daily-login XP: the client refreshes its short-lived access token on app
+    // open, so this is the reliable once-per-local-day signal for a resumed
+    // session. Best-effort and self-fetching; never block a token refresh.
+    try {
+      await this.dailyLogin.awardIfFirstToday(userId);
+    } catch (err) {
+      this.logger.warn(`Daily login XP failed for userId=${userId}: ${String(err)}`);
+    }
 
     return this.issueTokenPair(userId, user.email);
   }
@@ -371,30 +393,11 @@ export class AuthService {
         preferences: true,
         currentStreak: true,
         longestStreak: true,
-        lastDailyXpDate: true,
-        workspaceMemberships: {
-          orderBy: { joinedAt: 'asc' },
-          take: 1,
-          select: { workspace: { select: { tier: true } } },
-        },
       },
     });
     if (!user) {
       throw new UnauthorizedException('User not found.');
     }
-    // First authenticated activity of the day earns daily-login XP, reusing the
-    // row already loaded above (no extra query). Best-effort: a gamification
-    // failure must never break auth, so swallow and log.
-    try {
-      await this.dailyLogin.awardForContext(userId, {
-        timezone: user.timezone,
-        tier: user.workspaceMemberships?.[0]?.workspace.tier ?? null,
-        lastDailyXpDate: user.lastDailyXpDate,
-      });
-    } catch (err) {
-      this.logger.warn(`Daily login XP failed for userId=${userId}: ${String(err)}`);
-    }
-
     return this.toUserView(user);
   }
 
