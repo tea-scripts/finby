@@ -13,7 +13,8 @@
     "prisma:migrate": "dotenv -e ../../.env -- prisma migrate dev",
     "prisma:deploy": "dotenv -e ../../.env -- prisma migrate deploy",
     "prisma:seed": "dotenv -e ../../.env -- ts-node --project tsconfig.seed.json prisma/seed.ts",
-    "prisma:studio": "dotenv -e ../../.env -- prisma studio"
+    "prisma:studio": "dotenv -e ../../.env -- prisma studio",
+    "backfill:daily-login-xp": "dotenv -e ../../.env -- ts-node --project tsconfig.seed.json prisma/backfill-daily-login-xp.ts"
   },
   "prisma": {
     "seed": "dotenv -e ../../.env -- ts-node --project tsconfig.seed.json prisma/seed.ts"
