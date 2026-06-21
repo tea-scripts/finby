@@ -663,7 +663,7 @@ After recovered rows exist, recompute the user's streak and award XP only for th
 - Test: `apps/api/src/modules/chat/recovery/chat-recovery.service.spec.ts`
 
 **Interfaces:**
-- Consumes: `PrismaService` (`transaction.findMany`, `user.findUnique`, `user.update`, `xpTransaction.findMany`, `xpTransaction.create`, `userXp.upsert`), `computeStreakFromActiveDays` (Task 2), `bucketLocalDays` (`src/modules/streaks/streaks.calendar.ts`), `XP_BASE`/`XP_MULTIPLIER`/`STREAK_MILESTONES`, `XpEvent` from `@prisma/client`.
+- Consumes: `PrismaService` (`transaction.findMany`, `user.findUnique`, `user.update`, `xpTransaction.findMany`), `XpService.awardXp(userId, tier, event, meta)` (the canonical award path — same call the live streak system uses), `computeStreakFromActiveDays` (Task 2), `bucketLocalDays` (`src/modules/streaks/streaks.calendar.ts`), `XP_BASE`/`XP_MULTIPLIER`/`STREAK_MILESTONES`, `XpEvent` from `@prisma/client`.
 - Produces:
   ```ts
   export interface StreakRestoreResult {
@@ -685,17 +685,20 @@ After recovered rows exist, recompute the user's streak and award XP only for th
 
 Add to `chat-recovery.service.spec.ts` a new describe block. Provide a `PrismaService` mock with the methods used. Example:
 
+Build the module with a richer `PrismaService` mock and an `XpService` mock exposing `awardXp`:
+
 ```ts
+import { XpEvent } from '@prisma/client';
+
 describe('ChatRecoveryService.restoreUserStreakAndXp', () => {
-  // Build the module as above but with a richer prisma mock:
   const prisma = {
     transaction: { findMany: jest.fn() },
     user: { findUnique: jest.fn(), update: jest.fn() },
-    xpTransaction: { findMany: jest.fn(), create: jest.fn() },
-    userXp: { upsert: jest.fn() },
+    xpTransaction: { findMany: jest.fn() },
   };
-  // …compile module providing this prisma mock as PrismaService, real XpService not needed
-  // (the service writes XP via prisma directly to keep it idempotent like the backfill).
+  const xp = { awardXp: jest.fn().mockResolvedValue({}) };
+  // …compile the testing module providing `prisma` as PrismaService and `xp` as
+  // XpService (the other deps stay as empty mocks). clearAllMocks in beforeEach.
 
   it('recomputes streak and awards STREAK_DAY for a recovered date (commit)', async () => {
     // Active days incl. the recovered one (createdAt noon UTC → Manila same day):
@@ -718,7 +721,9 @@ describe('ChatRecoveryService.restoreUserStreakAndXp', () => {
       data: expect.objectContaining({ currentStreak: 3, longestStreak: 3, lastStreakDate: '2026-06-18' }),
     }));
     expect(res.xpAwards).toEqual([{ date: '2026-06-18', event: 'STREAK_DAY', delta: 1 }]);
-    expect(prisma.xpTransaction.create).toHaveBeenCalledTimes(1);
+    expect(xp.awardXp).toHaveBeenCalledWith('u1', 'FREE', XpEvent.STREAK_DAY, {
+      date: '2026-06-18', source: 'chat-recovery',
+    });
   });
 
   it('does not award XP for a recovered date already credited', async () => {
@@ -726,14 +731,16 @@ describe('ChatRecoveryService.restoreUserStreakAndXp', () => {
       { createdAt: new Date('2026-06-18T12:00:00Z') },
     ]);
     prisma.user.findUnique.mockResolvedValue({ currentStreak: 0, longestStreak: 0 });
-    prisma.xpTransaction.findMany.mockResolvedValue([{ meta: { date: '2026-06-18' } }]);
+    prisma.xpTransaction.findMany.mockResolvedValue([
+      { event: XpEvent.STREAK_DAY, meta: { date: '2026-06-18' } },
+    ]);
 
     const res = await service.restoreUserStreakAndXp({
       userId: 'u1', tier: 'FREE', timezone: 'Asia/Manila',
       recoveredDates: ['2026-06-18'], commit: true,
     });
     expect(res.xpAwards).toEqual([]);
-    expect(prisma.xpTransaction.create).not.toHaveBeenCalled();
+    expect(xp.awardXp).not.toHaveBeenCalled();
   });
 
   it('writes nothing in dry-run but reports the planned changes', async () => {
@@ -750,7 +757,7 @@ describe('ChatRecoveryService.restoreUserStreakAndXp', () => {
     expect(res.after.currentStreak).toBe(1);
     expect(res.xpAwards).toEqual([{ date: '2026-06-18', event: 'STREAK_DAY', delta: 1 }]);
     expect(prisma.user.update).not.toHaveBeenCalled();
-    expect(prisma.xpTransaction.create).not.toHaveBeenCalled();
+    expect(xp.awardXp).not.toHaveBeenCalled();
   });
 });
 ```
@@ -765,7 +772,7 @@ Expected: FAIL — method not defined.
 Add imports at the top of `chat-recovery.service.ts`:
 
 ```ts
-import { XpEvent, Prisma } from '@prisma/client';
+import { XpEvent } from '@prisma/client';
 import { computeStreakFromActiveDays } from '../../streaks/streaks.recompute';
 import { bucketLocalDays } from '../../streaks/streaks.calendar';
 import { XP_BASE, XP_MULTIPLIER, STREAK_MILESTONES } from '../../gamification/xp.constants';
@@ -858,7 +865,13 @@ Add the method to the class:
       if (!credited.has(dayKey)) {
         const delta = XP_BASE[XpEvent.STREAK_DAY] * mult;
         xpAwards.push({ date, event: 'STREAK_DAY', delta });
-        if (input.commit) await this.writeXp(input.userId, XpEvent.STREAK_DAY, delta, date);
+        // Reuse the canonical award path (same call the live streak system makes);
+        // our credited-set check above is what makes re-runs idempotent.
+        if (input.commit) {
+          await this.xp.awardXp(input.userId, input.tier, XpEvent.STREAK_DAY, {
+            date, source: 'chat-recovery',
+          });
+        }
         credited.add(dayKey);
       }
       const len = streakLenAt(date);
@@ -866,25 +879,16 @@ Add the method to the class:
       if (STREAK_MILESTONES.has(len) && !credited.has(mileKey)) {
         const delta = XP_BASE[XpEvent.STREAK_MILESTONE] * mult;
         xpAwards.push({ date, event: 'STREAK_MILESTONE', delta });
-        if (input.commit) await this.writeXp(input.userId, XpEvent.STREAK_MILESTONE, delta, date);
+        if (input.commit) {
+          await this.xp.awardXp(input.userId, input.tier, XpEvent.STREAK_MILESTONE, {
+            date, source: 'chat-recovery',
+          });
+        }
         credited.add(mileKey);
       }
     }
 
     return { before, after, xpAwards };
-  }
-
-  private async writeXp(userId: string, event: XpEvent, delta: number, date: string): Promise<void> {
-    await this.prisma.$transaction([
-      this.prisma.xpTransaction.create({
-        data: { userId, event, delta, meta: { date, source: 'chat-recovery' } as Prisma.InputJsonValue },
-      }),
-      this.prisma.userXp.upsert({
-        where: { userId },
-        create: { userId, balance: delta, totalEarned: delta },
-        update: { balance: { increment: delta }, totalEarned: { increment: delta } },
-      }),
-    ]);
   }
 ```
 
