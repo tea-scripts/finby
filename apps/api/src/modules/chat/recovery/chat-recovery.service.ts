@@ -53,6 +53,12 @@ export interface RecoveryReport {
     userMessageId: string;
     userText: string;
   }>;
+  failed: Array<{
+    userId: string;
+    conversationId: string;
+    userMessageId: string;
+    error: string;
+  }>;
   skippedAlreadyRecovered: number;
   notLoggingIntent: number;
   streakRestores: Array<{ userId: string } & StreakRestoreResult>;
@@ -248,6 +254,7 @@ export class ChatRecoveryService {
       candidates: 0,
       inserted: [],
       needsManual: [],
+      failed: [],
       skippedAlreadyRecovered: 0,
       notLoggingIntent: 0,
       streakRestores: [],
@@ -327,79 +334,88 @@ export class ChatRecoveryService {
       for (const turn of dropped) {
         const msg = convo.messages.find((m) => m.id === turn.userMessageId)!;
         report.candidates += 1;
-        const messageLocalDate = this.localDateOf(msg.createdAt, user.timezone);
-        const recon = await this.reconstructTurn({
-          workspace: { id: convo.workspaceId, baseCurrency: workspace.baseCurrency, tier: workspace.tier },
-          user: { displayName: user.displayName, timezone: user.timezone },
-          accounts: accountRows,
-          categories: categoryRows.map((c) => c.name),
-          userText: msg.content,
-          messageLocalDate,
-        });
+        try {
+          const messageLocalDate = this.localDateOf(msg.createdAt, user.timezone);
+          const recon = await this.reconstructTurn({
+            workspace: { id: convo.workspaceId, baseCurrency: workspace.baseCurrency, tier: workspace.tier },
+            user: { displayName: user.displayName, timezone: user.timezone },
+            accounts: accountRows,
+            categories: categoryRows.map((c) => c.name),
+            userText: msg.content,
+            messageLocalDate,
+          });
 
-        if (!recon) {
-          report.notLoggingIntent += 1;
-          continue;
-        }
+          if (!recon) {
+            report.notLoggingIntent += 1;
+            continue;
+          }
 
-        if (recon.needsManual) {
-          report.needsManual.push({
+          if (recon.needsManual) {
+            report.needsManual.push({
+              userId: convo.userId,
+              conversationId: convo.id,
+              userMessageId: turn.userMessageId,
+              userText: msg.content,
+            });
+            continue;
+          }
+
+          if (opts.commit) {
+            const category = recon.categoryName
+              ? ((await this.categories.findByName(convo.workspaceId, recon.categoryName)) ??
+                 (await this.categories.findByName(convo.workspaceId, 'Other')))
+              : null;
+            const account = recon.accountName
+              ? await this.accounts.findByName(convo.workspaceId, recon.accountName)
+              : null;
+            await this.transactions.create({
+              workspaceId: convo.workspaceId,
+              loggedByUserId: convo.userId,
+              baseCurrency: workspace.baseCurrency,
+              tier: workspace.tier,
+              type: recon.type as 'EXPENSE' | 'INCOME',
+              amountOriginal: recon.amountOriginal,
+              currencyOriginal: recon.currencyOriginal,
+              transactionDate: recon.transactionDate,
+              categoryId: category?.id ?? null,
+              accountId: account?.id ?? null,
+              merchant: recon.merchant,
+              aiConfidence: recon.confidence,
+              sourceMessageId: turn.userMessageId,
+              tags: ['chat-recovery'],
+              createdAt: this.createdAtForDate(recon.transactionDate),
+              skipEngagement: true,
+              status: 'CONFIRMED',
+            });
+          }
+
+          report.inserted.push({
             userId: convo.userId,
             conversationId: convo.id,
             userMessageId: turn.userMessageId,
-            userText: msg.content,
-          });
-          continue;
-        }
-
-        if (opts.commit) {
-          const category = recon.categoryName
-            ? ((await this.categories.findByName(convo.workspaceId, recon.categoryName)) ??
-               (await this.categories.findByName(convo.workspaceId, 'Other')))
-            : null;
-          const account = recon.accountName
-            ? await this.accounts.findByName(convo.workspaceId, recon.accountName)
-            : null;
-          await this.transactions.create({
-            workspaceId: convo.workspaceId,
-            loggedByUserId: convo.userId,
-            baseCurrency: workspace.baseCurrency,
-            tier: workspace.tier,
-            type: recon.type as 'EXPENSE' | 'INCOME',
+            type: recon.type,
             amountOriginal: recon.amountOriginal,
             currencyOriginal: recon.currencyOriginal,
+            categoryName: recon.categoryName,
             transactionDate: recon.transactionDate,
-            categoryId: category?.id ?? null,
-            accountId: account?.id ?? null,
-            merchant: recon.merchant,
-            aiConfidence: recon.confidence,
-            sourceMessageId: turn.userMessageId,
-            tags: ['chat-recovery'],
-            createdAt: this.createdAtForDate(recon.transactionDate),
-            skipEngagement: true,
-            status: 'CONFIRMED',
+            confidence: recon.confidence,
+          });
+
+          const bucket = recoveredDatesByUser.get(convo.userId) ?? {
+            tier: workspace.tier,
+            timezone: user.timezone,
+            dates: new Set<string>(),
+          };
+          bucket.dates.add(recon.transactionDate);
+          recoveredDatesByUser.set(convo.userId, bucket);
+        } catch (err) {
+          report.failed.push({
+            userId: convo.userId,
+            conversationId: convo.id,
+            userMessageId: turn.userMessageId,
+            error: err instanceof Error ? err.message : String(err),
           });
         }
-
-        report.inserted.push({
-          userId: convo.userId,
-          conversationId: convo.id,
-          userMessageId: turn.userMessageId,
-          type: recon.type,
-          amountOriginal: recon.amountOriginal,
-          currencyOriginal: recon.currencyOriginal,
-          categoryName: recon.categoryName,
-          transactionDate: recon.transactionDate,
-          confidence: recon.confidence,
-        });
-
-        const bucket = recoveredDatesByUser.get(convo.userId) ?? {
-          tier: workspace.tier,
-          timezone: user.timezone,
-          dates: new Set<string>(),
-        };
-        bucket.dates.add(recon.transactionDate);
-        recoveredDatesByUser.set(convo.userId, bucket);
       }
     }
 

@@ -2,6 +2,12 @@ import { Test } from '@nestjs/testing';
 import { XpEvent } from '@prisma/client';
 import { ChatRecoveryService } from './chat-recovery.service';
 import { LlmService } from '../../llm/llm.service';
+import { PrismaService } from '../../../prisma/prisma.service';
+import { TransactionsService } from '../../transactions/transactions.service';
+import { CategoriesService } from '../../categories/categories.service';
+import { AccountsService } from '../../accounts/accounts.service';
+import { StreaksService } from '../../streaks/streaks.service';
+import { XpService } from '../../gamification/xp.service';
 
 describe('ChatRecoveryService.reconstructTurn', () => {
   let service: ChatRecoveryService;
@@ -20,12 +26,12 @@ describe('ChatRecoveryService.reconstructTurn', () => {
         // Provide the remaining deps as empty mocks (PrismaService,
         // TransactionsService, CategoriesService, AccountsService,
         // StreaksService, XpService) — reconstructTurn only uses llm.
-        { provide: require('../../../prisma/prisma.service').PrismaService, useValue: {} },
-        { provide: require('../../transactions/transactions.service').TransactionsService, useValue: {} },
-        { provide: require('../../categories/categories.service').CategoriesService, useValue: {} },
-        { provide: require('../../accounts/accounts.service').AccountsService, useValue: {} },
-        { provide: require('../../streaks/streaks.service').StreaksService, useValue: {} },
-        { provide: require('../../gamification/xp.service').XpService, useValue: {} },
+        { provide: PrismaService, useValue: {} },
+        { provide: TransactionsService, useValue: {} },
+        { provide: CategoriesService, useValue: {} },
+        { provide: AccountsService, useValue: {} },
+        { provide: StreaksService, useValue: {} },
+        { provide: XpService, useValue: {} },
       ],
     }).compile();
     service = moduleRef.get(ChatRecoveryService);
@@ -98,13 +104,13 @@ describe('ChatRecoveryService.restoreUserStreakAndXp', () => {
     const moduleRef = await Test.createTestingModule({
       providers: [
         ChatRecoveryService,
-        { provide: require('../../../prisma/prisma.service').PrismaService, useValue: prisma },
-        { provide: require('../../llm/llm.service').LlmService, useValue: {} },
-        { provide: require('../../transactions/transactions.service').TransactionsService, useValue: {} },
-        { provide: require('../../categories/categories.service').CategoriesService, useValue: {} },
-        { provide: require('../../accounts/accounts.service').AccountsService, useValue: {} },
-        { provide: require('../../streaks/streaks.service').StreaksService, useValue: {} },
-        { provide: require('../../gamification/xp.service').XpService, useValue: xp },
+        { provide: PrismaService, useValue: prisma },
+        { provide: LlmService, useValue: {} },
+        { provide: TransactionsService, useValue: {} },
+        { provide: CategoriesService, useValue: {} },
+        { provide: AccountsService, useValue: {} },
+        { provide: StreaksService, useValue: {} },
+        { provide: XpService, useValue: xp },
       ],
     }).compile();
     service = moduleRef.get(ChatRecoveryService);
@@ -312,19 +318,19 @@ describe('ChatRecoveryService.run', () => {
       }],
     });
 
-    const moduleRef = await require('@nestjs/testing').Test.createTestingModule({
+    const moduleRef = await Test.createTestingModule({
       providers: [
-        require('./chat-recovery.service').ChatRecoveryService,
-        { provide: require('../../../prisma/prisma.service').PrismaService, useValue: prisma },
-        { provide: require('../../llm/llm.service').LlmService, useValue: llmMock },
-        { provide: require('../../transactions/transactions.service').TransactionsService, useValue: transactionsMock },
-        { provide: require('../../categories/categories.service').CategoriesService, useValue: categoriesMock },
-        { provide: require('../../accounts/accounts.service').AccountsService, useValue: accountsMock },
-        { provide: require('../../streaks/streaks.service').StreaksService, useValue: {} },
-        { provide: require('../../gamification/xp.service').XpService, useValue: xpMock },
+        ChatRecoveryService,
+        { provide: PrismaService, useValue: prisma },
+        { provide: LlmService, useValue: llmMock },
+        { provide: TransactionsService, useValue: transactionsMock },
+        { provide: CategoriesService, useValue: categoriesMock },
+        { provide: AccountsService, useValue: accountsMock },
+        { provide: StreaksService, useValue: {} },
+        { provide: XpService, useValue: xpMock },
       ],
     }).compile();
-    service = moduleRef.get(require('./chat-recovery.service').ChatRecoveryService);
+    service = moduleRef.get(ChatRecoveryService);
   });
 
   it('dry-run reconstructs and reports without writing', async () => {
@@ -360,7 +366,63 @@ describe('ChatRecoveryService.run', () => {
       skipEngagement: true,
       sourceMessageId: expect.any(String),
       tags: ['chat-recovery'],
+      status: 'CONFIRMED',
     }));
     expect(report.inserted).toHaveLength(1);
+  });
+
+  it('isolates per-turn failures: failed turn is recorded, second turn still processed', async () => {
+    const userMsgId2 = 'umsg-2';
+
+    // Two dropped turns in the same conversation
+    prisma.conversation.findMany.mockResolvedValue([{
+      id: convoId,
+      userId,
+      workspaceId,
+      messages: [
+        {
+          id: userMsgId,
+          role: 'USER',
+          content: 'Spent 50 USD on coffee',
+          toolName: null,
+          createdTransactionId: null,
+          createdAt: new Date('2026-06-16T12:00:00.000Z'),
+        },
+        {
+          id: userMsgId2,
+          role: 'USER',
+          content: 'Spent 100 USD on food',
+          toolName: null,
+          createdTransactionId: null,
+          createdAt: new Date('2026-06-16T13:00:00.000Z'),
+        },
+      ],
+    }]);
+
+    prisma.transaction.findMany.mockImplementation((args: { where?: { loggedByUserId?: string; sourceMessageId?: { in?: string[] } } } | undefined) => {
+      if (args?.where?.loggedByUserId) {
+        return Promise.resolve([{ createdAt: new Date('2026-06-16T12:00:00.000Z') }]);
+      }
+      return Promise.resolve([]);
+    });
+
+    // First call to transactions.create rejects; second resolves
+    transactionsMock.create
+      .mockRejectedValueOnce(new Error('DB write failed'))
+      .mockResolvedValueOnce({ transaction: { id: 'tx2' } });
+
+    const report = await service.run({ since: '2026-06-15', commit: true });
+
+    // run() must not reject
+    expect(report.failed).toHaveLength(1);
+    expect(report.failed[0]).toMatchObject({
+      userId,
+      conversationId: convoId,
+      userMessageId: userMsgId,
+      error: 'DB write failed',
+    });
+    // Second turn was still processed and inserted
+    expect(report.inserted).toHaveLength(1);
+    expect(report.inserted[0]!.userMessageId).toBe(userMsgId2);
   });
 });
