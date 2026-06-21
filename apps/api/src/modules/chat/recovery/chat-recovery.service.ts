@@ -26,8 +26,11 @@ const LOG_TOOL_TYPE: Record<string, 'EXPENSE' | 'INCOME' | 'TRANSFER'> = {
   log_transfer: 'TRANSFER',
 };
 
-const asString = (v: unknown): string | undefined =>
-  typeof v === 'string' && v.trim() ? v : undefined;
+const asString = (v: unknown): string | undefined => {
+  if (typeof v !== 'string') return undefined;
+  const trimmed = v.trim();
+  return trimmed ? trimmed : undefined;
+};
 const asNumber = (v: unknown): number | undefined =>
   typeof v === 'number' && Number.isFinite(v) ? v : undefined;
 
