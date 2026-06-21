@@ -173,6 +173,37 @@ describe('TransactionsService.create', () => {
       service.create({ ...baseParams, type: 'EXPENSE', accountId: 'missing' }),
     ).rejects.toBeInstanceOf(NotFoundException);
   });
+
+  it('skips the streak/XP side-effect and backdates createdAt when asked', async () => {
+    const prisma = buildPrisma();
+    prisma.account.findFirst.mockResolvedValue({ id: 'a1', workspaceId: 'w1', currency: 'USD', name: 'Wise USD' });
+    prisma.transaction.create.mockResolvedValue(txRow());
+    const fx = buildFx({ amountBase: '1000' });
+    const streaksMock = buildStreaks();
+    const service = new TransactionsService(prisma as unknown as PrismaService, fx as unknown as FxService, buildBudgets() as unknown as BudgetsService, buildAlerts() as unknown as AlertsService, streaksMock as unknown as StreaksService);
+
+    const backdated = new Date('2026-06-18T12:00:00.000Z');
+    const result = await service.create({
+      workspaceId: 'w1',
+      loggedByUserId: 'u1',
+      baseCurrency: 'USD',
+      tier: 'FREE',
+      type: 'EXPENSE',
+      amountOriginal: '1000',
+      currencyOriginal: 'USD',
+      transactionDate: '2026-06-18',
+      accountId: 'a1',
+      merchant: 'Test',
+      createdAt: backdated,
+      skipEngagement: true,
+    });
+
+    expect(streaksMock.onTransactionLogged).not.toHaveBeenCalled();
+    expect(result.currentStreak).toBeNull();
+    expect(result.newAchievements).toEqual([]);
+    const createArg = prisma.transaction.create.mock.calls[0][0];
+    expect(createArg.data.createdAt).toBe(backdated);
+  });
 });
 
 describe('TransactionsService.void', () => {
