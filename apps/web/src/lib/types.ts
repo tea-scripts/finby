@@ -316,7 +316,8 @@ export type XpEvent =
   | 'TRANSACTION_LOGGED'
   | 'GOAL_HIT'
   | 'STREAK_RECOVERY'
-  | 'REFERRAL_BONUS';
+  | 'REFERRAL_BONUS'
+  | 'DAILY_LOGIN';
 
 export type AchievementTierName = 'BRONZE' | 'SILVER' | 'GOLD';
 export type AchievementCategoryName = 'STREAK' | 'TRANSACTIONS' | 'GOALS';

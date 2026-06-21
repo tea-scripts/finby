@@ -8,7 +8,8 @@ import type { LlmToolDef } from './llm.types';
 export const PHASE2_TOOLS: LlmToolDef[] = [
   {
     name: 'log_expense',
-    description: 'Log an expense. Use when the user mentions spending money on something.',
+    description:
+      'Log an expense. Call this whenever the user reports money they spent in their latest message (e.g. "spent 450 on dinner", "paid 1000 for gas", "bought groceries for 2k"). Always call it for a newly-reported expense — never assume it was already recorded from earlier context. Calling the tool is the only thing that saves the transaction.',
     input_schema: {
       type: 'object',
       properties: {
@@ -33,7 +34,7 @@ export const PHASE2_TOOLS: LlmToolDef[] = [
   {
     name: 'log_income',
     description:
-      'Log an income event. Use when the user mentions receiving money — salary, freelance payment, dividend, etc.',
+      'Log an income event. Call this whenever the user reports receiving money in their latest message — salary, freelance payment, dividend, refund, etc. Always call it for newly-reported income — never assume it was already recorded from earlier context. Calling the tool is the only thing that saves the transaction.',
     input_schema: {
       type: 'object',
       properties: {
@@ -52,7 +53,7 @@ export const PHASE2_TOOLS: LlmToolDef[] = [
   {
     name: 'log_transfer',
     description:
-      'Log a transfer between two accounts or currencies the user owns. Use when money moves between their own accounts.',
+      'Log a transfer between two accounts or currencies the user owns. Call this whenever the user reports moving money between their own accounts in their latest message. Always call it for a newly-reported transfer — never assume it was already recorded from earlier context. Calling the tool is the only thing that saves the transaction.',
     input_schema: {
       type: 'object',
       properties: {
