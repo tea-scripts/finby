@@ -26,6 +26,7 @@ const XP_EVENT_LABELS: Record<XpEvent, string> = {
   GOAL_HIT: 'Goal hit',
   STREAK_RECOVERY: 'Streak recovery (spent)',
   REFERRAL_BONUS: 'Referral bonus',
+  DAILY_LOGIN: 'Daily check-in',
 };
 
 const CATEGORY_ORDER: Record<string, number> = { STREAK: 0, TRANSACTIONS: 1, GOALS: 2 };
