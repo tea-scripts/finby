@@ -1,7 +1,7 @@
 import { Test } from '@nestjs/testing';
+import { XpEvent } from '@prisma/client';
 import { ChatRecoveryService } from './chat-recovery.service';
 import { LlmService } from '../../llm/llm.service';
-// plus the other injected services — provide jest-mock objects for each.
 
 describe('ChatRecoveryService.reconstructTurn', () => {
   let service: ChatRecoveryService;
@@ -81,5 +81,92 @@ describe('ChatRecoveryService.reconstructTurn', () => {
     });
     const r = await service.reconstructTurn(baseInput);
     expect(r).toMatchObject({ type: 'INCOME', transactionDate: '2026-06-18' });
+  });
+});
+
+describe('ChatRecoveryService.restoreUserStreakAndXp', () => {
+  let service: ChatRecoveryService;
+  const prisma = {
+    transaction: { findMany: jest.fn() },
+    user: { findUnique: jest.fn(), update: jest.fn() },
+    xpTransaction: { findMany: jest.fn() },
+  };
+  const xp = { awardXp: jest.fn().mockResolvedValue({}) };
+
+  beforeEach(async () => {
+    jest.clearAllMocks();
+    const moduleRef = await Test.createTestingModule({
+      providers: [
+        ChatRecoveryService,
+        { provide: require('../../../prisma/prisma.service').PrismaService, useValue: prisma },
+        { provide: require('../../llm/llm.service').LlmService, useValue: {} },
+        { provide: require('../../transactions/transactions.service').TransactionsService, useValue: {} },
+        { provide: require('../../categories/categories.service').CategoriesService, useValue: {} },
+        { provide: require('../../accounts/accounts.service').AccountsService, useValue: {} },
+        { provide: require('../../streaks/streaks.service').StreaksService, useValue: {} },
+        { provide: require('../../gamification/xp.service').XpService, useValue: xp },
+      ],
+    }).compile();
+    service = moduleRef.get(ChatRecoveryService);
+  });
+
+  it('recomputes streak and awards STREAK_DAY for a recovered date (commit)', async () => {
+    // Active days incl. the recovered one (createdAt noon UTC → Manila same day):
+    prisma.transaction.findMany.mockResolvedValue([
+      { createdAt: new Date('2026-06-16T12:00:00Z') },
+      { createdAt: new Date('2026-06-17T12:00:00Z') },
+      { createdAt: new Date('2026-06-18T12:00:00Z') }, // recovered
+    ]);
+    prisma.user.findUnique.mockResolvedValue({ currentStreak: 2, longestStreak: 2 });
+    prisma.xpTransaction.findMany.mockResolvedValue([]); // none awarded yet
+
+    const res = await service.restoreUserStreakAndXp({
+      userId: 'u1', tier: 'FREE', timezone: 'Asia/Manila',
+      recoveredDates: ['2026-06-18'], commit: true,
+    });
+
+    expect(res.after.currentStreak).toBe(3);
+    expect(prisma.user.update).toHaveBeenCalledWith(expect.objectContaining({
+      where: { id: 'u1' },
+      data: expect.objectContaining({ currentStreak: 3, longestStreak: 3, lastStreakDate: '2026-06-18' }),
+    }));
+    expect(res.xpAwards).toEqual([{ date: '2026-06-18', event: 'STREAK_DAY', delta: 1 }]);
+    expect(xp.awardXp).toHaveBeenCalledWith('u1', 'FREE', XpEvent.STREAK_DAY, {
+      date: '2026-06-18', source: 'chat-recovery',
+    });
+  });
+
+  it('does not award XP for a recovered date already credited', async () => {
+    prisma.transaction.findMany.mockResolvedValue([
+      { createdAt: new Date('2026-06-18T12:00:00Z') },
+    ]);
+    prisma.user.findUnique.mockResolvedValue({ currentStreak: 0, longestStreak: 0 });
+    prisma.xpTransaction.findMany.mockResolvedValue([
+      { event: XpEvent.STREAK_DAY, meta: { date: '2026-06-18' } },
+    ]);
+
+    const res = await service.restoreUserStreakAndXp({
+      userId: 'u1', tier: 'FREE', timezone: 'Asia/Manila',
+      recoveredDates: ['2026-06-18'], commit: true,
+    });
+    expect(res.xpAwards).toEqual([]);
+    expect(xp.awardXp).not.toHaveBeenCalled();
+  });
+
+  it('writes nothing in dry-run but reports the planned changes', async () => {
+    prisma.transaction.findMany.mockResolvedValue([
+      { createdAt: new Date('2026-06-18T12:00:00Z') },
+    ]);
+    prisma.user.findUnique.mockResolvedValue({ currentStreak: 0, longestStreak: 0 });
+    prisma.xpTransaction.findMany.mockResolvedValue([]);
+
+    const res = await service.restoreUserStreakAndXp({
+      userId: 'u1', tier: 'FREE', timezone: 'Asia/Manila',
+      recoveredDates: ['2026-06-18'], commit: false,
+    });
+    expect(res.after.currentStreak).toBe(1);
+    expect(res.xpAwards).toEqual([{ date: '2026-06-18', event: 'STREAK_DAY', delta: 1 }]);
+    expect(prisma.user.update).not.toHaveBeenCalled();
+    expect(xp.awardXp).not.toHaveBeenCalled();
   });
 });
