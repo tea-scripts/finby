@@ -6,6 +6,7 @@ import {
   ServiceUnavailableException,
 } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
+import * as Sentry from '@sentry/nestjs';
 import { TIER_LIMITS, type SubscriptionTier } from '@finby/shared';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AccountsService } from '../accounts/accounts.service';
@@ -513,7 +514,7 @@ export class ChatService {
         action,
       };
     } catch (error) {
-      return { toolResult: JSON.stringify({ error: this.errorMessage(error) }) };
+      return this.toolFailure(error);
     }
   }
 
@@ -591,7 +592,7 @@ export class ChatService {
         action,
       };
     } catch (error) {
-      return { toolResult: JSON.stringify({ error: this.errorMessage(error) }) };
+      return this.toolFailure(error);
     }
   }
 
@@ -661,7 +662,7 @@ export class ChatService {
         action,
       };
     } catch (error) {
-      return { toolResult: JSON.stringify({ error: this.errorMessage(error) }) };
+      return this.toolFailure(error);
     }
   }
 
@@ -717,7 +718,7 @@ export class ChatService {
         }),
       };
     } catch (error) {
-      return { toolResult: JSON.stringify({ error: this.errorMessage(error) }) };
+      return this.toolFailure(error);
     }
   }
 
@@ -810,7 +811,7 @@ export class ChatService {
         action,
       };
     } catch (error) {
-      return { toolResult: JSON.stringify({ error: this.errorMessage(error) }) };
+      return this.toolFailure(error);
     }
   }
 
@@ -854,7 +855,7 @@ export class ChatService {
         action,
       };
     } catch (error) {
-      return { toolResult: JSON.stringify({ error: this.errorMessage(error) }) };
+      return this.toolFailure(error);
     }
   }
 
@@ -921,7 +922,7 @@ export class ChatService {
           return { toolResult: JSON.stringify({ error: `Unknown queryType: ${queryType}` }) };
       }
     } catch (error) {
-      return { toolResult: JSON.stringify({ error: this.errorMessage(error) }) };
+      return this.toolFailure(error);
     }
   }
 
@@ -995,7 +996,7 @@ export class ChatService {
         }),
       };
     } catch (error) {
-      return { toolResult: JSON.stringify({ error: this.errorMessage(error) }) };
+      return this.toolFailure(error);
     }
   }
 
@@ -1025,7 +1026,7 @@ export class ChatService {
       }
       return { toolResult: JSON.stringify(result) };
     } catch (error) {
-      return { toolResult: JSON.stringify({ error: this.errorMessage(error) }) };
+      return this.toolFailure(error);
     }
   }
 
@@ -1039,7 +1040,7 @@ export class ChatService {
       const rate = await this.fx.getRate(from, to, asString(input.date));
       return { toolResult: JSON.stringify(rate) };
     } catch (error) {
-      return { toolResult: JSON.stringify({ error: this.errorMessage(error) }) };
+      return this.toolFailure(error);
     }
   }
 
@@ -1060,6 +1061,26 @@ export class ChatService {
       return error.message;
     }
     return 'Could not complete the action.';
+  }
+
+  /** Centralised handling for an UNEXPECTED tool failure (a thrown error — e.g. a
+   *  DB/transaction failure mid-write). Chat tool errors are otherwise swallowed
+   *  into a tool result and never reach the global exception filter, so they are
+   *  invisible in Sentry; log and capture them here. The returned result tells the
+   *  model the action did NOT succeed and nothing was saved, so it cannot narrate a
+   *  false "Logged!" over a failed write (reinforces the HONESTY system-prompt rule). */
+  private toolFailure(error: unknown): ToolExecResult {
+    this.logger.error(`Chat tool execution failed: ${this.describe(error)}`);
+    Sentry.captureException(error, { tags: { area: 'chat_tool' } });
+    return {
+      toolResult: JSON.stringify({
+        error: 'tool_failed',
+        saved: false,
+        message: this.errorMessage(error),
+        instruction:
+          'This tool call FAILED and nothing was saved. Tell the user plainly that it did not work and to try again. Do NOT claim it was logged or that it succeeded.',
+      }),
+    };
   }
 
   private describe(error: unknown): string {

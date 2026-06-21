@@ -1,4 +1,5 @@
-import { ServiceUnavailableException } from '@nestjs/common';
+import { Logger, ServiceUnavailableException } from '@nestjs/common';
+import * as Sentry from '@sentry/nestjs';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AccountsService } from '../accounts/accounts.service';
 import { CategoriesService } from '../categories/categories.service';
@@ -16,6 +17,8 @@ import { ConversationsService } from './conversations.service';
 import { MemoryCompressionService } from './memory/memory-compression.service';
 import { ContextAssemblerService } from './context/context-assembler.service';
 import { FinancialIntelligenceService } from '../analytics/financial-intelligence.service';
+
+jest.mock('@sentry/nestjs', () => ({ captureException: jest.fn() }));
 
 /** Stub FinancialIntelligenceService — returns empty signals; these tests don't
  *  assert on the signals block (covered in financial-intelligence.service.spec). */
@@ -296,6 +299,29 @@ describe('ChatService.executeTool', () => {
       expect(result.action.transactionId).toBe('tx1');
       expect(result.action.txType).toBe('EXPENSE');
     }
+  });
+
+  it('reports failure (not success) and captures to Sentry when a write tool throws', async () => {
+    const txCreate = jest.fn().mockRejectedValue(new Error('transaction timed out'));
+    const { service } = build({ txCreate });
+    (Sentry.captureException as jest.Mock).mockClear();
+    const errorSpy = jest.spyOn(Logger.prototype, 'error').mockImplementation(() => undefined);
+
+    const result = await service.executeTool(
+      workspace,
+      'u1',
+      call('log_expense', { amountOriginal: '450', currencyOriginal: 'USD', confidence: 1 }),
+      'msg1',
+    );
+
+    const parsed = JSON.parse(result.toolResult) as { error: string; saved: boolean };
+    expect(parsed.error).toBe('tool_failed');
+    expect(parsed.saved).toBe(false);
+    expect(result.action).toBeUndefined();
+    expect(Sentry.captureException).toHaveBeenCalledTimes(1);
+    expect(errorSpy).toHaveBeenCalled();
+
+    errorSpy.mockRestore();
   });
 
   it('log_expense with low confidence returns a pendingConfirmation and does not create', async () => {
