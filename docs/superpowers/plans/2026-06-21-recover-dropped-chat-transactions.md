@@ -1254,6 +1254,7 @@ async function main(): Promise<void> {
 
     console.log(`[recover] candidates=${report.candidates} ` +
       `reconstructed=${report.inserted.length} needsManual=${report.needsManual.length} ` +
+      `failed=${report.failed.length} ` +
       `notLoggingIntent=${report.notLoggingIntent} skippedAlreadyRecovered=${report.skippedAlreadyRecovered}`);
 
     for (const i of report.inserted) {
@@ -1264,6 +1265,9 @@ async function main(): Promise<void> {
     }
     for (const m of report.needsManual) {
       console.log(`[recover] NEEDS MANUAL (transfer) user=${m.userId} msg=${m.userMessageId}: "${m.userText}"`);
+    }
+    for (const f of report.failed) {
+      console.log(`[recover] FAILED user=${f.userId} msg=${f.userMessageId}: ${f.error}`);
     }
     for (const s of report.streakRestores) {
       console.log(`[recover] user=${s.userId} streak ${s.before.currentStreak}→${s.after.currentStreak} ` +
