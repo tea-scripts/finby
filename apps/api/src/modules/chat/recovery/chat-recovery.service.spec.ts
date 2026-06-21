@@ -153,6 +153,64 @@ describe('ChatRecoveryService.restoreUserStreakAndXp', () => {
     expect(xp.awardXp).not.toHaveBeenCalled();
   });
 
+  it('awards STREAK_MILESTONE when a recovered date completes a 7-day streak (commit)', async () => {
+    // 7 consecutive days ending at the recovered date (noon UTC → same local day in Manila)
+    prisma.transaction.findMany.mockResolvedValue([
+      { createdAt: new Date('2026-06-12T12:00:00Z') },
+      { createdAt: new Date('2026-06-13T12:00:00Z') },
+      { createdAt: new Date('2026-06-14T12:00:00Z') },
+      { createdAt: new Date('2026-06-15T12:00:00Z') },
+      { createdAt: new Date('2026-06-16T12:00:00Z') },
+      { createdAt: new Date('2026-06-17T12:00:00Z') },
+      { createdAt: new Date('2026-06-18T12:00:00Z') }, // recovered
+    ]);
+    prisma.user.findUnique.mockResolvedValue({ currentStreak: 6, longestStreak: 6 });
+    prisma.xpTransaction.findMany.mockResolvedValue([]); // nothing credited yet
+
+    const res = await service.restoreUserStreakAndXp({
+      userId: 'u1', tier: 'FREE', timezone: 'Asia/Manila',
+      recoveredDates: ['2026-06-18'], commit: true,
+    });
+
+    expect(res.after.currentStreak).toBe(7);
+    expect(xp.awardXp).toHaveBeenCalledWith('u1', 'FREE', XpEvent.STREAK_DAY, {
+      date: '2026-06-18', source: 'chat-recovery',
+    });
+    expect(xp.awardXp).toHaveBeenCalledWith('u1', 'FREE', XpEvent.STREAK_MILESTONE, {
+      date: '2026-06-18', source: 'chat-recovery',
+    });
+    expect(res.xpAwards).toEqual(expect.arrayContaining([
+      { date: '2026-06-18', event: 'STREAK_DAY', delta: 1 },
+      { date: '2026-06-18', event: 'STREAK_MILESTONE', delta: 5 },
+    ]));
+    expect(res.xpAwards).toHaveLength(2);
+  });
+
+  it('does not re-award STREAK_MILESTONE already credited', async () => {
+    prisma.transaction.findMany.mockResolvedValue([
+      { createdAt: new Date('2026-06-12T12:00:00Z') },
+      { createdAt: new Date('2026-06-13T12:00:00Z') },
+      { createdAt: new Date('2026-06-14T12:00:00Z') },
+      { createdAt: new Date('2026-06-15T12:00:00Z') },
+      { createdAt: new Date('2026-06-16T12:00:00Z') },
+      { createdAt: new Date('2026-06-17T12:00:00Z') },
+      { createdAt: new Date('2026-06-18T12:00:00Z') }, // recovered
+    ]);
+    prisma.user.findUnique.mockResolvedValue({ currentStreak: 6, longestStreak: 6 });
+    prisma.xpTransaction.findMany.mockResolvedValue([
+      { event: XpEvent.STREAK_DAY, meta: { date: '2026-06-18' } },
+      { event: XpEvent.STREAK_MILESTONE, meta: { date: '2026-06-18' } },
+    ]);
+
+    const res = await service.restoreUserStreakAndXp({
+      userId: 'u1', tier: 'FREE', timezone: 'Asia/Manila',
+      recoveredDates: ['2026-06-18'], commit: true,
+    });
+
+    expect(xp.awardXp).not.toHaveBeenCalled();
+    expect(res.xpAwards).toEqual([]);
+  });
+
   it('writes nothing in dry-run but reports the planned changes', async () => {
     prisma.transaction.findMany.mockResolvedValue([
       { createdAt: new Date('2026-06-18T12:00:00Z') },
