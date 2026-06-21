@@ -24,6 +24,12 @@ export interface CreateTransactionParams {
   aiConfidence?: number | null;
   sourceMessageId?: string | null;
   status?: TransactionStatusP2;
+  /** Override the row's createdAt (recovery backfill dates rows to the original
+   *  day so streak/calendar bucketing places them correctly). */
+  createdAt?: Date;
+  /** Skip the streak/XP/achievement side-effect. Used by recovery, which
+   *  recomputes streak + awards XP for the correct historical date itself. */
+  skipEngagement?: boolean;
 }
 
 export interface TransactionView {

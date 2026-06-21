@@ -96,6 +96,7 @@ export class TransactionsService {
           tags: params.tags ?? [],
           aiConfidence: params.aiConfidence ?? null,
           sourceMessageId: params.sourceMessageId ?? null,
+          ...(params.createdAt ? { createdAt: params.createdAt } : {}),
         },
         include: VIEW_INCLUDE,
       });
@@ -150,14 +151,16 @@ export class TransactionsService {
     // and reported as a null streak with no new achievements.
     let currentStreak: number | null = null;
     let newAchievements: NewAchievement[] = [];
-    try {
-      const streak = await this.streaks.onTransactionLogged(params.loggedByUserId, params.tier);
-      currentStreak = streak.currentStreak;
-      newAchievements = streak.newAchievements;
-    } catch (error) {
-      this.logger.error(
-        `Streak update failed: ${error instanceof Error ? error.message : String(error)}`,
-      );
+    if (!params.skipEngagement) {
+      try {
+        const streak = await this.streaks.onTransactionLogged(params.loggedByUserId, params.tier);
+        currentStreak = streak.currentStreak;
+        newAchievements = streak.newAchievements;
+      } catch (error) {
+        this.logger.error(
+          `Streak update failed: ${error instanceof Error ? error.message : String(error)}`,
+        );
+      }
     }
 
     return { transaction: this.toView(created), budgetChange, currentStreak, newAchievements };
