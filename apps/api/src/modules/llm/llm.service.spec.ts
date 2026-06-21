@@ -49,8 +49,11 @@ describe('LlmService', () => {
     expect(prompt).toContain('Groceries: 9800/15000');
   });
 
-  it('instructs the model to act only on the latest message and never re-log history', () => {
-    // Guards the duplicate-transaction bug: replayed history must not be re-logged.
+  it('mandates logging the latest message yet still forbids re-logging prior turns', () => {
+    // Guards BOTH chat bugs: the model must log a genuinely new event from the
+    // latest message (missed-log bug) without re-logging replayed history
+    // (duplicate-transaction bug). The injected reference context must not be
+    // mistaken for "already recorded".
     const service = new LlmService(new FakeProvider());
     const prompt = service.buildSystemPrompt({
       user: { displayName: 'Aisha Bello', timezone: 'Asia/Manila' },
@@ -60,8 +63,15 @@ describe('LlmService', () => {
       budgets: [],
       today: '2026-06-02',
     });
-    expect(prompt).toContain("ACT ONLY ON THE USER'S MOST RECENT MESSAGE");
+    // Positive mandate: log new events from the latest message via the tool.
+    expect(prompt).toContain("ACT ON THE USER'S MOST RECENT MESSAGE");
+    expect(prompt).toContain('the ONLY way the transaction is saved');
+    // Reference context is not a log of handled events.
+    expect(prompt).toContain('NOT a log of what you handled this conversation');
+    // Anti-duplicate guard, now scoped to prior conversation turns.
     expect(prompt).toContain('NEVER log or re-log it again');
+    // Honesty: no tool call this turn means it was not logged.
+    expect(prompt).toContain('you have NOT logged it');
   });
 
   it('delegates createMessage to the provider', async () => {
