@@ -228,3 +228,139 @@ describe('ChatRecoveryService.restoreUserStreakAndXp', () => {
     expect(xp.awardXp).not.toHaveBeenCalled();
   });
 });
+
+describe('ChatRecoveryService.run', () => {
+  let service: ChatRecoveryService;
+
+  // Mock prisma with all methods the run() flow touches
+  const prisma = {
+    conversation: { findMany: jest.fn() },
+    workspace: { findUnique: jest.fn() },
+    user: { findUnique: jest.fn(), update: jest.fn() },
+    account: { findMany: jest.fn() },
+    category: { findMany: jest.fn() },
+    transaction: { findMany: jest.fn() },
+    xpTransaction: { findMany: jest.fn() },
+  };
+  const transactionsMock = { create: jest.fn() };
+  const categoriesMock = { findByName: jest.fn() };
+  const accountsMock = { findByName: jest.fn() };
+  const llmMock = {
+    buildSystemPrompt: jest.fn().mockReturnValue('SYS'),
+    getTools: jest.fn().mockReturnValue([]),
+    createMessage: jest.fn(),
+  };
+  const xpMock = { awardXp: jest.fn().mockResolvedValue({}) };
+
+  // One dropped turn: user msg with no downstream TOOL_RESULT+createdTransactionId
+  const userMsgId = 'umsg-1';
+  const convoId = 'conv-1';
+  const userId = 'user-1';
+  const workspaceId = 'ws-1';
+
+  const makeConversation = () => ({
+    id: convoId,
+    userId,
+    workspaceId,
+    messages: [
+      {
+        id: userMsgId,
+        role: 'USER',
+        content: 'Spent 100 USD on food',
+        toolName: null,
+        createdTransactionId: null,
+        createdAt: new Date('2026-06-16T12:00:00.000Z'),
+      },
+      // No TOOL_CALL/TOOL_RESULT follow-ups → dropped turn
+    ],
+  });
+
+  beforeEach(async () => {
+    jest.clearAllMocks();
+
+    // Default: one conversation with one dropped turn
+    prisma.conversation.findMany.mockResolvedValue([makeConversation()]);
+    prisma.workspace.findUnique.mockResolvedValue({ tier: 'FREE', baseCurrency: 'USD' });
+    prisma.user.findUnique.mockResolvedValue({
+      displayName: 'Tim',
+      timezone: 'UTC',
+      currentStreak: 0,
+      longestStreak: 0,
+    });
+    prisma.account.findMany.mockResolvedValue([{ name: 'Cash', currency: 'USD' }]);
+    prisma.category.findMany.mockResolvedValue([{ name: 'Food' }]);
+    prisma.transaction.findMany.mockResolvedValue([]);
+    prisma.xpTransaction.findMany.mockResolvedValue([]);
+    prisma.user.update.mockResolvedValue({});
+
+    transactionsMock.create.mockResolvedValue({ transaction: { id: 'tx1' } });
+    categoriesMock.findByName.mockResolvedValue({ id: 'cat-1', name: 'Food' });
+    accountsMock.findByName.mockResolvedValue({ id: 'acc-1', name: 'Cash' });
+
+    // LLM reconstructs an EXPENSE
+    llmMock.createMessage.mockResolvedValue({
+      toolCalls: [{
+        name: 'log_expense',
+        input: {
+          amountOriginal: '100',
+          currencyOriginal: 'USD',
+          categoryName: 'Food',
+          accountName: 'Cash',
+          transactionDate: '2026-06-16',
+          confidence: 0.95,
+        },
+      }],
+    });
+
+    const moduleRef = await require('@nestjs/testing').Test.createTestingModule({
+      providers: [
+        require('./chat-recovery.service').ChatRecoveryService,
+        { provide: require('../../../prisma/prisma.service').PrismaService, useValue: prisma },
+        { provide: require('../../llm/llm.service').LlmService, useValue: llmMock },
+        { provide: require('../../transactions/transactions.service').TransactionsService, useValue: transactionsMock },
+        { provide: require('../../categories/categories.service').CategoriesService, useValue: categoriesMock },
+        { provide: require('../../accounts/accounts.service').AccountsService, useValue: accountsMock },
+        { provide: require('../../streaks/streaks.service').StreaksService, useValue: {} },
+        { provide: require('../../gamification/xp.service').XpService, useValue: xpMock },
+      ],
+    }).compile();
+    service = moduleRef.get(require('./chat-recovery.service').ChatRecoveryService);
+  });
+
+  it('dry-run reconstructs and reports without writing', async () => {
+    // Provide a transaction row so restoreUserStreakAndXp sees an active day
+    prisma.transaction.findMany.mockImplementation((args: { where?: { loggedByUserId?: string; sourceMessageId?: { in?: string[] } } } | undefined) => {
+      if (args?.where?.loggedByUserId) {
+        return Promise.resolve([{ createdAt: new Date('2026-06-16T12:00:00.000Z') }]);
+      }
+      // idempotency check (sourceMessageId)
+      return Promise.resolve([]);
+    });
+
+    const report = await service.run({ since: '2026-06-15', commit: false });
+    expect(report.commit).toBe(false);
+    expect(report.candidates).toBe(1);
+    expect(report.inserted).toHaveLength(1);
+    expect(transactionsMock.create).not.toHaveBeenCalled();
+    expect(report.streakRestores[0]!.after.currentStreak).toBeGreaterThanOrEqual(1);
+  });
+
+  it('commit inserts the transaction with recovery markers', async () => {
+    // Allow transaction.findMany to return empty (no prior recovery) for idempotency check
+    // and provide the active-day row for streak restore
+    prisma.transaction.findMany.mockImplementation((args: { where?: { loggedByUserId?: string; sourceMessageId?: { in?: string[] } } } | undefined) => {
+      if (args?.where?.loggedByUserId) {
+        return Promise.resolve([{ createdAt: new Date('2026-06-16T12:00:00.000Z') }]);
+      }
+      return Promise.resolve([]);
+    });
+
+    const report = await service.run({ since: '2026-06-15', commit: true });
+    expect(transactionsMock.create).toHaveBeenCalledWith(expect.objectContaining({
+      skipEngagement: true,
+      sourceMessageId: expect.any(String),
+      tags: ['chat-recovery'],
+    }));
+    expect(report.inserted).toHaveLength(1);
+  });
+});

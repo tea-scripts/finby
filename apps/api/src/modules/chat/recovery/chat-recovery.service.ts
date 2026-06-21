@@ -11,7 +11,8 @@ import { XpService } from '../../gamification/xp.service';
 import { computeStreakFromActiveDays } from '../../streaks/streaks.recompute';
 import { bucketLocalDays } from '../../streaks/streaks.calendar';
 import { XP_BASE, XP_MULTIPLIER, STREAK_MILESTONES } from '../../gamification/xp.constants';
-import { previousLocalDate } from '../../reminders/reminders.time';
+import { localDayInfo, previousLocalDate } from '../../reminders/reminders.time';
+import { detectDroppedTurns, type TranscriptMessage } from './dropped-turn-detector';
 
 export interface StreakRestoreResult {
   before: { currentStreak: number; longestStreak: number };
@@ -29,6 +30,32 @@ export interface ReconstructedTransaction {
   transactionDate: string;
   confidence: number;
   needsManual: boolean;
+}
+
+export interface RecoveryReport {
+  commit: boolean;
+  since: string;
+  candidates: number;
+  inserted: Array<{
+    userId: string;
+    conversationId: string;
+    userMessageId: string;
+    type: string;
+    amountOriginal: string;
+    currencyOriginal: string;
+    categoryName: string | null;
+    transactionDate: string;
+    confidence: number;
+  }>;
+  needsManual: Array<{
+    userId: string;
+    conversationId: string;
+    userMessageId: string;
+    userText: string;
+  }>;
+  skippedAlreadyRecovered: number;
+  notLoggingIntent: number;
+  streakRestores: Array<{ userId: string } & StreakRestoreResult>;
 }
 
 const LOG_TOOL_TYPE: Record<string, 'EXPENSE' | 'INCOME' | 'TRANSFER'> = {
@@ -197,5 +224,196 @@ export class ChatRecoveryService {
     }
 
     return { before, after, xpAwards };
+  }
+
+  /** An instant that falls on `localDate` in the user's timezone for streak/
+   *  calendar bucketing. Noon UTC is safe for all timezones within ±12h. */
+  private createdAtForDate(localDate: string): Date {
+    return new Date(`${localDate}T12:00:00.000Z`);
+  }
+
+  private localDateOf(at: Date, timezone: string | null): string {
+    try {
+      return localDayInfo(at, timezone || 'UTC').date;
+    } catch {
+      return localDayInfo(at, 'UTC').date;
+    }
+  }
+
+  async run(opts: { since: string; commit: boolean }): Promise<RecoveryReport> {
+    const sinceDate = new Date(`${opts.since}T00:00:00.000Z`);
+    const report: RecoveryReport = {
+      commit: opts.commit,
+      since: opts.since,
+      candidates: 0,
+      inserted: [],
+      needsManual: [],
+      skippedAlreadyRecovered: 0,
+      notLoggingIntent: 0,
+      streakRestores: [],
+    };
+
+    const conversations = await this.prisma.conversation.findMany({
+      where: { messages: { some: { createdAt: { gte: sinceDate } } } },
+      select: {
+        id: true,
+        userId: true,
+        workspaceId: true,
+        messages: {
+          orderBy: { createdAt: 'asc' },
+          select: {
+            id: true,
+            role: true,
+            content: true,
+            toolName: true,
+            createdTransactionId: true,
+            createdAt: true,
+          },
+        },
+      },
+    });
+
+    const recoveredDatesByUser = new Map<
+      string,
+      { tier: SubscriptionTier; timezone: string; dates: Set<string> }
+    >();
+
+    for (const convo of conversations) {
+      const [workspace, user] = await Promise.all([
+        this.prisma.workspace.findUnique({
+          where: { id: convo.workspaceId },
+          select: { tier: true, baseCurrency: true },
+        }),
+        this.prisma.user.findUnique({
+          where: { id: convo.userId },
+          select: { displayName: true, timezone: true },
+        }),
+      ]);
+      if (!workspace || !user) continue;
+
+      const [accountRows, categoryRows] = await Promise.all([
+        this.prisma.account.findMany({
+          where: { workspaceId: convo.workspaceId, isArchived: false },
+          select: { name: true, currency: true },
+        }),
+        this.prisma.category.findMany({
+          where: { workspaceId: convo.workspaceId, isArchived: false },
+          select: { name: true },
+        }),
+      ]);
+
+      // Idempotency: user-message ids that already produced a transaction.
+      const userMsgIds = convo.messages.filter((m) => m.role === 'USER').map((m) => m.id);
+      const existingTx = await this.prisma.transaction.findMany({
+        where: { sourceMessageId: { in: userMsgIds } },
+        select: { sourceMessageId: true },
+      });
+      const alreadyRecovered = new Set(
+        existingTx.map((t) => t.sourceMessageId).filter((v): v is string => !!v),
+      );
+
+      const dropped = detectDroppedTurns(
+        convo.messages.map((m) => ({
+          id: m.id,
+          role: m.role as TranscriptMessage['role'],
+          toolName: m.toolName,
+          createdTransactionId: m.createdTransactionId,
+          createdAt: m.createdAt,
+        })),
+        { alreadyRecoveredUserMessageIds: alreadyRecovered },
+      );
+      report.skippedAlreadyRecovered += userMsgIds.filter((id) => alreadyRecovered.has(id)).length;
+
+      for (const turn of dropped) {
+        const msg = convo.messages.find((m) => m.id === turn.userMessageId)!;
+        report.candidates += 1;
+        const messageLocalDate = this.localDateOf(msg.createdAt, user.timezone);
+        const recon = await this.reconstructTurn({
+          workspace: { id: convo.workspaceId, baseCurrency: workspace.baseCurrency, tier: workspace.tier },
+          user: { displayName: user.displayName, timezone: user.timezone },
+          accounts: accountRows,
+          categories: categoryRows.map((c) => c.name),
+          userText: msg.content,
+          messageLocalDate,
+        });
+
+        if (!recon) {
+          report.notLoggingIntent += 1;
+          continue;
+        }
+
+        if (recon.needsManual) {
+          report.needsManual.push({
+            userId: convo.userId,
+            conversationId: convo.id,
+            userMessageId: turn.userMessageId,
+            userText: msg.content,
+          });
+          continue;
+        }
+
+        if (opts.commit) {
+          const category = recon.categoryName
+            ? ((await this.categories.findByName(convo.workspaceId, recon.categoryName)) ??
+               (await this.categories.findByName(convo.workspaceId, 'Other')))
+            : null;
+          const account = recon.accountName
+            ? await this.accounts.findByName(convo.workspaceId, recon.accountName)
+            : null;
+          await this.transactions.create({
+            workspaceId: convo.workspaceId,
+            loggedByUserId: convo.userId,
+            baseCurrency: workspace.baseCurrency,
+            tier: workspace.tier,
+            type: recon.type as 'EXPENSE' | 'INCOME',
+            amountOriginal: recon.amountOriginal,
+            currencyOriginal: recon.currencyOriginal,
+            transactionDate: recon.transactionDate,
+            categoryId: category?.id ?? null,
+            accountId: account?.id ?? null,
+            merchant: recon.merchant,
+            aiConfidence: recon.confidence,
+            sourceMessageId: turn.userMessageId,
+            tags: ['chat-recovery'],
+            createdAt: this.createdAtForDate(recon.transactionDate),
+            skipEngagement: true,
+            status: 'CONFIRMED',
+          });
+        }
+
+        report.inserted.push({
+          userId: convo.userId,
+          conversationId: convo.id,
+          userMessageId: turn.userMessageId,
+          type: recon.type,
+          amountOriginal: recon.amountOriginal,
+          currencyOriginal: recon.currencyOriginal,
+          categoryName: recon.categoryName,
+          transactionDate: recon.transactionDate,
+          confidence: recon.confidence,
+        });
+
+        const bucket = recoveredDatesByUser.get(convo.userId) ?? {
+          tier: workspace.tier,
+          timezone: user.timezone,
+          dates: new Set<string>(),
+        };
+        bucket.dates.add(recon.transactionDate);
+        recoveredDatesByUser.set(convo.userId, bucket);
+      }
+    }
+
+    for (const [userId, info] of recoveredDatesByUser) {
+      const restore = await this.restoreUserStreakAndXp({
+        userId,
+        tier: info.tier,
+        timezone: info.timezone,
+        recoveredDates: [...info.dates],
+        commit: opts.commit,
+      });
+      report.streakRestores.push({ userId, ...restore });
+    }
+
+    return report;
   }
 }
