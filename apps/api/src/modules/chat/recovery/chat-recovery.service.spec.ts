@@ -192,6 +192,61 @@ describe('ChatRecoveryService.restoreUserStreakAndXp', () => {
     expect(res.xpAwards).toHaveLength(2);
   });
 
+  it('never lowers currentStreak when recompute is shorter than live streak (C1)', async () => {
+    // Only 2 active days — recompute would yield streak=2, but live streak is 15.
+    prisma.transaction.findMany.mockResolvedValue([
+      { createdAt: new Date('2026-06-17T12:00:00Z') },
+      { createdAt: new Date('2026-06-18T12:00:00Z') },
+    ]);
+    prisma.user.findUnique.mockResolvedValue({
+      currentStreak: 15,
+      longestStreak: 15,
+      lastStreakDate: '2026-06-18',
+      lastStreakRepairDate: null,
+    });
+    prisma.xpTransaction.findMany.mockResolvedValue([]);
+
+    const res = await service.restoreUserStreakAndXp({
+      userId: 'u1', tier: 'FREE', timezone: 'Asia/Manila',
+      recoveredDates: ['2026-06-18'], commit: true,
+    });
+
+    expect(res.after.currentStreak).toBe(15);
+    expect(res.after.longestStreak).toBe(15);
+    expect(prisma.user.update).toHaveBeenCalledWith(expect.objectContaining({
+      where: { id: 'u1' },
+      data: expect.objectContaining({ currentStreak: 15, longestStreak: 15 }),
+    }));
+  });
+
+  it('folds lastStreakRepairDate into active set to bridge gap (C1)', async () => {
+    // Two separate runs: Jun 10-12, then Jun 14-15. Gap is Jun 13.
+    // lastStreakRepairDate = '2026-06-13' bridges the gap → bridged streak = 6.
+    prisma.transaction.findMany.mockResolvedValue([
+      { createdAt: new Date('2026-06-10T12:00:00Z') },
+      { createdAt: new Date('2026-06-11T12:00:00Z') },
+      { createdAt: new Date('2026-06-12T12:00:00Z') },
+      { createdAt: new Date('2026-06-14T12:00:00Z') },
+      { createdAt: new Date('2026-06-15T12:00:00Z') },
+    ]);
+    prisma.user.findUnique.mockResolvedValue({
+      currentStreak: 2,
+      longestStreak: 3,
+      lastStreakDate: '2026-06-15',
+      lastStreakRepairDate: '2026-06-13',
+    });
+    prisma.xpTransaction.findMany.mockResolvedValue([]);
+
+    const res = await service.restoreUserStreakAndXp({
+      userId: 'u1', tier: 'FREE', timezone: 'Asia/Manila',
+      recoveredDates: ['2026-06-15'], commit: false,
+    });
+
+    // With bridge date folded in: 10,11,12,13,14,15 → 6-day run
+    expect(res.after.currentStreak).toBe(6);
+    expect(res.after.longestStreak).toBe(6);
+  });
+
   it('does not re-award STREAK_MILESTONE already credited', async () => {
     prisma.transaction.findMany.mockResolvedValue([
       { createdAt: new Date('2026-06-12T12:00:00Z') },
@@ -369,6 +424,81 @@ describe('ChatRecoveryService.run', () => {
       status: 'CONFIRMED',
     }));
     expect(report.inserted).toHaveLength(1);
+  });
+
+  it('re-entrant restore: covers prior-run orphans even when no new turns detected (I1)', async () => {
+    // detectDroppedTurns finds NO new turns (conversation has no dropped turns).
+    // But transaction.findMany for tags.has('chat-recovery') returns a prior-run
+    // recovery txn for user-2. Expect restoreUserStreakAndXp to be called for user-2.
+    const orphanUserId = 'user-2';
+    const orphanWorkspaceId = 'ws-2';
+
+    prisma.conversation.findMany.mockResolvedValue([]); // no conversations with dropped turns
+
+    // Discriminate all three types of transaction.findMany calls:
+    //   1. idempotency: where.sourceMessageId.in  → []
+    //   2. re-entrant:  where.tags.has            → prior-run txn for orphanUserId
+    //   3. streak:      where.loggedByUserId       → active day for orphanUserId
+    prisma.transaction.findMany.mockImplementation((args: {
+      where?: {
+        loggedByUserId?: string;
+        sourceMessageId?: { in?: string[] };
+        tags?: { has?: string };
+      };
+    } | undefined) => {
+      if (args?.where?.tags?.has === 'chat-recovery') {
+        return Promise.resolve([{
+          loggedByUserId: orphanUserId,
+          createdAt: new Date('2026-06-16T12:00:00.000Z'),
+          workspaceId: orphanWorkspaceId,
+        }]);
+      }
+      if (args?.where?.loggedByUserId === orphanUserId) {
+        return Promise.resolve([{ createdAt: new Date('2026-06-16T12:00:00.000Z') }]);
+      }
+      return Promise.resolve([]);
+    });
+
+    prisma.workspace.findUnique.mockImplementation((args: { where?: { id?: string } } | undefined) => {
+      if (args?.where?.id === orphanWorkspaceId) {
+        return Promise.resolve({ tier: 'FREE', baseCurrency: 'USD' });
+      }
+      return Promise.resolve({ tier: 'FREE', baseCurrency: 'USD' });
+    });
+
+    prisma.user.findUnique.mockImplementation((args: { where?: { id?: string } } | undefined) => {
+      if (args?.where?.id === orphanUserId) {
+        return Promise.resolve({
+          displayName: 'Orphan',
+          timezone: 'UTC',
+          currentStreak: 0,
+          longestStreak: 0,
+          lastStreakDate: null,
+          lastStreakRepairDate: null,
+        });
+      }
+      return Promise.resolve({
+        displayName: 'Tim',
+        timezone: 'UTC',
+        currentStreak: 0,
+        longestStreak: 0,
+        lastStreakDate: null,
+        lastStreakRepairDate: null,
+      });
+    });
+
+    prisma.xpTransaction.findMany.mockResolvedValue([]);
+
+    const restoreSpy = jest.spyOn(service, 'restoreUserStreakAndXp');
+
+    const report = await service.run({ since: '2026-06-15', commit: true });
+
+    // The re-entrant phase must call restoreUserStreakAndXp for orphanUserId
+    expect(restoreSpy).toHaveBeenCalledWith(expect.objectContaining({
+      userId: orphanUserId,
+      commit: true,
+    }));
+    expect(report.streakRestores.some((r) => r.userId === orphanUserId)).toBe(true);
   });
 
   it('isolates per-turn failures: failed turn is recorded, second turn still processed', async () => {

@@ -151,26 +151,49 @@ export class ChatRecoveryService {
 
     const user = await this.prisma.user.findUnique({
       where: { id: input.userId },
-      select: { currentStreak: true, longestStreak: true },
+      select: {
+        currentStreak: true,
+        longestStreak: true,
+        lastStreakDate: true,
+        lastStreakRepairDate: true,
+      },
     });
     const before = {
       currentStreak: user?.currentStreak ?? 0,
       longestStreak: user?.longestStreak ?? 0,
     };
 
+    // Fold lastStreakRepairDate into the active set to bridge gaps caused by
+    // streak-repair operations before recomputing.
+    if (user?.lastStreakRepairDate) {
+      const repairDate = user.lastStreakRepairDate;
+      if (!activeDays.includes(repairDate)) {
+        activeDays.push(repairDate);
+      }
+    }
+
     const recomputed = computeStreakFromActiveDays(activeDays);
+
+    // Never lower: if the live streak is already longer, keep it.
     const after = {
-      currentStreak: recomputed.currentStreak,
-      longestStreak: recomputed.longestStreak,
+      currentStreak: Math.max(before.currentStreak, recomputed.currentStreak),
+      longestStreak: Math.max(before.longestStreak, recomputed.longestStreak),
     };
+
+    // Only advance lastStreakDate, never move it backward.
+    const newLastStreakDate =
+      recomputed.lastStreakDate &&
+      (!user?.lastStreakDate || recomputed.lastStreakDate > user.lastStreakDate)
+        ? recomputed.lastStreakDate
+        : (user?.lastStreakDate ?? null);
 
     if (input.commit) {
       await this.prisma.user.update({
         where: { id: input.userId },
         data: {
-          currentStreak: recomputed.currentStreak,
-          longestStreak: recomputed.longestStreak,
-          lastStreakDate: recomputed.lastStreakDate,
+          currentStreak: after.currentStreak,
+          longestStreak: after.longestStreak,
+          lastStreakDate: newLastStreakDate,
         },
       });
     }
@@ -419,6 +442,58 @@ export class ChatRecoveryService {
       }
     }
 
+    if (opts.commit) {
+      // Re-entrant restore phase: find transactions from prior runs (tagged
+      // 'chat-recovery') and restore streaks for any users whose prior-run
+      // transactions weren't picked up in the conversation loop above (e.g.,
+      // because detectDroppedTurns found no new dropped turns for them).
+      const priorRecovered = await this.prisma.transaction.findMany({
+        where: { tags: { has: 'chat-recovery' }, createdAt: { gte: sinceDate } },
+        select: { loggedByUserId: true, createdAt: true, workspaceId: true },
+      });
+
+      // Group by user — only process users NOT already handled above.
+      const priorByUser = new Map<
+        string,
+        { workspaceId: string; createdAts: Date[] }
+      >();
+      for (const row of priorRecovered) {
+        if (recoveredDatesByUser.has(row.loggedByUserId)) continue;
+        const entry = priorByUser.get(row.loggedByUserId) ?? {
+          workspaceId: row.workspaceId,
+          createdAts: [],
+        };
+        entry.createdAts.push(row.createdAt);
+        priorByUser.set(row.loggedByUserId, entry);
+      }
+
+      for (const [userId, entry] of priorByUser) {
+        const [priorUser, priorWorkspace] = await Promise.all([
+          this.prisma.user.findUnique({
+            where: { id: userId },
+            select: { timezone: true },
+          }),
+          this.prisma.workspace.findUnique({
+            where: { id: entry.workspaceId },
+            select: { tier: true },
+          }),
+        ]);
+        if (!priorUser || !priorWorkspace) continue;
+
+        const tz = priorUser.timezone || 'UTC';
+        const recoveredDates = bucketLocalDays(entry.createdAts, tz);
+        const restore = await this.restoreUserStreakAndXp({
+          userId,
+          tier: priorWorkspace.tier,
+          timezone: tz,
+          recoveredDates,
+          commit: true,
+        });
+        report.streakRestores.push({ userId, ...restore });
+      }
+    }
+
+    // Dry-run and commit: process in-session recovered dates.
     for (const [userId, info] of recoveredDatesByUser) {
       const restore = await this.restoreUserStreakAndXp({
         userId,
