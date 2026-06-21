@@ -10,6 +10,8 @@ export interface DroppedTurn {
   userMessageId: string;
 }
 
+const LOG_TOOLS = new Set(['log_expense', 'log_income', 'log_transfer']);
+
 /** Split an ordered transcript into turns (USER → next USER) and return turns
  *  with no successful logging tool call. Reconstruction (LLM replay) is the real
  *  "was this a logging intent?" filter; this just finds turns that produced no
@@ -30,9 +32,17 @@ export function detectDroppedTurns(
     const userMsg = ordered[i]!;
     let j = i + 1;
     let loggedOk = false;
+    let pendingLogCall = false;
     while (j < ordered.length && ordered[j]!.role !== 'USER') {
       const m = ordered[j]!;
-      if (m.role === 'TOOL_RESULT' && m.createdTransactionId) loggedOk = true;
+      if (m.role === 'TOOL_CALL' && m.toolName && LOG_TOOLS.has(m.toolName)) {
+        pendingLogCall = true;
+      } else if (m.role === 'TOOL_RESULT') {
+        if (pendingLogCall && m.createdTransactionId) {
+          loggedOk = true;
+        }
+        pendingLogCall = false;
+      }
       j += 1;
     }
     if (!loggedOk && !opts.alreadyRecoveredUserMessageIds.has(userMsg.id)) {

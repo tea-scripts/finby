@@ -55,4 +55,15 @@ describe('detectDroppedTurns', () => {
     expect(detectDroppedTurns(msgs, { alreadyRecoveredUserMessageIds: new Set() }))
       .toEqual([{ userMessageId: 'u2' }]);
   });
+
+  it('flags a turn where a NON-logging tool produced a createdTransactionId', () => {
+    const msgs = [
+      t({ id: 'u1', role: 'USER' }),
+      t({ id: 'c1', role: 'TOOL_CALL', toolName: 'get_balance' }),
+      t({ id: 'r1', role: 'TOOL_RESULT', createdTransactionId: 'tx1' }),
+      t({ id: 'a1', role: 'ASSISTANT' }),
+    ];
+    expect(detectDroppedTurns(msgs, { alreadyRecoveredUserMessageIds: new Set() }))
+      .toEqual([{ userMessageId: 'u1' }]);
+  });
 });
