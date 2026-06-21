@@ -176,7 +176,7 @@ describe('TransactionsService.create', () => {
 
   it('skips the streak/XP side-effect and backdates createdAt when asked', async () => {
     const prisma = buildPrisma();
-    prisma.account.findFirst.mockResolvedValue({ id: 'a1', workspaceId: 'w1', currency: 'USD', name: 'Wise USD' });
+    prisma.account.findFirst.mockResolvedValue({ id: 'a1', workspaceId: 'w1', currency: 'PHP', name: 'BDO Peso' });
     prisma.transaction.create.mockResolvedValue(txRow());
     const fx = buildFx({ amountBase: '1000' });
     const streaksMock = buildStreaks();
@@ -190,7 +190,7 @@ describe('TransactionsService.create', () => {
       tier: 'FREE',
       type: 'EXPENSE',
       amountOriginal: '1000',
-      currencyOriginal: 'USD',
+      currencyOriginal: 'PHP',
       transactionDate: '2026-06-18',
       accountId: 'a1',
       merchant: 'Test',
