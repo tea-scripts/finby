@@ -1,18 +1,6 @@
+import { createStreaksApi, type AuthedFetch } from '@finby/core';
 import { useAuth } from './store';
-import type { StreakStatus, StreakCalendar } from './types';
 
-function authed<T>(path: string, init?: RequestInit): Promise<T> {
-  return useAuth.getState().authed<T>(path, init);
-}
+const authed: AuthedFetch = <T>(p: string, i?: RequestInit) => useAuth.getState().authed<T>(p, i);
 
-export function getStreakStatus(workspaceId: string): Promise<StreakStatus> {
-  return authed<StreakStatus>(`/workspaces/${workspaceId}/streaks`);
-}
-
-export function repairStreak(workspaceId: string): Promise<StreakStatus> {
-  return authed<StreakStatus>(`/workspaces/${workspaceId}/streaks/repair`, { method: 'POST' });
-}
-
-export function getStreakCalendar(workspaceId: string): Promise<StreakCalendar> {
-  return authed<StreakCalendar>(`/workspaces/${workspaceId}/streaks/calendar`);
-}
+export const { getStreakStatus, repairStreak, getStreakCalendar } = createStreaksApi(authed);

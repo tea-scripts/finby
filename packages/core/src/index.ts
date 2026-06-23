@@ -16,3 +16,7 @@ export { createTransactionsApi } from './api/transactions-api';
 export type { TransactionsApi } from './api/transactions-api';
 export { createAccountsApi } from './api/accounts-api';
 export type { AccountsApi, CreateAccountInput, UpdateAccountInput } from './api/accounts-api';
+export { createStreaksApi } from './api/streaks-api';
+export type { StreaksApi } from './api/streaks-api';
+export { createAlertsApi } from './api/alerts-api';
+export type { AlertsApi } from './api/alerts-api';
