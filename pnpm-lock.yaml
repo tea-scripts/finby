@@ -250,6 +250,9 @@ importers:
 
   apps/web:
     dependencies:
+      '@finby/core':
+        specifier: workspace:*
+        version: link:../../packages/core
       '@finby/shared':
         specifier: workspace:*
         version: link:../../packages/shared
