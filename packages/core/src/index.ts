@@ -26,3 +26,7 @@ export { createSupportApi } from './api/support-api';
 export type { SupportApi, CreateSupportTicketInput } from './api/support-api';
 export { createFeedbackApi } from './api/feedback-api';
 export type { FeedbackApi, FeedbackResult } from './api/feedback-api';
+export { createMembersApi } from './api/members-api';
+export type { MembersApi } from './api/members-api';
+export { createAuthApi } from './api/auth-api';
+export type { AuthApi } from './api/auth-api';
