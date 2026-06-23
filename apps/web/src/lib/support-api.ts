@@ -1,25 +1,8 @@
-import type { SupportCategory } from '@finby/shared';
+import { createSupportApi, type AuthedFetch } from '@finby/core';
 import { useAuth } from './store';
-import type { SupportTicketView } from './types';
 
-function authed<T>(path: string, init?: RequestInit): Promise<T> {
-  return useAuth.getState().authed<T>(path, init);
-}
+export type { CreateSupportTicketInput } from '@finby/core';
 
-export interface CreateSupportTicketInput {
-  category: SupportCategory;
-  subject: string;
-  message: string;
-}
+const authed: AuthedFetch = <T>(p: string, i?: RequestInit) => useAuth.getState().authed<T>(p, i);
 
-export function createSupportTicket(input: CreateSupportTicketInput): Promise<SupportTicketView> {
-  return authed<SupportTicketView>('/support/tickets', {
-    method: 'POST',
-    body: JSON.stringify(input),
-  });
-}
-
-export async function listSupportTickets(): Promise<SupportTicketView[]> {
-  const res = await authed<{ tickets: SupportTicketView[] }>('/support/tickets');
-  return res.tickets;
-}
+export const { createSupportTicket, listSupportTickets } = createSupportApi(authed);
