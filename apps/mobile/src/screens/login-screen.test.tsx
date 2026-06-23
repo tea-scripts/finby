@@ -32,7 +32,7 @@ describe('LoginScreen', () => {
       fireEvent.changeText(screen.getByTestId('email'), '  me@x.com ');
       fireEvent.changeText(screen.getByTestId('password'), 'secret123');
     });
-    fireEvent.press(screen.getByText('Sign in'));
+    await fireEvent.press(screen.getByText('Sign in'));
     await waitFor(() => expect(mockFns.login).toHaveBeenCalledWith('me@x.com', 'secret123'));
   });
 });
