@@ -1,6 +1,13 @@
 // apps/mobile/src/screens/register-screen.test.tsx
 import { render, screen, fireEvent, waitFor } from '@testing-library/react-native';
 
+jest.mock('../components/auth/terms-gate', () => ({
+  TermsGate: ({ onAcceptedChange }: { onAcceptedChange: (v: boolean) => void }) => {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    return require('react').createElement('Text', { testID: 'accept-terms', onPress: () => onAcceptedChange(true) }, 'accept');
+  },
+}));
+
 const mockFns = { register: jest.fn() };
 jest.mock('../lib/use-auth-store', () => ({
   useAuthStore: (selector: (s: unknown) => unknown) => selector(mockFns),
@@ -28,7 +35,7 @@ describe('RegisterScreen', () => {
 
   it('requires a display name', async () => {
     await render(<RegisterScreen />);
-    await fireEvent(screen.getByLabelText('Accept terms'), 'valueChange', true);
+    await fireEvent.press(screen.getByTestId('accept-terms'));
     await fireEvent.press(screen.getByText('Create account'));
     expect(screen.getByText('What should Finby call you?')).toBeTruthy();
     expect(mockFns.register).not.toHaveBeenCalled();
@@ -39,7 +46,7 @@ describe('RegisterScreen', () => {
     await fireEvent.changeText(screen.getByTestId('displayName'), 'Tee');
     await fireEvent.changeText(screen.getByTestId('email'), 'me@x.com');
     await fireEvent.changeText(screen.getByTestId('password'), 'short');
-    await fireEvent(screen.getByLabelText('Accept terms'), 'valueChange', true);
+    await fireEvent.press(screen.getByTestId('accept-terms'));
     await fireEvent.press(screen.getByText('Create account'));
     expect(screen.getByText('Password must be at least 8 characters.')).toBeTruthy();
     expect(mockFns.register).not.toHaveBeenCalled();
@@ -49,7 +56,7 @@ describe('RegisterScreen', () => {
     mockFns.register.mockResolvedValueOnce(undefined);
     await render(<RegisterScreen />);
     await fill();
-    await fireEvent(screen.getByLabelText('Accept terms'), 'valueChange', true);
+    await fireEvent.press(screen.getByTestId('accept-terms'));
     await fireEvent.press(screen.getByText('Create account'));
     await waitFor(() =>
       expect(mockFns.register).toHaveBeenCalledWith({
