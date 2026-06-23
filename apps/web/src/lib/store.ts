@@ -2,12 +2,11 @@ import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 import { DEFAULT_PREFERENCES } from '@finby/shared';
 import { API_BASE, apiFetch } from './api-client';
-import { createAuthedClient } from '@finby/core';
+import { createAuthedClient, createAuthApi } from '@finby/core';
 import { identifyUser, resetAnalytics, track } from './analytics';
 import type {
   ApiUser,
   ApiWorkspace,
-  AuthResult,
   RegisterInput,
   WorkspaceMembershipSummary,
 } from './types';
@@ -78,14 +77,13 @@ export const useAuth = create<AuthState>()(
         onAuthCleared: () => set({ ...CLEARED }),
       });
 
+      const authApi = createAuthApi({ authed: authedClient.authed, apiFetch });
+
       return {
       ...CLEARED,
 
       register: async (input) => {
-        const result = await apiFetch<AuthResult>('/auth/register', {
-          method: 'POST',
-          body: JSON.stringify(input),
-        });
+        const result = await authApi.register(input);
         set({
           accessToken: result.accessToken,
           refreshToken: result.refreshToken,
@@ -99,10 +97,7 @@ export const useAuth = create<AuthState>()(
       },
 
       login: async (email, password) => {
-        const result = await apiFetch<AuthResult>('/auth/login', {
-          method: 'POST',
-          body: JSON.stringify({ email, password }),
-        });
+        const result = await authApi.login(email, password);
         set({
           accessToken: result.accessToken,
           refreshToken: result.refreshToken,
@@ -115,18 +110,7 @@ export const useAuth = create<AuthState>()(
       },
 
       logout: async () => {
-        const { refreshToken } = get();
-        if (refreshToken) {
-          // Best-effort server-side revocation; never block local sign-out on it.
-          try {
-            await apiFetch<void>('/auth/logout', {
-              method: 'POST',
-              body: JSON.stringify({ refreshToken }),
-            });
-          } catch {
-            /* ignore — clearing local state below is what matters */
-          }
-        }
+        await authApi.logout(get().refreshToken);
         set({ ...CLEARED });
         resetAnalytics();
       },
