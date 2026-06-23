@@ -1,9 +1,12 @@
 import Constants from 'expo-constants';
 import { resolveApiBase } from '../config';
 import { createTokenStore } from '../adapters/token-store';
+import { createIdentityStore } from '../adapters/identity-store';
+import { createOnboardingFlag } from '../adapters/onboarding-flag';
 import { secureStore } from '../adapters/secure-store.native';
 import { streamFetch } from '../adapters/stream.native';
 import { createMobileSession } from './session';
+import { createAuthStore } from './auth-store';
 import { createMobileApi } from './api';
 
 const apiBase = resolveApiBase({
@@ -12,12 +15,18 @@ const apiBase = resolveApiBase({
 });
 
 /** App-wide session (SecureStore tokens + expo/fetch streaming) and the
- *  core-bound api. Screens import these. Call `session.hydrate()` once at
- *  startup to restore a persisted login. */
+ *  core-bound api. The root gate calls `authStore.getState().hydrate()` once
+ *  at startup to restore a persisted login. */
 export const session = createMobileSession({
   apiBase,
   tokenStore: createTokenStore(secureStore),
   fetchImpl: streamFetch,
+});
+
+export const authStore = createAuthStore({
+  session,
+  identityStore: createIdentityStore(secureStore),
+  onboardingFlag: createOnboardingFlag(secureStore),
 });
 
 export const api = createMobileApi(session, apiBase);
