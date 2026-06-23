@@ -10,8 +10,16 @@ export function makePostHog(): PostHogLike | null {
     host: process.env.EXPO_PUBLIC_POSTHOG_HOST ?? 'https://us.i.posthog.com',
   });
   return {
-    capture: (event, props) => client.capture(event, props as any),
-    identify: (id, props) => client.identify(id, props as any),
+    capture: (event: string, props?: Record<string, unknown>) => {
+      // Bridge: PostHogLike contract accepts Record<string, unknown>, but posthog-react-native
+      // requires PostHogEventProperties (uses JsonType). Cast safely here to delegate type
+      // compatibility to PostHog's internal handling.
+      client.capture(event, (props || {}) as Record<string, string | number | boolean | null>);
+    },
+    identify: (id: string, props?: Record<string, unknown>) => {
+      // Bridge: same as above for identify
+      client.identify(id, (props || {}) as Record<string, string | number | boolean | null>);
+    },
     reset: () => client.reset(),
   };
 }
