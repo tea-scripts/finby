@@ -9,3 +9,6 @@ export type { ParsedSseEvent } from './sse';
 export { money, shortDate, timeOfDay, dayKey, dayLabel, currentMonthRange } from './format';
 export { createAuthedClient } from './authed';
 export type { AuthedClient, AuthedClientConfig, TokenPair } from './authed';
+export type { AuthedFetch, ApiFetch, AuthedStream } from './api/contract';
+export { createDashboardApi } from './api/dashboard-api';
+export type { DashboardApi, SectionState } from './api/dashboard-api';
