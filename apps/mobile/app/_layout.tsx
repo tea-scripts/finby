@@ -1,8 +1,10 @@
 import '../global.css';
 import { useEffect } from 'react';
+import { View } from 'react-native';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { authStore, useAuthStore } from '../src/lib/use-auth-store';
+import { nextRoute } from '../src/lib/auth-gate-route';
 
 export default function RootLayout() {
   return (
@@ -24,21 +26,12 @@ function AuthGate() {
   }, []);
 
   useEffect(() => {
-    if (status === 'loading') return;
-    const inAuthGroup = segments[0] === '(auth)';
-    const onOnboarding = segments[1] === 'onboarding';
-
-    if (status === 'authed') {
-      if (inAuthGroup) router.replace('/(app)');
-      return;
-    }
-    // Signed out:
-    if (!onboarded) {
-      if (!onOnboarding) router.replace('/(auth)/onboarding');
-    } else if (!inAuthGroup) {
-      router.replace('/(auth)/login');
-    }
+    const target = nextRoute({ status, onboarded, segments });
+    if (target) router.replace(target);
   }, [status, onboarded, segments, router]);
+
+  // Hold a neutral splash until hydrate resolves, so no route flashes first.
+  if (status === 'loading') return <View className="flex-1 bg-canvas" />;
 
   return <Stack screenOptions={{ headerShown: false }} />;
 }
