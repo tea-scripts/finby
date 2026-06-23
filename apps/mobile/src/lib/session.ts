@@ -1,4 +1,5 @@
-import { createAuthedClient, createHttpClient, type AuthedFetch, type AuthedStream, type TokenPair } from '@finby/core';
+import { createAuthedClient, createAuthApi, createHttpClient, type AuthedFetch, type AuthedStream, type TokenPair } from '@finby/core';
+import type { AuthResult, RegisterInput } from '@finby/shared';
 import type { TokenStore } from '../adapters/token-store';
 
 export interface MobileSession {
@@ -9,6 +10,9 @@ export interface MobileSession {
   clearSession(): Promise<void>;
   hydrate(): Promise<boolean>;
   getAccessToken(): string | null;
+  login(email: string, password: string): Promise<AuthResult>;
+  register(input: RegisterInput): Promise<AuthResult>;
+  logout(): Promise<void>;
 }
 
 /** The mobile auth/transport container. Tokens live in memory (synchronous
@@ -23,7 +27,7 @@ export function createMobileSession(deps: {
   let accessToken: string | null = null;
   let refreshToken: string | null = null;
 
-  const http = createHttpClient({ baseUrl: deps.apiBase });
+  const http = createHttpClient({ baseUrl: deps.apiBase, fetchImpl: deps.fetchImpl });
 
   const client = createAuthedClient({
     http,
@@ -42,6 +46,8 @@ export function createMobileSession(deps: {
     },
     fetchImpl: deps.fetchImpl,
   });
+
+  const authApi = createAuthApi({ authed: client.authed, apiFetch: http.apiFetch });
 
   return {
     authed: client.authed,
@@ -64,6 +70,26 @@ export function createMobileSession(deps: {
       accessToken = stored.accessToken;
       refreshToken = stored.refreshToken;
       return true;
+    },
+    async login(email, password) {
+      const result = await authApi.login(email, password);
+      accessToken = result.accessToken;
+      refreshToken = result.refreshToken;
+      await deps.tokenStore.save({ accessToken: result.accessToken, refreshToken: result.refreshToken });
+      return result;
+    },
+    async register(input) {
+      const result = await authApi.register(input);
+      accessToken = result.accessToken;
+      refreshToken = result.refreshToken;
+      await deps.tokenStore.save({ accessToken: result.accessToken, refreshToken: result.refreshToken });
+      return result;
+    },
+    async logout() {
+      await authApi.logout(refreshToken);
+      accessToken = null;
+      refreshToken = null;
+      await deps.tokenStore.clear();
     },
   };
 }

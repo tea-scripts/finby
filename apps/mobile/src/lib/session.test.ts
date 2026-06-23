@@ -63,3 +63,26 @@ describe('createMobileSession', () => {
     expect(fetchImpl).toHaveBeenCalledTimes(1);
   });
 });
+
+describe('createMobileSession auth flow', () => {
+  it('login calls the API, persists tokens, and returns the AuthResult', async () => {
+    const tokenStore = createTokenStore(fakeSecureStore());
+    const authResult = { accessToken: 'a1', refreshToken: 'r1', user: { id: 'u1' }, workspace: { id: 'w1' } };
+    const fetchImpl = vi.fn(async () => new Response(JSON.stringify(authResult), { status: 200 })) as unknown as typeof fetch;
+    const session = createMobileSession({ apiBase: 'https://api.test/v1', tokenStore, fetchImpl });
+    const res = await session.login('e@x.com', 'pw');
+    expect(res).toMatchObject({ user: { id: 'u1' } });
+    expect(session.getAccessToken()).toBe('a1');
+    await expect(tokenStore.load()).resolves.toEqual({ accessToken: 'a1', refreshToken: 'r1' });
+  });
+
+  it('logout clears the session', async () => {
+    const tokenStore = createTokenStore(fakeSecureStore());
+    const fetchImpl = vi.fn(async () => new Response('null', { status: 200 })) as unknown as typeof fetch;
+    const session = createMobileSession({ apiBase: 'https://api.test/v1', tokenStore, fetchImpl });
+    await session.setSession({ accessToken: 'a1', refreshToken: 'r1' });
+    await session.logout();
+    expect(session.getAccessToken()).toBeNull();
+    await expect(tokenStore.load()).resolves.toBeNull();
+  });
+});

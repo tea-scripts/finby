@@ -16,13 +16,14 @@ export interface HttpClient {
 }
 
 /** Stateless fetch against the Finby API. Knows nothing about auth state. */
-export function createHttpClient(config: { baseUrl: string }): HttpClient {
+export function createHttpClient(config: { baseUrl: string; fetchImpl?: typeof fetch }): HttpClient {
   const { baseUrl } = config;
+  const doFetch = config.fetchImpl ?? fetch;
 
   async function apiFetch<T>(path: string, init: RequestInit = {}): Promise<T> {
     let res: Response;
     try {
-      res = await fetch(`${baseUrl}${path}`, {
+      res = await doFetch(`${baseUrl}${path}`, {
         ...init,
         headers: {
           // FormData bodies (file uploads) must let the platform set the

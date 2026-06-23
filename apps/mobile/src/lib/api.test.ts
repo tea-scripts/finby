@@ -11,6 +11,9 @@ function fakeSession(): MobileSession {
     clearSession: vi.fn(async () => {}),
     hydrate: vi.fn(async () => false),
     getAccessToken: () => 'a1',
+    login: vi.fn(async () => ({ accessToken: 'a1', refreshToken: 'r1', user: { id: 'u1' } as never, workspace: { id: 'w1' } as never })),
+    register: vi.fn(async () => ({ accessToken: 'a1', refreshToken: 'r1', user: { id: 'u1' } as never, workspace: { id: 'w1' } as never })),
+    logout: vi.fn(async () => {}),
   };
 }
 
