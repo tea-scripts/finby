@@ -18,7 +18,7 @@ describe('TermsGate', () => {
     await render(<TermsGate accepted={false} onAcceptedChange={onAcceptedChange} />);
     await fireEvent(screen.getByLabelText('Accept terms'), 'valueChange', true);
     expect(onAcceptedChange).not.toHaveBeenCalled();
-    expect(screen.getByText('Scroll to the bottom to continue')).toBeTruthy();
+    expect(screen.getByTestId('terms-scrollview')).toBeTruthy();
   });
 
   it('allows accept after reading terms', async () => {
