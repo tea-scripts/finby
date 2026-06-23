@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { FlatList, Modal, Pressable, Text, View } from 'react-native';
+import { FlatList, Modal, Pressable, Text } from 'react-native';
 
 interface Option<T extends string> {
   value: T;
@@ -40,7 +40,7 @@ export function Dropdown<T extends string>({
 
       <Modal visible={open} transparent animationType="fade" onRequestClose={() => setOpen(false)}>
         <Pressable className="flex-1 justify-end bg-black/50" onPress={() => setOpen(false)}>
-          <View className="max-h-96 rounded-t-2xl border-t border-line bg-surface px-2 py-3">
+          <Pressable className="max-h-96 rounded-t-2xl border-t border-line bg-surface px-2 py-3">
             <FlatList
               data={options}
               keyExtractor={(o) => o.value}
@@ -59,7 +59,7 @@ export function Dropdown<T extends string>({
                 </Pressable>
               )}
             />
-          </View>
+          </Pressable>
         </Pressable>
       </Modal>
     </>
