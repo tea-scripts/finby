@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { ApiError, createHttpClient } from './http';
+import { createHttpClient } from './http';
 
 const BASE = 'https://api.test/v1';
 
