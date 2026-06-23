@@ -4,3 +4,5 @@ export const CORE_PACKAGE = '@finby/core';
 
 export { ApiError, createHttpClient } from './http';
 export type { HttpClient } from './http';
+export { parseSseFrames } from './sse';
+export type { ParsedSseEvent } from './sse';
