@@ -30,3 +30,5 @@ export { createMembersApi } from './api/members-api';
 export type { MembersApi } from './api/members-api';
 export { createAuthApi } from './api/auth-api';
 export type { AuthApi } from './api/auth-api';
+export { createBillingApi } from './api/billing-api';
+export type { BillingApi } from './api/billing-api';

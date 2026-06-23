@@ -1,47 +1,16 @@
+import { createBillingApi, type AuthedFetch } from '@finby/core';
 import { apiFetch } from './api-client';
 import { useAuth } from './store';
-import type { BillingPlan, SubscriptionTier, SubscriptionView } from './types';
 
-function authed<T>(path: string, init?: RequestInit): Promise<T> {
-  return useAuth.getState().authed<T>(path, init);
-}
+const authed: AuthedFetch = <T>(p: string, i?: RequestInit) => useAuth.getState().authed<T>(p, i);
 
-export function getSubscription(workspaceId: string): Promise<SubscriptionView> {
-  return authed<SubscriptionView>(`/workspaces/${workspaceId}/subscription`);
-}
-
-export function getPlans(): Promise<{ plans: BillingPlan[] }> {
-  return apiFetch<{ plans: BillingPlan[] }>(`/billing/plans`);
-}
-
-export function startCheckout(
-  workspaceId: string,
-  tier: Exclude<SubscriptionTier, 'FREE'>,
-): Promise<{ url: string }> {
-  return authed<{ url: string }>(`/workspaces/${workspaceId}/subscription/checkout`, {
-    method: 'POST',
-    body: JSON.stringify({ tier }),
-  });
-}
-
-export function openPortal(workspaceId: string): Promise<{ url: string }> {
-  return authed<{ url: string }>(`/workspaces/${workspaceId}/subscription/portal`, {
-    method: 'POST',
-  });
-}
-
-export function changePlan(
-  workspaceId: string,
-  tier: Exclude<SubscriptionTier, 'FREE'>,
-): Promise<SubscriptionView> {
-  return authed<SubscriptionView>(`/workspaces/${workspaceId}/subscription/change-plan`, {
-    method: 'POST',
-    body: JSON.stringify({ tier }),
-  });
-}
+export const {
+  getSubscription, getPlans, startCheckout, openPortal, changePlan, cancelSubscription, resumeSubscription,
+} = createBillingApi({ authed, apiFetch });
 
 /**
  * Open a Stripe billing URL (resolved asynchronously) in a separate browser tab.
+ * Web-only (uses window) — stays in the web app rather than @finby/core.
  *
  * In a standalone PWA on iOS, navigating the app's own context to an external
  * URL opens an in-app browser overlay; dismissing it (the X) corrupts the PWA's
@@ -68,16 +37,4 @@ export async function openBillingUrl(resolveUrl: () => Promise<string>): Promise
     tab?.close();
     throw err;
   }
-}
-
-export function cancelSubscription(workspaceId: string): Promise<SubscriptionView> {
-  return authed<SubscriptionView>(`/workspaces/${workspaceId}/subscription/cancel`, {
-    method: 'POST',
-  });
-}
-
-export function resumeSubscription(workspaceId: string): Promise<SubscriptionView> {
-  return authed<SubscriptionView>(`/workspaces/${workspaceId}/subscription/resume`, {
-    method: 'POST',
-  });
 }
