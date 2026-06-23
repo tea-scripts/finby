@@ -13,6 +13,10 @@ export interface AuthedClientConfig {
   onAuthCleared: () => void;
   /** Defaults to '/auth/refresh'. */
   refreshPath?: string;
+  /** Streaming fetch implementation for authedStream. Defaults to the global
+   *  `fetch`. Mobile injects `expo/fetch` so the Response body is a real
+   *  ReadableStream (getReader); the web/global fetch is correct on the web. */
+  fetchImpl?: typeof fetch;
 }
 
 export interface AuthedClient {
@@ -24,6 +28,7 @@ export interface AuthedClient {
 export function createAuthedClient(config: AuthedClientConfig): AuthedClient {
   const { http, getAccessToken, getRefreshToken, setTokens, onAuthCleared } = config;
   const refreshPath = config.refreshPath ?? '/auth/refresh';
+  const doFetch = config.fetchImpl ?? fetch;
 
   async function tryRefresh(): Promise<boolean> {
     const refreshToken = getRefreshToken();
@@ -66,7 +71,7 @@ export function createAuthedClient(config: AuthedClientConfig): AuthedClient {
 
   async function authedStream(path: string, init: RequestInit = {}): Promise<Response> {
     const run = async (token: string | null): Promise<Response> =>
-      fetch(`${http.baseUrl}${path}`, {
+      doFetch(`${http.baseUrl}${path}`, {
         ...init,
         headers: {
           'Content-Type': 'application/json',

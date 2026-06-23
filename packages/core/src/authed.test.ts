@@ -81,3 +81,25 @@ describe('createAuthedClient.authed', () => {
     expect(http.apiFetch).not.toHaveBeenCalled();
   });
 });
+
+describe('createAuthedClient.authedStream fetchImpl injection', () => {
+  it('uses the injected fetchImpl instead of global fetch', async () => {
+    const calls: string[] = [];
+    const fetchImpl = vi.fn(async (url: string) => {
+      calls.push(url);
+      return new Response('ok', { status: 200 });
+    }) as unknown as typeof fetch;
+    const http = { baseUrl: 'https://api.test/v1', apiFetch: vi.fn() } as unknown as import('./http').HttpClient;
+    const client = createAuthedClient({
+      http,
+      getAccessToken: () => 'tok',
+      getRefreshToken: () => 'r',
+      setTokens: () => {},
+      onAuthCleared: () => {},
+      fetchImpl,
+    });
+    const res = await client.authedStream('/stream', { method: 'POST' });
+    expect(await res.text()).toBe('ok');
+    expect(calls).toEqual(['https://api.test/v1/stream']);
+  });
+});
