@@ -47,7 +47,7 @@ export function TermsModal({ visible, read, onRead, onClose }: TermsModalProps) 
       onRequestClose={onClose}
     >
       <View className="flex-1 justify-center bg-black/50 px-4">
-        <View className="max-h-5/6 rounded-2xl border border-line bg-surface">
+        <View className="max-h-[85%] rounded-2xl border border-line bg-surface">
           {/* Header */}
           <View className="border-b border-line px-5 py-4">
             <Text className="text-lg font-semibold text-ink">Terms of Service</Text>
