@@ -36,3 +36,5 @@ export { createReceiptsApi } from './api/receipts-api';
 export type { ReceiptsApi } from './api/receipts-api';
 export { createGamificationApi } from './api/gamification-api';
 export type { GamificationApi } from './api/gamification-api';
+export { createChatApi } from './api/chat-api';
+export type { ChatApi } from './api/chat-api';
