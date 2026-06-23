@@ -1,0 +1,16 @@
+{
+  "expo": {
+    "name": "Finby",
+    "slug": "finby",
+    "scheme": "finby",
+    "version": "0.0.1",
+    "orientation": "portrait",
+    "userInterfaceStyle": "dark",
+    "newArchEnabled": true,
+    "ios": { "bundleIdentifier": "app.finby.mobile", "supportsTablet": true },
+    "android": { "package": "app.finby.mobile" },
+    "plugins": ["expo-router", "expo-secure-store"],
+    "experiments": { "typedRoutes": true },
+    "extra": { "apiBase": "http://localhost:3001/api/v1" }
+  }
+}
