@@ -1,6 +1,12 @@
 import { describe, expect, it, vi } from 'vitest';
 import { createAuthStore } from './auth-store';
 import type { MobileSession } from './session';
+import type { Identity, IdentityStore } from '../adapters/identity-store';
+import type { OnboardingFlag } from '../adapters/onboarding-flag';
+
+const USER = { id: 'u1' } as never;
+const WORKSPACE = { id: 'w1', tier: 'FREE' } as never;
+const AUTH_RESULT = { accessToken: 'a', refreshToken: 'r', user: USER, workspace: WORKSPACE } as never;
 
 function fakeSession(overrides: Partial<MobileSession> = {}): MobileSession {
   return {
@@ -11,41 +17,109 @@ function fakeSession(overrides: Partial<MobileSession> = {}): MobileSession {
     clearSession: vi.fn(async () => {}),
     hydrate: vi.fn(async () => false),
     getAccessToken: () => null,
-    login: vi.fn(async () => ({ accessToken: 'a', refreshToken: 'r', user: { id: 'u1' }, workspace: { id: 'w1', tier: 'FREE' } }) as never),
-    register: vi.fn(async () => ({ accessToken: 'a', refreshToken: 'r', user: { id: 'u2' }, workspace: { id: 'w2', tier: 'FREE' } }) as never),
+    login: vi.fn(async () => AUTH_RESULT),
+    register: vi.fn(async () => AUTH_RESULT),
     logout: vi.fn(async () => {}),
     ...overrides,
   };
 }
 
+function fakeIdentityStore(initial: Identity | null = null): IdentityStore {
+  let current = initial;
+  return {
+    load: vi.fn(async () => current),
+    save: vi.fn(async (i: Identity) => void (current = i)),
+    clear: vi.fn(async () => void (current = null)),
+  };
+}
+
+function fakeOnboardingFlag(seen = false): OnboardingFlag {
+  let s = seen;
+  return {
+    wasSeen: vi.fn(async () => s),
+    markSeen: vi.fn(async () => void (s = true)),
+  };
+}
+
+function makeStore(over: { session?: MobileSession; identityStore?: IdentityStore; onboardingFlag?: OnboardingFlag } = {}) {
+  return createAuthStore({
+    session: over.session ?? fakeSession(),
+    identityStore: over.identityStore ?? fakeIdentityStore(),
+    onboardingFlag: over.onboardingFlag ?? fakeOnboardingFlag(),
+  });
+}
+
 describe('createAuthStore', () => {
-  it('starts idle with no user', () => {
-    const store = createAuthStore(fakeSession());
-    expect(store.getState().status).toBe('idle');
+  it('starts in loading status with no user', () => {
+    const store = makeStore();
+    expect(store.getState().status).toBe('loading');
     expect(store.getState().user).toBeNull();
   });
 
-  it('login sets user/workspace and status authed', async () => {
-    const store = createAuthStore(fakeSession());
+  it('login persists identity and sets status authed', async () => {
+    const identityStore = fakeIdentityStore();
+    const store = makeStore({ identityStore });
     await store.getState().login('e@x.com', 'pw');
     expect(store.getState().status).toBe('authed');
     expect(store.getState().user).toMatchObject({ id: 'u1' });
-    expect(store.getState().workspace).toMatchObject({ id: 'w1' });
+    expect(identityStore.save).toHaveBeenCalledWith({ user: USER, workspace: WORKSPACE });
   });
 
-  it('register sets user/workspace and status authed', async () => {
-    const store = createAuthStore(fakeSession());
+  it('register persists identity and sets status authed', async () => {
+    const identityStore = fakeIdentityStore();
+    const store = makeStore({ identityStore });
     await store.getState().register({ displayName: 'Tee', email: 'e@x.com', password: 'pw', baseCurrency: 'USD', timezone: 'UTC' });
     expect(store.getState().status).toBe('authed');
-    expect(store.getState().user).toMatchObject({ id: 'u2' });
+    expect(identityStore.save).toHaveBeenCalledTimes(1);
   });
 
-  it('logout clears user/workspace and sets status idle', async () => {
-    const store = createAuthStore(fakeSession());
+  it('logout clears identity and sets status idle', async () => {
+    const identityStore = fakeIdentityStore();
+    const store = makeStore({ identityStore });
     await store.getState().login('e@x.com', 'pw');
     await store.getState().logout();
     expect(store.getState().status).toBe('idle');
     expect(store.getState().user).toBeNull();
-    expect(store.getState().workspace).toBeNull();
+    expect(identityStore.clear).toHaveBeenCalledTimes(1);
+  });
+
+  it('hydrate with no tokens → idle, reads onboarded flag', async () => {
+    const store = makeStore({
+      session: fakeSession({ hydrate: vi.fn(async () => false) }),
+      onboardingFlag: fakeOnboardingFlag(true),
+    });
+    await store.getState().hydrate();
+    expect(store.getState().status).toBe('idle');
+    expect(store.getState().onboarded).toBe(true);
+  });
+
+  it('hydrate with tokens + cached identity → authed', async () => {
+    const identity = { user: USER, workspace: WORKSPACE } as Identity;
+    const store = makeStore({
+      session: fakeSession({ hydrate: vi.fn(async () => true) }),
+      identityStore: fakeIdentityStore(identity),
+    });
+    await store.getState().hydrate();
+    expect(store.getState().status).toBe('authed');
+    expect(store.getState().user).toMatchObject({ id: 'u1' });
+  });
+
+  it('hydrate with tokens but no cached identity → clears session, idle', async () => {
+    const clearSession = vi.fn(async () => {});
+    const store = makeStore({
+      session: fakeSession({ hydrate: vi.fn(async () => true), clearSession }),
+      identityStore: fakeIdentityStore(null),
+    });
+    await store.getState().hydrate();
+    expect(store.getState().status).toBe('idle');
+    expect(clearSession).toHaveBeenCalledTimes(1);
+  });
+
+  it('completeOnboarding marks the flag and sets onboarded', async () => {
+    const onboardingFlag = fakeOnboardingFlag(false);
+    const store = makeStore({ onboardingFlag });
+    await store.getState().completeOnboarding();
+    expect(store.getState().onboarded).toBe(true);
+    expect(onboardingFlag.markSeen).toHaveBeenCalledTimes(1);
   });
 });
