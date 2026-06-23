@@ -12,3 +12,5 @@ export type { AuthedClient, AuthedClientConfig, TokenPair } from './authed';
 export type { AuthedFetch, ApiFetch, AuthedStream } from './api/contract';
 export { createDashboardApi } from './api/dashboard-api';
 export type { DashboardApi, SectionState } from './api/dashboard-api';
+export { createTransactionsApi } from './api/transactions-api';
+export type { TransactionsApi } from './api/transactions-api';
