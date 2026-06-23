@@ -10,7 +10,7 @@ vi.stubGlobal('localStorage', {
 });
 
 // apiFetch is never called in these tests; stub to avoid network.
-vi.mock('./api-client', () => ({ apiFetch: vi.fn() }));
+vi.mock('./api-client', () => ({ apiFetch: vi.fn(), API_BASE: 'https://api.test/v1' }));
 
 import { useAuth } from './store';
 

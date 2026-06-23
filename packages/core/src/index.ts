@@ -7,3 +7,5 @@ export type { HttpClient } from './http';
 export { parseSseFrames } from './sse';
 export type { ParsedSseEvent } from './sse';
 export { money, shortDate, timeOfDay, dayKey, dayLabel, currentMonthRange } from './format';
+export { createAuthedClient } from './authed';
+export type { AuthedClient, AuthedClientConfig, TokenPair } from './authed';

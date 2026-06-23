@@ -1,14 +1,14 @@
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 import { DEFAULT_PREFERENCES } from '@finby/shared';
-import { API_BASE, ApiError, apiFetch } from './api-client';
+import { API_BASE, apiFetch } from './api-client';
+import { createAuthedClient } from '@finby/core';
 import { identifyUser, resetAnalytics, track } from './analytics';
 import type {
   ApiUser,
   ApiWorkspace,
   AuthResult,
   RegisterInput,
-  TokenPair,
   WorkspaceMembershipSummary,
 } from './types';
 
@@ -69,7 +69,16 @@ const CLEARED = {
 
 export const useAuth = create<AuthState>()(
   persist(
-    (set, get) => ({
+    (set, get) => {
+      const authedClient = createAuthedClient({
+        http: { baseUrl: API_BASE, apiFetch },
+        getAccessToken: () => get().accessToken,
+        getRefreshToken: () => get().refreshToken,
+        setTokens: (pair) => set({ accessToken: pair.accessToken, refreshToken: pair.refreshToken }),
+        onAuthCleared: () => set({ ...CLEARED }),
+      });
+
+      return {
       ...CLEARED,
 
       register: async (input) => {
@@ -122,26 +131,7 @@ export const useAuth = create<AuthState>()(
         resetAnalytics();
       },
 
-      tryRefresh: async () => {
-        const { refreshToken } = get();
-        if (!refreshToken) return false;
-        try {
-          const pair = await apiFetch<TokenPair>('/auth/refresh', {
-            method: 'POST',
-            body: JSON.stringify({ refreshToken }),
-          });
-          set({
-            accessToken: pair.accessToken,
-            refreshToken: pair.refreshToken,
-          });
-          return true;
-        } catch {
-          // Refresh token is dead — drop straight to a clean signed-out state.
-          // (Don't call logout(): its revoke call would just 401 on the bad token.)
-          set({ ...CLEARED });
-          return false;
-        }
-      },
+      tryRefresh: () => authedClient.tryRefresh(),
 
       markVerified: () => {
         const u = get().user;
@@ -219,68 +209,11 @@ export const useAuth = create<AuthState>()(
         if (u) identifyUser(u.id, target.tier);
       },
 
-      authed: async <T>(path: string, init: RequestInit = {}): Promise<T> => {
-        const withToken = (token: string | null): RequestInit => ({
-          ...init,
-          headers: {
-            ...(init.headers ?? {}),
-            ...(token ? { Authorization: `Bearer ${token}` } : {}),
-          },
-        });
+      authed: <T>(path: string, init?: RequestInit): Promise<T> => authedClient.authed<T>(path, init),
 
-        try {
-          return await apiFetch<T>(path, withToken(get().accessToken));
-        } catch (err) {
-          if (
-            err instanceof ApiError &&
-            err.status === 401 &&
-            get().refreshToken
-          ) {
-            const refreshed = await get().tryRefresh();
-            if (refreshed) {
-              return await apiFetch<T>(path, withToken(get().accessToken));
-            }
-          }
-          throw err;
-        }
-      },
-
-      authedStream: async (path, init = {}): Promise<Response> => {
-        const run = async (token: string | null): Promise<Response> =>
-          fetch(`${API_BASE}${path}`, {
-            ...init,
-            headers: {
-              'Content-Type': 'application/json',
-              ...(init.headers ?? {}),
-              ...(token ? { Authorization: `Bearer ${token}` } : {}),
-            },
-          });
-
-        let res: Response;
-        try {
-          res = await run(get().accessToken);
-        } catch {
-          throw new ApiError(0, 'NETWORK', "We couldn't reach Finby. Please check your connection and try again.");
-        }
-
-        if (res.status === 401 && get().refreshToken) {
-          const refreshed = await get().tryRefresh();
-          if (refreshed) res = await run(get().accessToken);
-        }
-
-        if (!res.ok) {
-          const text = await res.text();
-          const body = (text ? JSON.parse(text) : {}) as { error?: string; message?: string; details?: unknown };
-          throw new ApiError(
-            res.status,
-            body.error ?? 'ERROR',
-            body.message ?? 'Something went wrong. Please try again.',
-            body.details,
-          );
-        }
-        return res;
-      },
-    }),
+      authedStream: (path, init) => authedClient.authedStream(path, init),
+      };
+    },
     {
       name: 'finby-auth',
       storage: createJSONStorage(() => localStorage),
