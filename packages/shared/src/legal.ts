@@ -3,7 +3,7 @@ export const SUPPORT_EMAIL = 'support@finby.app';
 
 /** Intro paragraph shown above the numbered sections. */
 export const TERMS_INTRO =
-  'These Terms of Service (“Terms”) govern your use of Finby (“Finby”, “we”, “us”), a conversational personal-finance app. By creating an account or using Finby, you agree to these Terms. If you don’t agree, don’t use the app.';
+  'These Terms of Service (“Terms”) govern your use of Finby (“Finby”, “we”, “us”), a conversational personal-finance app. By creating an account or using Finby, you agree to these Terms. If you don\'t agree, don\'t use the app.';
 
 export interface TermsSection {
   /** e.g. "1. Eligibility" */
@@ -22,7 +22,7 @@ export const TERMS_SECTIONS: TermsSection[] = [
   {
     title: '2. Your account',
     paragraphs: [
-      'Provide accurate information, keep your password secure, and don’t share your account. You’re responsible for activity under your account. Tell us promptly if you suspect unauthorized access.',
+      'Provide accurate information, keep your password secure, and don\'t share your account. You\'re responsible for activity under your account. Tell us promptly if you suspect unauthorized access.',
     ],
   },
   {
@@ -40,7 +40,7 @@ export const TERMS_SECTIONS: TermsSection[] = [
   {
     title: '5. AI assistant',
     paragraphs: [
-      'Finby uses AI to interpret your messages and respond. AI can be inaccurate or incomplete — always review what it logs and don’t rely on it as your sole source of truth for financial decisions.',
+      'Finby uses AI to interpret your messages and respond. AI can be inaccurate or incomplete — always review what it logs and don\'t rely on it as your sole source of truth for financial decisions.',
     ],
   },
   {
@@ -54,8 +54,8 @@ export const TERMS_SECTIONS: TermsSection[] = [
   {
     title: '7. Acceptable use',
     paragraphs: [
-      'Don’t use Finby for anything unlawful, don’t attempt to break, overload, reverse-engineer, or gain unauthorized access to it, and don’t scrape or misuse the service or other users’ data.',
-      'Don’t attempt to manipulate or deceive the AI assistant into producing false or fraudulent financial records, or use it to generate misleading information.',
+      'Don\'t use Finby for anything unlawful, don\'t attempt to break, overload, reverse-engineer, or gain unauthorized access to it, and don\'t scrape or misuse the service or other users\' data.',
+      'Don\'t attempt to manipulate or deceive the AI assistant into producing false or fraudulent financial records, or use it to generate misleading information.',
     ],
   },
   {
@@ -67,7 +67,7 @@ export const TERMS_SECTIONS: TermsSection[] = [
   {
     title: '9. Intellectual property',
     paragraphs: [
-      'Finby, its software, design, and branding belong to us. These Terms don’t transfer any of our intellectual property to you.',
+      'Finby, its software, design, and branding belong to us. These Terms don\'t transfer any of our intellectual property to you.',
     ],
   },
   {
@@ -79,7 +79,7 @@ export const TERMS_SECTIONS: TermsSection[] = [
   {
     title: '11. Disclaimers',
     paragraphs: [
-      'Finby is provided “as is” and “as available” without warranties of any kind. We don’t guarantee the app will be uninterrupted, error-free, or that any information or AI output is accurate or complete.',
+      'Finby is provided “as is” and “as available” without warranties of any kind. We don\'t guarantee the app will be uninterrupted, error-free, or that any information or AI output is accurate or complete.',
     ],
   },
   {
@@ -91,7 +91,7 @@ export const TERMS_SECTIONS: TermsSection[] = [
   {
     title: '13. Changes to these Terms',
     paragraphs: [
-      'We may update these Terms as the product evolves. We’ll revise the date above and, for material changes, notify you in the app or by email. Continued use after changes means you accept them.',
+      'We may update these Terms as the product evolves. We\'ll revise the date above and, for material changes, notify you in the app or by email. Continued use after changes means you accept them.',
     ],
   },
   {
