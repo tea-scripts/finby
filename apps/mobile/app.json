@@ -9,7 +9,10 @@
     "newArchEnabled": true,
     "ios": {
       "bundleIdentifier": "app.finby.mobile",
-      "supportsTablet": true
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSFaceIDUsageDescription": "Finby uses Face ID to unlock the app and keep your finances private."
+      }
     },
     "android": {
       "package": "app.finby.mobile"

@@ -3,6 +3,7 @@ import { AppState, type AppStateStatus, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Button } from '../ui/button';
 import { useAuthStore } from '../../lib/use-auth-store';
+import { isResumeFromBackground } from '../../lib/app-state';
 import { biometric } from '../../lib/runtime.native';
 
 /** Gates the (app) group behind a biometric unlock. The store locks the app on
@@ -27,13 +28,15 @@ export function BiometricGate({ children }: { children: ReactNode }) {
     });
   }, [unlock]);
 
-  // Re-lock when the app returns to the foreground from the background.
+  // Re-lock when the app genuinely returns from the background. NOTE: do NOT
+  // re-lock on `inactive → active` — the OS biometric/passcode dialog drops the
+  // app to `inactive`, so that path would re-lock right after unlocking (loop).
   useEffect(() => {
     let prev = AppState.currentState;
     const sub = AppState.addEventListener('change', (next: AppStateStatus) => {
-      const wasBackground = prev === 'background' || prev === 'inactive';
+      const resumed = isResumeFromBackground(prev, next);
       prev = next;
-      if (next === 'active' && wasBackground) lockNow();
+      if (resumed) lockNow();
     });
     return () => sub.remove();
   }, [lockNow]);
