@@ -72,8 +72,10 @@ export function createAuthStore(deps: {
     },
 
     completeOnboarding: async () => {
-      await onboardingFlag.markSeen();
+      // Flip first so the navigation gate redirects to login immediately; the
+      // SecureStore write persists in the background and shouldn't gate the UI.
       set({ onboarded: true });
+      await onboardingFlag.markSeen();
     },
 
     resetOnboarding: async () => {

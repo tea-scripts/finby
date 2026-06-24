@@ -16,13 +16,17 @@ export function nextRoute({ status, onboarded, segments }: GateState): GateRoute
   if (status === 'loading') return null;
   const inAuthGroup = segments[0] === '(auth)';
   const inAppGroup = segments[0] === '(app)';
+  const onOnboarding = segments[1] === 'onboarding';
   if (status === 'authed') {
     return inAppGroup ? null : '/(app)';
   }
   // signed out:
   if (!onboarded) {
-    const onOnboarding = segments[1] === 'onboarding';
     return onOnboarding ? null : '/(auth)/onboarding';
   }
-  return inAuthGroup ? null : '/(auth)/login';
+  // Onboarded: belongs on an auth screen (login/register/forgot) — but NOT the
+  // onboarding carousel. Finishing onboarding (onboarded flips true while still
+  // on /(auth)/onboarding) must move the user to login, so onboarding counts as
+  // "not where an onboarded user belongs" even though it's inside (auth).
+  return inAuthGroup && !onOnboarding ? null : '/(auth)/login';
 }

@@ -35,4 +35,14 @@ describe('nextRoute', () => {
   it('signed out + onboarded + ["(auth)","login"] → null', () => {
     expect(nextRoute({ status: 'idle', onboarded: true, segments: ['(auth)', 'login'] })).toBeNull();
   });
+
+  it('signed out + just-onboarded while on ["(auth)","onboarding"] → "/(auth)/login"', () => {
+    // Completing onboarding flips `onboarded` true while still on the onboarding
+    // screen; the gate must move the user to login (the bug: it used to stay).
+    expect(nextRoute({ status: 'idle', onboarded: true, segments: ['(auth)', 'onboarding'] })).toBe('/(auth)/login');
+  });
+
+  it('signed out + onboarded + ["(auth)","register"] → null (registering is fine)', () => {
+    expect(nextRoute({ status: 'idle', onboarded: true, segments: ['(auth)', 'register'] })).toBeNull();
+  });
 });
