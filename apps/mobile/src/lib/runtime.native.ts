@@ -4,6 +4,8 @@ import { createTokenStore } from '../adapters/token-store';
 import { createIdentityStore } from '../adapters/identity-store';
 import { createOnboardingFlag } from '../adapters/onboarding-flag';
 import { createLockPref } from '../adapters/lock-pref';
+import { createLockCode } from '../adapters/lock-code';
+import { pinHasher } from '../adapters/crypto.native';
 import { createBiometric } from '../adapters/biometric';
 import { localAuth } from '../adapters/local-auth.native';
 import { secureStore } from '../adapters/secure-store.native';
@@ -31,10 +33,11 @@ export const authStore = createAuthStore({
   identityStore: createIdentityStore(secureStore),
   onboardingFlag: createOnboardingFlag(secureStore),
   lockPref: createLockPref(secureStore),
+  lockCode: createLockCode(secureStore, pinHasher),
 });
 
 /** Biometric app-lock (Face ID / Touch ID / passcode fallback). Read by the
- *  BiometricGate that wraps the (app) group. */
+ *  UnlockScreen behind the AppLockGate that wraps the (app) group. */
 export const biometric = createBiometric(localAuth);
 
 export const api = createMobileApi(session, apiBase);

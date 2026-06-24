@@ -4,6 +4,7 @@ import type { MobileSession } from './session';
 import type { Identity, IdentityStore } from '../adapters/identity-store';
 import type { OnboardingFlag } from '../adapters/onboarding-flag';
 import type { LockPref } from '../adapters/lock-pref';
+import type { LockCode } from '../adapters/lock-code';
 
 const USER = { id: 'u1' } as never;
 const WORKSPACE = { id: 'w1', tier: 'FREE' } as never;
@@ -51,12 +52,23 @@ function fakeLockPref(enabled = true): LockPref {
   };
 }
 
+function fakeLockCode(set = false): LockCode {
+  let s = set;
+  return {
+    isSet: vi.fn(async () => s),
+    set: vi.fn(async () => void (s = true)),
+    verify: vi.fn(async (pin: string) => pin === '1234'),
+    clear: vi.fn(async () => void (s = false)),
+  };
+}
+
 function makeStore(
   over: {
     session?: MobileSession;
     identityStore?: IdentityStore;
     onboardingFlag?: OnboardingFlag;
     lockPref?: LockPref;
+    lockCode?: LockCode;
   } = {},
 ) {
   return createAuthStore({
@@ -64,6 +76,7 @@ function makeStore(
     identityStore: over.identityStore ?? fakeIdentityStore(),
     onboardingFlag: over.onboardingFlag ?? fakeOnboardingFlag(),
     lockPref: over.lockPref ?? fakeLockPref(),
+    lockCode: over.lockCode ?? fakeLockCode(),
   });
 }
 
@@ -156,6 +169,7 @@ describe('createAuthStore', () => {
       session: fakeSession({ hydrate: vi.fn(async () => true) }),
       identityStore: fakeIdentityStore(identity),
       lockPref: fakeLockPref(true),
+      lockCode: fakeLockCode(true),
     });
     await store.getState().hydrate();
     expect(store.getState().status).toBe('authed');
@@ -187,6 +201,7 @@ describe('createAuthStore', () => {
       session: fakeSession({ hydrate: vi.fn(async () => true) }),
       identityStore: fakeIdentityStore({ user: USER, workspace: WORKSPACE } as Identity),
       lockPref: fakeLockPref(true),
+      lockCode: fakeLockCode(true),
     });
     await store.getState().hydrate();
     store.getState().unlock();
@@ -200,6 +215,7 @@ describe('createAuthStore', () => {
       session: fakeSession({ hydrate: vi.fn(async () => true) }),
       identityStore: fakeIdentityStore({ user: USER, workspace: WORKSPACE } as Identity),
       lockPref: fakeLockPref(true),
+      lockCode: fakeLockCode(true),
     });
     await store.getState().hydrate();
     expect(store.getState().locked).toBe(true);
@@ -213,11 +229,39 @@ describe('createAuthStore', () => {
       session: fakeSession({ hydrate: vi.fn(async () => true) }),
       identityStore: fakeIdentityStore({ user: USER, workspace: WORKSPACE } as Identity),
       lockPref,
+      lockCode: fakeLockCode(true),
     });
     await store.getState().hydrate();
     await store.getState().setLockEnabled(false);
     expect(lockPref.setEnabled).toHaveBeenCalledWith(false);
     expect(store.getState().lockEnabled).toBe(false);
     expect(store.getState().locked).toBe(false);
+  });
+
+  it('hydrate with lock enabled but no PIN does not lock (gate sends to PIN setup)', async () => {
+    const store = makeStore({
+      session: fakeSession({ hydrate: vi.fn(async () => true) }),
+      identityStore: fakeIdentityStore({ user: USER, workspace: WORKSPACE } as Identity),
+      lockPref: fakeLockPref(true),
+      lockCode: fakeLockCode(false),
+    });
+    await store.getState().hydrate();
+    expect(store.getState().lockEnabled).toBe(true);
+    expect(store.getState().hasPin).toBe(false);
+    expect(store.getState().locked).toBe(false);
+  });
+
+  it('setPin stores the PIN and sets hasPin', async () => {
+    const lockCode = fakeLockCode(false);
+    const store = makeStore({ lockCode });
+    await store.getState().setPin('1234');
+    expect(lockCode.set).toHaveBeenCalledWith('1234');
+    expect(store.getState().hasPin).toBe(true);
+  });
+
+  it('verifyPin delegates to the lock code', async () => {
+    const store = makeStore({ lockCode: fakeLockCode(true) });
+    expect(await store.getState().verifyPin('1234')).toBe(true);
+    expect(await store.getState().verifyPin('0000')).toBe(false);
   });
 });
