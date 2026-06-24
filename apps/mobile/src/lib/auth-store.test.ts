@@ -38,6 +38,7 @@ function fakeOnboardingFlag(seen = false): OnboardingFlag {
   return {
     wasSeen: vi.fn(async () => s),
     markSeen: vi.fn(async () => void (s = true)),
+    reset: vi.fn(async () => void (s = false)),
   };
 }
 
@@ -121,5 +122,14 @@ describe('createAuthStore', () => {
     await store.getState().completeOnboarding();
     expect(store.getState().onboarded).toBe(true);
     expect(onboardingFlag.markSeen).toHaveBeenCalledTimes(1);
+  });
+
+  it('resetOnboarding clears the flag and sets onboarded false', async () => {
+    const onboardingFlag = fakeOnboardingFlag(false);
+    const store = makeStore({ onboardingFlag });
+    await store.getState().completeOnboarding();
+    await store.getState().resetOnboarding();
+    expect(store.getState().onboarded).toBe(false);
+    expect(onboardingFlag.reset).toHaveBeenCalledTimes(1);
   });
 });

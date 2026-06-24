@@ -15,6 +15,8 @@ export interface AuthState {
   register(input: RegisterInput): Promise<void>;
   logout(): Promise<void>;
   completeOnboarding(): Promise<void>;
+  /** Clear the onboarding flag so the carousel replays (dev/testing). */
+  resetOnboarding(): Promise<void>;
 }
 
 /** Mobile auth store: identity + status, plus the cold-start restore that the
@@ -72,6 +74,11 @@ export function createAuthStore(deps: {
     completeOnboarding: async () => {
       await onboardingFlag.markSeen();
       set({ onboarded: true });
+    },
+
+    resetOnboarding: async () => {
+      await onboardingFlag.reset();
+      set({ onboarded: false });
     },
   }));
 }

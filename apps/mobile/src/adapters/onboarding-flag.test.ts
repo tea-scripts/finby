@@ -21,4 +21,11 @@ describe('createOnboardingFlag', () => {
     await flag.markSeen();
     expect(await flag.wasSeen()).toBe(true);
   });
+
+  it('reset clears the seen flag', async () => {
+    const flag = createOnboardingFlag(fakeStore());
+    await flag.markSeen();
+    await flag.reset();
+    expect(await flag.wasSeen()).toBe(false);
+  });
 });

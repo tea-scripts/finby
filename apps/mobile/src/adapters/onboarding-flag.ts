@@ -5,6 +5,8 @@ const ONBOARDED_KEY = 'finby.onboarded';
 export interface OnboardingFlag {
   wasSeen(): Promise<boolean>;
   markSeen(): Promise<void>;
+  /** Clear the flag so the first-launch carousel shows again (dev/replay). */
+  reset(): Promise<void>;
 }
 
 /** Tracks whether the first-launch onboarding carousel has been shown.
@@ -16,6 +18,9 @@ export function createOnboardingFlag(secureStore: SecureStoreLike): OnboardingFl
     },
     async markSeen() {
       await secureStore.setItemAsync(ONBOARDED_KEY, '1');
+    },
+    async reset() {
+      await secureStore.deleteItemAsync(ONBOARDED_KEY);
     },
   };
 }
