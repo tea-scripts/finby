@@ -24,6 +24,9 @@ jest.mock('@expo/vector-icons', () => ({
   Ionicons: ({ name }: { name: string }) =>
     jest.requireActual<typeof import('react')>('react').createElement('Text', null, name),
 }));
+jest.mock('expo-blur', () => ({
+  BlurView: ({ children }: { children: unknown }) => children,
+}));
 
 import { api } from '../lib/runtime.native';
 import { DashboardScreen } from './dashboard-screen';

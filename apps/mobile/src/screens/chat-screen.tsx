@@ -16,6 +16,7 @@ import { MessageBubble } from '../components/chat/message-bubble';
 import { TypingIndicator } from '../components/chat/typing-indicator';
 import { Wordmark } from '../components/ui/wordmark';
 import { StreakBadge } from '../components/dashboard/streak-badge';
+import { useTabBarSpace } from '../components/nav/floating-tab-bar';
 import { chatNotice, type ChatNotice } from '../lib/chat-notice';
 import { createTypewriter } from '../lib/typewriter';
 import { useAuthStore } from '../lib/use-auth-store';
@@ -51,6 +52,7 @@ export function ChatScreen() {
   const [sending, setSending] = useState(false);
   const [notice, setNotice] = useState<ChatNotice | null>(null);
   const listRef = useRef<FlatList<UiMessage>>(null);
+  const tabBarSpace = useTabBarSpace();
 
   // Bootstrap: reuse the latest conversation or create one, then load history.
   useEffect(() => {
@@ -150,7 +152,7 @@ export function ChatScreen() {
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-canvas" edges={['top', 'bottom']}>
+    <SafeAreaView className="flex-1 bg-canvas" edges={['top']}>
       {/* Header */}
       <View className="flex-row items-center justify-between border-b border-line px-4 py-3">
         <Wordmark height={22} />
@@ -212,7 +214,9 @@ export function ChatScreen() {
           </View>
         ) : null}
 
-        <Composer disabled={sending} onSend={send} />
+        <View style={{ paddingBottom: tabBarSpace }}>
+          <Composer disabled={sending} onSend={send} />
+        </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );

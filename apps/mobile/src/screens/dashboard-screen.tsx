@@ -12,6 +12,7 @@ import { BudgetList } from '../components/dashboard/budget-list';
 import { AccountCarousel } from '../components/dashboard/account-carousel';
 import { RecentTransactions } from '../components/dashboard/recent-transactions';
 import { StreakBadge } from '../components/dashboard/streak-badge';
+import { useTabBarSpace } from '../components/nav/floating-tab-bar';
 
 const LOADING = { data: null, loading: true, error: null } as const;
 
@@ -28,6 +29,7 @@ export function DashboardScreen() {
   const [accounts, setAccounts] = useState<SectionState<AccountView[]>>(LOADING);
   const [recent, setRecent] = useState<SectionState<Transaction[]>>(LOADING);
   const [refreshing, setRefreshing] = useState(false);
+  const tabBarSpace = useTabBarSpace();
 
   const loadSummary = useCallback(() => {
     if (!workspace) return Promise.resolve();
@@ -87,6 +89,7 @@ export function DashboardScreen() {
     <SafeAreaView className="flex-1 bg-canvas" edges={['top']}>
       <ScrollView
         contentContainerClassName="gap-5 px-4 py-5"
+        contentContainerStyle={{ paddingBottom: tabBarSpace }}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#8da3c0" />
         }
