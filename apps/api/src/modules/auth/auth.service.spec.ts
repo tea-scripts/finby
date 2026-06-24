@@ -82,6 +82,7 @@ const registerInput = {
   password: 'SuperSecret123!',
   baseCurrency: 'USD',
   timezone: 'Asia/Manila',
+  acceptedTermsVersion: 'June 9, 2026',
 };
 
 describe('AuthService', () => {
@@ -123,12 +124,15 @@ describe('AuthService', () => {
       expect(prisma.category.createMany).toHaveBeenCalledTimes(1);
 
       const userCreateArg = prisma.user.create.mock.calls[0]?.[0] as {
-        data: { passwordHash: string };
+        data: { passwordHash: string; acceptedTermsVersion: string; acceptedTermsAt: Date };
       };
       expect(userCreateArg.data.passwordHash).not.toBe(registerInput.password);
       expect(await bcrypt.compare(registerInput.password, userCreateArg.data.passwordHash)).toBe(
         true,
       );
+      // Terms acceptance is recorded (version + a server-side timestamp).
+      expect(userCreateArg.data.acceptedTermsVersion).toBe(registerInput.acceptedTermsVersion);
+      expect(userCreateArg.data.acceptedTermsAt).toBeInstanceOf(Date);
 
       const categoryArg = prisma.category.createMany.mock.calls[0]?.[0] as {
         data: unknown[];
@@ -580,6 +584,7 @@ describe('AuthService', () => {
       const result = await service.provisionInvitedUser({
         email: 'ada@example.com', displayName: 'Ada Lovelace',
         password: 'SuperSecret123!', baseCurrency: 'USD', timezone: 'UTC',
+        acceptedTermsVersion: 'June 9, 2026',
       });
 
       expect(prisma.user.create).toHaveBeenCalledTimes(1);

@@ -111,7 +111,7 @@ describe('InvitesService.acceptSignup (new user)', () => {
     prisma.user.findUnique.mockResolvedValue(null);
     const auth = { provisionInvitedUser: jest.fn().mockResolvedValue({ user: { id: 'u3' }, accessToken: 'a', refreshToken: 'r', workspace: {} }) };
     const { service } = build(prisma, auth);
-    const res = await service.acceptSignup('rawtoken', { displayName: 'Ada', password: 'password123', baseCurrency: 'USD', timezone: 'UTC' });
+    const res = await service.acceptSignup('rawtoken', { displayName: 'Ada', password: 'password123', baseCurrency: 'USD', timezone: 'UTC', acceptedTermsVersion: 'June 9, 2026' });
     expect(auth.provisionInvitedUser).toHaveBeenCalledWith(expect.objectContaining({ email: 'a@x.com', displayName: 'Ada' }));
     expect(prisma.workspaceMember.create).toHaveBeenCalled();
     expect(res.accessToken).toBe('a');
@@ -121,6 +121,6 @@ describe('InvitesService.acceptSignup (new user)', () => {
     const prisma = createPrismaMock();
     prisma.user.findUnique.mockResolvedValue({ id: 'u2', email: 'a@x.com' });
     const { service } = build(prisma);
-    await expect(service.acceptSignup('rawtoken', { displayName: 'Ada', password: 'password123', baseCurrency: 'USD', timezone: 'UTC' })).rejects.toBeInstanceOf(ConflictException);
+    await expect(service.acceptSignup('rawtoken', { displayName: 'Ada', password: 'password123', baseCurrency: 'USD', timezone: 'UTC', acceptedTermsVersion: 'June 9, 2026' })).rejects.toBeInstanceOf(ConflictException);
   });
 });

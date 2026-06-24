@@ -118,6 +118,7 @@ export class InvitesService {
       password: input.password,
       baseCurrency: input.baseCurrency,
       timezone: input.timezone,
+      acceptedTermsVersion: input.acceptedTermsVersion,
     });
 
     await this.prisma.$transaction(async (tx) => {
