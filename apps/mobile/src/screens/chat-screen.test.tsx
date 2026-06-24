@@ -91,10 +91,4 @@ describe('ChatScreen', () => {
     await waitFor(() => expect(screen.getByText('Service unavailable')).toBeTruthy());
   });
 
-  it('navigates to settings from the header', async () => {
-    await render(<ChatScreen />);
-    await waitFor(() => expect(mockChat.listMessages).toHaveBeenCalled());
-    await fireEvent.press(screen.getByLabelText('Settings'));
-    expect(mockPush).toHaveBeenCalledWith('/settings');
-  });
 });

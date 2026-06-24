@@ -8,7 +8,6 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
 import type { ChatAction, ChatMessageView, PendingConfirmation } from '@finby/shared';
 import { ActionCard } from '../components/chat/action-card';
 import { Composer } from '../components/chat/composer';
@@ -45,8 +44,6 @@ const NOTICE_STYLES: Record<ChatNotice['kind'], string> = {
 export function ChatScreen() {
   const workspace = useAuthStore((s) => s.workspace);
   const user = useAuthStore((s) => s.user);
-  const router = useRouter();
-
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [messages, setMessages] = useState<UiMessage[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(true);
@@ -159,9 +156,6 @@ export function ChatScreen() {
         <View className="flex-row items-center gap-4">
           <Pressable onPress={() => void newChat()} accessibilityRole="button" accessibilityLabel="New chat" hitSlop={8}>
             <Text className="text-sm font-medium text-accent">New chat</Text>
-          </Pressable>
-          <Pressable onPress={() => router.push('/settings')} accessibilityRole="button" accessibilityLabel="Settings" hitSlop={8}>
-            <Text className="text-xl text-muted">⚙︎</Text>
           </Pressable>
         </View>
       </View>
