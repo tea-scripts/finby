@@ -1,10 +1,10 @@
 import { Stack } from 'expo-router';
-import { BiometricGate } from '../../src/components/auth/biometric-gate';
+import { AppLockGate } from '../../src/components/auth/app-lock-gate';
 
 export default function AppLayout() {
   return (
-    <BiometricGate>
+    <AppLockGate>
       <Stack screenOptions={{ headerShown: false }} />
-    </BiometricGate>
+    </AppLockGate>
   );
 }
