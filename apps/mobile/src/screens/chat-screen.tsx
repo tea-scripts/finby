@@ -15,6 +15,7 @@ import { Composer } from '../components/chat/composer';
 import { ConfirmationCard } from '../components/chat/confirmation-card';
 import { MessageBubble } from '../components/chat/message-bubble';
 import { TypingIndicator } from '../components/chat/typing-indicator';
+import { Wordmark } from '../components/ui/wordmark';
 import { chatNotice, type ChatNotice } from '../lib/chat-notice';
 import { createTypewriter } from '../lib/typewriter';
 import { useAuthStore } from '../lib/use-auth-store';
@@ -154,7 +155,7 @@ export function ChatScreen() {
     <SafeAreaView className="flex-1 bg-canvas" edges={['top', 'bottom']}>
       {/* Header */}
       <View className="flex-row items-center justify-between border-b border-line px-4 py-3">
-        <Text className="text-lg font-semibold text-ink">Finby</Text>
+        <Wordmark height={22} />
         <View className="flex-row items-center gap-4">
           <Pressable onPress={() => void newChat()} accessibilityRole="button" accessibilityLabel="New chat" hitSlop={8}>
             <Text className="text-sm font-medium text-accent">New chat</Text>

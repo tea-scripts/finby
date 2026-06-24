@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { PinPad } from '../components/lock/pin-pad';
+import { Wordmark } from '../components/ui/wordmark';
 import { useAuthStore } from '../lib/use-auth-store';
 
 const PIN_LENGTH = 4;
@@ -39,9 +40,7 @@ export function SetPinScreen() {
   return (
     <SafeAreaView className="flex-1 items-center justify-center gap-12 bg-canvas px-6">
       <View className="items-center gap-2">
-        <Text className="text-3xl font-bold tracking-tight text-ink">
-          Fin<Text className="text-accent">by</Text>
-        </Text>
+        <Wordmark height={34} style={{ marginBottom: 8 }} />
         <Text className="text-xl font-semibold text-ink">
           {step === 'enter' ? 'Set your unlock PIN' : 'Confirm your PIN'}
         </Text>
