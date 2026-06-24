@@ -8,23 +8,13 @@ interface TabBarIconProps {
   color: string;
 }
 
-/** Instagram-style tab icon: filled glyph on a soft accent pill when active,
- *  outline glyph otherwise. Uses explicit inline sizing (NOT NativeWind classes)
- *  so the icon never collapses inside react-navigation's tab-bar icon slot,
- *  where className-driven layout doesn't apply and the icon renders as a sliver. */
+/** A single tab glyph: filled when active, outline otherwise. The active
+ *  highlight pill is drawn by the FloatingTabBar cell around this icon, so this
+ *  stays icon-only with explicit sizing (it renders inside react-navigation's
+ *  tab slot, where className-driven layout collapses). */
 export function TabBarIcon({ outline, filled, focused, color }: TabBarIconProps) {
   return (
-    <View
-      testID="tab-bar-icon"
-      style={{
-        width: 56,
-        height: 34,
-        alignItems: 'center',
-        justifyContent: 'center',
-        borderRadius: 17,
-        backgroundColor: focused ? 'rgba(29,110,245,0.14)' : 'transparent',
-      }}
-    >
+    <View testID="tab-bar-icon" style={{ alignItems: 'center', justifyContent: 'center' }}>
       <Ionicons name={focused ? filled : outline} size={24} color={color} />
     </View>
   );
