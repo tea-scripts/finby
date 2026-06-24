@@ -22,5 +22,8 @@ describe('Button', () => {
     fireEvent.press(screen.getByTestId('btn'));
     expect(onPress).not.toHaveBeenCalled();
     expect(screen.getByTestId('btn').props.accessibilityState.busy).toBe(true);
+    // Spinner renders (as a centered overlay) and the label stays mounted for sizing.
+    expect(screen.getByTestId('button-spinner')).toBeTruthy();
+    expect(screen.getByText('Sign in')).toBeTruthy();
   });
 });

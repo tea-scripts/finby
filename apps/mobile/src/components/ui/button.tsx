@@ -37,9 +37,13 @@ export function Button({
       accessibilityLabel={accessibilityLabel}
       accessibilityState={{ disabled: isDisabled, busy: loading }}
       testID={testID}
-      className={`min-h-12 flex-row items-center justify-center gap-2 rounded-xl px-4 py-3 ${VARIANT[variant]} ${isDisabled ? 'opacity-60' : ''}`}
+      className={`relative min-h-12 flex-row items-center justify-center gap-2 rounded-xl px-4 py-3 ${VARIANT[variant]} ${isDisabled ? 'opacity-60' : ''}`}
     >
-      {loading && <ActivityIndicator color={variant === 'primary' ? '#fff' : '#e8eef7'} />}
+      {loading && (
+        <View testID="button-spinner" className="absolute inset-0 items-center justify-center">
+          <ActivityIndicator color={variant === 'primary' ? '#fff' : '#e8eef7'} />
+        </View>
+      )}
       <View className={loading ? 'opacity-0' : ''}>
         {typeof children === 'string' ? (
           <Text className={`text-base font-medium ${TEXT_VARIANT[variant]}`}>{children}</Text>
