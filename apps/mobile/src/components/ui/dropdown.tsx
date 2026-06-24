@@ -39,25 +39,33 @@ export function Dropdown<T extends string>({
       </Pressable>
 
       <Modal visible={open} transparent animationType="fade" onRequestClose={() => setOpen(false)}>
-        <Pressable className="flex-1 justify-end bg-black/50" onPress={() => setOpen(false)}>
-          <Pressable className="max-h-96 rounded-t-2xl border-t border-line bg-surface px-2 py-3">
+        {/* Centered, content-sized card: grows to fit the options (up to ~60% of
+            the screen, then scrolls) instead of an edge-to-edge full-width sheet. */}
+        <Pressable className="flex-1 items-center justify-center bg-black/50 px-6" onPress={() => setOpen(false)}>
+          <Pressable className="max-h-[60%] w-full max-w-sm overflow-hidden rounded-2xl border border-line bg-surface">
             <FlatList
               data={options}
               keyExtractor={(o) => o.value}
-              renderItem={({ item }) => (
-                <Pressable
-                  onPress={() => {
-                    onSelect(item.value);
-                    setOpen(false);
-                  }}
-                  accessibilityRole="button"
-                  className="rounded-xl px-4 py-3"
-                >
-                  <Text className={`text-base ${item.value === value ? 'text-accent' : 'text-ink'}`}>
-                    {item.label}
-                  </Text>
-                </Pressable>
-              )}
+              contentContainerClassName="py-1"
+              keyboardShouldPersistTaps="handled"
+              renderItem={({ item }) => {
+                const isSelected = item.value === value;
+                return (
+                  <Pressable
+                    onPress={() => {
+                      onSelect(item.value);
+                      setOpen(false);
+                    }}
+                    accessibilityRole="button"
+                    className="flex-row items-center justify-between px-4 py-3"
+                  >
+                    <Text className={`text-base ${isSelected ? 'text-accent' : 'text-ink'}`}>
+                      {item.label}
+                    </Text>
+                    {isSelected ? <Text className="text-base text-accent">✓</Text> : null}
+                  </Pressable>
+                );
+              }}
             />
           </Pressable>
         </Pressable>
