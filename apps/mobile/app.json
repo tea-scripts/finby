@@ -7,6 +7,11 @@
     "orientation": "portrait",
     "userInterfaceStyle": "dark",
     "newArchEnabled": true,
+    "backgroundColor": "#06101F",
+    "splash": {
+      "backgroundColor": "#06101F",
+      "resizeMode": "contain"
+    },
     "ios": {
       "bundleIdentifier": "app.finby.mobile",
       "supportsTablet": true,

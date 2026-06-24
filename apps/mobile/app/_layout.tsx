@@ -1,10 +1,10 @@
 import '../global.css';
 import { useEffect } from 'react';
-import { View } from 'react-native';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { authStore, useAuthStore } from '../src/lib/use-auth-store';
 import { nextRoute } from '../src/lib/auth-gate-route';
+import { BrandSplash } from '../src/components/brand-splash';
 
 export default function RootLayout() {
   return (
@@ -30,8 +30,8 @@ function AuthGate() {
     if (target) router.replace(target);
   }, [status, onboarded, segments, router]);
 
-  // Hold a neutral splash until hydrate resolves, so no route flashes first.
-  if (status === 'loading') return <View className="flex-1 bg-canvas" />;
+  // Hold a branded splash until hydrate resolves, so no route flashes first.
+  if (status === 'loading') return <BrandSplash />;
 
   return <Stack screenOptions={{ headerShown: false }} />;
 }
