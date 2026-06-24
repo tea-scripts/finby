@@ -67,7 +67,7 @@ export function FloatingTabBar({ state, navigation }: BottomTabBarProps) {
         }}
       >
         <BlurView
-          intensity={75}
+          intensity={80}
           tint="dark"
           style={{
             height: CAPSULE_HEIGHT,
@@ -75,8 +75,8 @@ export function FloatingTabBar({ state, navigation }: BottomTabBarProps) {
             overflow: 'hidden',
             borderWidth: 1,
             borderColor: 'rgba(255,255,255,0.14)',
-            // Low alpha + a touch lighter than the canvas so it reads as frosted glass.
-            backgroundColor: 'rgba(18,28,46,0.28)',
+            // No solid backing — the dark-tint blur alone lets the content behind
+            // show through (a solid backgroundColor here masks it and reads opaque).
           }}
         >
           <View style={{ flex: 1, flexDirection: 'row' }} onLayout={(e) => setRowWidth(e.nativeEvent.layout.width)}>
