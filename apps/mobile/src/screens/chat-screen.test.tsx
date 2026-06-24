@@ -1,7 +1,10 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react-native';
 import { ApiError } from '@finby/core';
 
-const authState = { workspace: { id: 'w1' }, user: { id: 'u1', displayName: 'Tee' } };
+const authState = {
+  workspace: { id: 'w1' },
+  user: { id: 'u1', displayName: 'Tee', currentStreak: 7 },
+};
 jest.mock('../lib/use-auth-store', () => ({
   useAuthStore: (selector: (s: unknown) => unknown) => selector(authState),
 }));
@@ -50,6 +53,11 @@ describe('ChatScreen', () => {
     await render(<ChatScreen />);
     await waitFor(() => expect(mockChat.listMessages).toHaveBeenCalledWith('w1', 'c1'));
     expect(screen.getByText(/Hey, Tee/)).toBeTruthy();
+  });
+
+  it('shows the streak badge in the header', async () => {
+    await render(<ChatScreen />);
+    expect(screen.getByText('7')).toBeTruthy();
   });
 
   it('streams an assistant reply and renders a logged action card', async () => {

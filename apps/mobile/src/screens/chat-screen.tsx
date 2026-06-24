@@ -15,6 +15,7 @@ import { ConfirmationCard } from '../components/chat/confirmation-card';
 import { MessageBubble } from '../components/chat/message-bubble';
 import { TypingIndicator } from '../components/chat/typing-indicator';
 import { Wordmark } from '../components/ui/wordmark';
+import { StreakBadge } from '../components/dashboard/streak-badge';
 import { chatNotice, type ChatNotice } from '../lib/chat-notice';
 import { createTypewriter } from '../lib/typewriter';
 import { useAuthStore } from '../lib/use-auth-store';
@@ -153,7 +154,8 @@ export function ChatScreen() {
       {/* Header */}
       <View className="flex-row items-center justify-between border-b border-line px-4 py-3">
         <Wordmark height={22} />
-        <View className="flex-row items-center gap-4">
+        <View className="flex-row items-center gap-3">
+          <StreakBadge streak={user?.currentStreak ?? 0} />
           <Pressable onPress={() => void newChat()} accessibilityRole="button" accessibilityLabel="New chat" hitSlop={8}>
             <Text className="text-sm font-medium text-accent">New chat</Text>
           </Pressable>
