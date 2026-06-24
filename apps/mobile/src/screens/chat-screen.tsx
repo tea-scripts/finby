@@ -16,6 +16,7 @@ import { ConfirmationCard } from '../components/chat/confirmation-card';
 import { MessageBubble } from '../components/chat/message-bubble';
 import { TypingIndicator } from '../components/chat/typing-indicator';
 import { chatNotice, type ChatNotice } from '../lib/chat-notice';
+import { createTypewriter } from '../lib/typewriter';
 import { useAuthStore } from '../lib/use-auth-store';
 import { api } from '../lib/runtime.native';
 
@@ -93,6 +94,9 @@ export function ChatScreen() {
     const patch = (fn: (msg: UiMessage) => UiMessage) =>
       setMessages((m) => m.map((msg) => (msg.id === assistantId ? fn(msg) : msg)));
 
+    // The typewriter owns the bubble's text: streamed deltas are buffered and
+    // revealed smoothly so the reply reads like fluid typing.
+    const typer = createTypewriter((text) => patch((msg) => ({ ...msg, content: text })));
     let produced = false;
     let finalMessage: ChatMessageView | null = null;
 
@@ -100,29 +104,33 @@ export function ChatScreen() {
       await api.chat.streamMessage(workspace.id, conversationId, content, {
         onText: (text) => {
           produced = true;
-          patch((msg) => ({ ...msg, content: msg.content + text }));
+          typer.push(text);
         },
         onAction: (a) => patch((msg) => ({ ...msg, actions: [...(msg.actions ?? []), a] })),
         onPending: (c) => patch((msg) => ({ ...msg, confirmations: [...(msg.confirmations ?? []), c] })),
         onDone: (message) => {
           finalMessage = message;
+          // If the model streamed no text, reveal the server's final content.
           if (!produced && message.content) {
             produced = true;
-            patch((msg) => ({ ...msg, content: message.content }));
+            typer.push(message.content);
           }
         },
         onError: (e) => {
           if (!produced && e.message) {
             produced = true;
-            patch((msg) => ({ ...msg, content: e.message }));
+            typer.push(e.message);
           }
           setNotice({ kind: 'down', message: e.message });
         },
       });
+      // Let the buffer finish revealing before finalizing the bubble id.
+      await typer.finish();
       const fm = finalMessage as ChatMessageView | null;
       if (fm) patch((msg) => ({ ...msg, id: fm.id, createdAt: fm.createdAt }));
     } catch (err) {
       // Pre-stream failure (429/503/400): nothing rendered — drop the placeholder.
+      typer.cancel();
       setMessages((m) => m.filter((msg) => msg.id !== assistantId));
       setNotice(chatNotice(err));
     } finally {
