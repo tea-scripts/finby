@@ -5,7 +5,7 @@ jest.mock('react-native-safe-area-context', () => ({
 }));
 jest.mock('@expo/vector-icons', () => ({
   Ionicons: ({ name }: { name: string }) =>
-    require('react').createElement('Text', null, name),
+    jest.requireActual<typeof import('react')>('react').createElement('Text', null, name),
 }));
 
 import { TransactionsPlaceholderScreen } from './transactions-placeholder-screen';

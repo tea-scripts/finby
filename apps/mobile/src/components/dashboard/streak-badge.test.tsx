@@ -2,7 +2,7 @@ import { render, screen } from '@testing-library/react-native';
 
 jest.mock('@expo/vector-icons', () => ({
   Ionicons: ({ name }: { name: string }) =>
-    require('react').createElement('Text', null, name),
+    jest.requireActual<typeof import('react')>('react').createElement('Text', null, name),
 }));
 
 import { StreakBadge } from './streak-badge';

@@ -21,7 +21,8 @@ jest.mock('react-native-safe-area-context', () => ({
   useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }),
 }));
 jest.mock('@expo/vector-icons', () => ({
-  Ionicons: ({ name }: { name: string }) => require('react').createElement('Text', null, name),
+  Ionicons: ({ name }: { name: string }) =>
+    jest.requireActual<typeof import('react')>('react').createElement('Text', null, name),
 }));
 
 import { api } from '../lib/runtime.native';

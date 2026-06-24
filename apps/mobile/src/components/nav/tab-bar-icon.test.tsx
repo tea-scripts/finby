@@ -3,7 +3,7 @@ import { render, screen } from '@testing-library/react-native';
 // Mock Ionicons to render its `name` as text so we can assert which glyph shows.
 jest.mock('@expo/vector-icons', () => ({
   Ionicons: ({ name }: { name: string }) =>
-    require('react').createElement('Text', null, name),
+    jest.requireActual<typeof import('react')>('react').createElement('Text', null, name),
 }));
 
 import { TabBarIcon } from './tab-bar-icon';
