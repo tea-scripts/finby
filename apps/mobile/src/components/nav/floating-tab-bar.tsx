@@ -67,16 +67,16 @@ export function FloatingTabBar({ state, navigation }: BottomTabBarProps) {
         }}
       >
         <BlurView
-          intensity={80}
-          tint="dark"
+          intensity={70}
+          // The iOS ultra-thin material is genuinely translucent (content shows
+          // through it) — plain `dark` is near-opaque and reads as a solid panel.
+          tint="systemUltraThinMaterialDark"
           style={{
             height: CAPSULE_HEIGHT,
             borderRadius: CAPSULE_HEIGHT / 2,
             overflow: 'hidden',
             borderWidth: 1,
             borderColor: 'rgba(255,255,255,0.14)',
-            // No solid backing — the dark-tint blur alone lets the content behind
-            // show through (a solid backgroundColor here masks it and reads opaque).
           }}
         >
           <View style={{ flex: 1, flexDirection: 'row' }} onLayout={(e) => setRowWidth(e.nativeEvent.layout.width)}>
