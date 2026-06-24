@@ -13,6 +13,9 @@ export function ScreenContainer({ children }: { children: ReactNode }) {
           className="flex-1"
           contentContainerClassName="grow justify-center gap-5 px-6 py-8"
           keyboardShouldPersistTaps="handled"
+          alwaysBounceVertical={false}
+          overScrollMode="never"
+          showsVerticalScrollIndicator={false}
         >
           {children}
         </ScrollView>
