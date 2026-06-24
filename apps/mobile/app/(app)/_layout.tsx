@@ -21,14 +21,8 @@ export default function AppLayout() {
             key={t.name}
             name={t.name}
             options={{
-              tabBarIcon: ({ focused, color, size }) => (
-                <TabBarIcon
-                  outline={t.outline}
-                  filled={t.filled}
-                  focused={focused}
-                  color={color}
-                  size={size}
-                />
+              tabBarIcon: ({ focused, color }) => (
+                <TabBarIcon outline={t.outline} filled={t.filled} focused={focused} color={color} />
               ),
             }}
           />
