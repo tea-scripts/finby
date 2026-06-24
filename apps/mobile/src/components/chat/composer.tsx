@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Pressable, TextInput, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 
 /** Chat input row: a multiline text field + a send button. Trims and clears on
  *  send; ignores empty/whitespace input and sends nothing while disabled. */
@@ -35,7 +36,7 @@ export function Composer({ disabled, onSend }: { disabled: boolean; onSend: (tex
         onPress={send}
         className={`h-11 w-11 items-center justify-center rounded-full ${canSend ? 'bg-accent' : 'bg-line'}`}
       >
-        <View className="h-0 w-0 border-y-[6px] border-l-[10px] border-y-transparent border-l-white" />
+        <Ionicons name="arrow-up" size={22} color={canSend ? '#ffffff' : '#5b6f8c'} />
       </Pressable>
     </View>
   );

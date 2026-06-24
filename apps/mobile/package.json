@@ -14,6 +14,7 @@
   },
   "dependencies": {
     "@expo/metro-runtime": "~6.1.2",
+    "@expo/vector-icons": "^15.1.1",
     "@finby/core": "workspace:*",
     "@finby/shared": "workspace:*",
     "expo": "~54.0.35",
