@@ -32,4 +32,15 @@ describe('AccountCarousel', () => {
     await render(<AccountCarousel state={{ data: null, loading: false, error: 'x' }} onRetry={jest.fn()} />);
     expect(screen.getByTestId('section-retry')).toBeTruthy();
   });
+
+  it('renders a paging dot per account when there is more than one', async () => {
+    const second = { ...acct, id: 'a2', name: 'Wise USD', balance: '379.32' };
+    await render(
+      <AccountCarousel state={{ data: [acct, second], loading: false, error: null }} onRetry={jest.fn()} />,
+    );
+    expect(screen.getByText('Cash')).toBeTruthy();
+    expect(screen.getByText('Wise USD')).toBeTruthy();
+    expect(screen.getByTestId('account-dot-0')).toBeTruthy();
+    expect(screen.getByTestId('account-dot-1')).toBeTruthy();
+  });
 });
