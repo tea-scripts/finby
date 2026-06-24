@@ -44,12 +44,43 @@ Native binding files (`*.native.ts`) and screens are verified on device, not by 
 npm i -g eas-cli            # or: npx eas-cli@latest
 cd apps/mobile
 eas login
-eas build:configure        # links the Expo project (writes the project id)
+eas init                   # one-time: links the Expo project (writes extra.eas.projectId to app.json)
 eas build --profile development --platform ios      # or android
 eas build --profile production --platform all
 eas submit --profile production --platform ios       # App Store Connect
 eas submit --profile production --platform android    # Play Console
 ```
+
+### Development build (required to test biometrics, push, analytics, animations)
+
+Expo Go can't test everything (no `posthog-react-native`, no reanimated, and biometrics/
+resume-lock + `app.json` `infoPlist`/`NSFaceIDUsageDescription` only apply in a real build).
+A **dev build** (built with `expo-dev-client`, already a dependency) replaces Expo Go and
+loads JS from your Metro server just like Expo Go does.
+
+**Two ways to build it:**
+
+```bash
+# A) iOS Simulator build — NO Apple Developer account needed. Best for verifying
+#    biometrics fast: the Simulator simulates Face ID.
+eas build --profile development-simulator --platform ios
+#    → download the .app, drag it onto a booted Simulator (or `eas build:run -p ios`)
+
+# B) Physical-device build — needs an Apple account + the device registered with EAS
+#    (EAS will walk you through credentials / UDID registration).
+eas build --profile development --platform ios
+```
+
+Then run the JS for either build:
+
+```bash
+npx expo start --dev-client   # open the installed "Finby (dev)" app, not Expo Go
+```
+
+**Verifying biometrics in the iOS Simulator:** boot the Simulator, then
+`Features → Face ID → Enrolled`. Launch the dev build while logged in → it should prompt
+Face ID. Use `Features → Face ID → Matching Face` to pass / `Non-matching Face` to fail.
+Background the app (`Cmd+Shift+H`) and reopen to confirm the resume re-lock.
 
 ## Architecture note
 
