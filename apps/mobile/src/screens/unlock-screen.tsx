@@ -63,7 +63,7 @@ export function UnlockScreen() {
     <SafeAreaView className="flex-1 items-center justify-between bg-canvas px-6 py-12">
       <View className="items-center gap-2 pt-6">
         <Wordmark height={34} style={{ marginBottom: 8 }} />
-        <Text className="text-xl font-semibold text-ink">
+        <Text className="text-center text-xl font-semibold text-ink">
           Welcome back{user ? `, ${user.displayName}` : ''}
         </Text>
         <Animated.Text style={{ transform: [{ translateX }] }} className="text-sm text-muted">

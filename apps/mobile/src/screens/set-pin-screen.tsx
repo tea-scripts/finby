@@ -41,10 +41,12 @@ export function SetPinScreen() {
     <SafeAreaView className="flex-1 items-center justify-center gap-12 bg-canvas px-6">
       <View className="items-center gap-2">
         <Wordmark height={34} style={{ marginBottom: 8 }} />
-        <Text className="text-xl font-semibold text-ink">
+        <Text className="text-center text-xl font-semibold text-ink">
           {step === 'enter' ? 'Set your unlock PIN' : 'Confirm your PIN'}
         </Text>
-        <Text className="text-sm text-muted">{error ?? 'You’ll use this to unlock Finby.'}</Text>
+        <Text className="text-center text-sm text-muted">
+          {error ?? 'You’ll use this to unlock Finby.'}
+        </Text>
       </View>
       <PinPad length={PIN_LENGTH} value={value} onChange={onChange} />
     </SafeAreaView>
