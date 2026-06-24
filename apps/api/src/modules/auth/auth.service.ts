@@ -70,6 +70,8 @@ export class AuthService {
             timezone: input.timezone,
             accountNumber,
             preferences: DEFAULT_PREFERENCES as unknown as Prisma.InputJsonValue,
+            acceptedTermsAt: new Date(),
+            acceptedTermsVersion: input.acceptedTermsVersion,
           },
           select: {
             id: true,
@@ -140,6 +142,7 @@ export class AuthService {
     password: string;
     baseCurrency: string;
     timezone: string;
+    acceptedTermsVersion: string;
   }): Promise<AuthResult> {
     const passwordHash = await bcrypt.hash(input.password, this.rounds());
     const firstName = input.displayName.split(/\s+/)[0] ?? input.displayName;
@@ -157,6 +160,8 @@ export class AuthService {
             timezone: input.timezone,
             accountNumber,
             preferences: DEFAULT_PREFERENCES as unknown as Prisma.InputJsonValue,
+            acceptedTermsAt: new Date(),
+            acceptedTermsVersion: input.acceptedTermsVersion,
           },
           select: {
             id: true,

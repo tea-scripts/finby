@@ -65,6 +65,7 @@ describe('RegisterScreen', () => {
         password: 'secret123',
         baseCurrency: 'USD',
         timezone: 'UTC',
+        acceptedTermsVersion: 'June 9, 2026',
       }),
     );
   });

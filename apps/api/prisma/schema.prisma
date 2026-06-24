@@ -171,6 +171,11 @@ model User {
   accountNumber     String?  @unique
   preferences       Json?
 
+  // Terms of Service acceptance (recorded at registration). Nullable so the
+  // backfill migration can stamp existing users to their signup date.
+  acceptedTermsAt      DateTime?
+  acceptedTermsVersion String?
+
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
   lastLoginAt       DateTime?

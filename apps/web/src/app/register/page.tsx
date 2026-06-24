@@ -11,7 +11,7 @@ import { Field } from '@/components/ui/field';
 import { Input } from '@/components/ui/input';
 import { PasswordInput } from '@/components/ui/password-input';
 import { PasswordStrength } from '@/components/ui/password-strength';
-import { CURRENCIES } from '@finby/shared';
+import { CURRENCIES, TERMS_LAST_UPDATED } from '@finby/shared';
 import { ApiError } from '@/lib/api-client';
 import { useAuth } from '@/lib/store';
 
@@ -67,6 +67,7 @@ export default function RegisterPage() {
         password,
         baseCurrency,
         timezone,
+        acceptedTermsVersion: TERMS_LAST_UPDATED,
       });
       router.push('/chat');
     } catch (err) {

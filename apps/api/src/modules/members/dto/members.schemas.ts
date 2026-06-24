@@ -16,5 +16,7 @@ export const acceptSignupSchema = z.object({
   password: z.string().min(8).max(200),
   baseCurrency: z.string().trim().length(3).toUpperCase().default('USD'),
   timezone: z.string().trim().min(1).default('UTC'),
+  // ToS version the invited user accepted — required, recorded as consent evidence.
+  acceptedTermsVersion: z.string().trim().min(1).max(64),
 });
 export type AcceptSignupInput = z.infer<typeof acceptSignupSchema>;

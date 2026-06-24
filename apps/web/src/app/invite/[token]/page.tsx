@@ -10,6 +10,7 @@ import { PasswordStrength } from '@/components/ui/password-strength';
 import { useAuth } from '@/lib/store';
 import { acceptInvite, acceptInviteSignup, previewInvite } from '@/lib/members-api';
 import type { InvitePreview } from '@/lib/types';
+import { TERMS_LAST_UPDATED } from '@finby/shared';
 
 export default function InvitePage({ params }: { params: Promise<{ token: string }> }) {
   const { token } = use(params);
@@ -51,7 +52,11 @@ export default function InvitePage({ params }: { params: Promise<{ token: string
     setBusy(true);
     setActionError(null);
     try {
-      const result = await acceptInviteSignup(token, { displayName: displayName.trim(), password });
+      const result = await acceptInviteSignup(token, {
+        displayName: displayName.trim(),
+        password,
+        acceptedTermsVersion: TERMS_LAST_UPDATED,
+      });
       // Switch to the "joining" view BEFORE authenticating, so the logged-in
       // "Accept invitation" branch never flashes between auth + redirect.
       setJoining(true);
@@ -176,6 +181,17 @@ export default function InvitePage({ params }: { params: Promise<{ token: string
             >
               {busy ? 'Creating account…' : 'Create account & join'}
             </button>
+            <p className="text-xs text-faint">
+              By creating your account you agree to the{' '}
+              <Link href="/terms" target="_blank" className="text-accent hover:text-accent-hover">
+                Terms of Service
+              </Link>{' '}
+              and{' '}
+              <Link href="/privacy" target="_blank" className="text-accent hover:text-accent-hover">
+                Privacy Policy
+              </Link>
+              .
+            </p>
           </form>
         )}
       </div>

@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { Text, View } from 'react-native';
 import { Link } from 'expo-router';
 import { ApiError } from '@finby/core';
-import { CURRENCIES } from '@finby/shared';
+import { CURRENCIES, TERMS_LAST_UPDATED } from '@finby/shared';
 import { ScreenContainer } from '../components/ui/screen-container';
 import { Button } from '../components/ui/button';
 import { Field } from '../components/ui/field';
@@ -56,6 +56,7 @@ export function RegisterScreen() {
         password,
         baseCurrency,
         timezone,
+        acceptedTermsVersion: TERMS_LAST_UPDATED,
       });
       // The root gate navigates to (app) on success.
     } catch (err) {

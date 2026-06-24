@@ -9,6 +9,9 @@ export const registerSchema = z.object({
   password: z.string().min(8).max(200),
   baseCurrency: z.string().trim().length(3).toUpperCase().default('USD'),
   timezone: z.string().trim().min(1).default('UTC'),
+  // The Terms of Service version the user accepted (recorded as consent
+  // evidence). Required — registration is refused without it.
+  acceptedTermsVersion: z.string().trim().min(1).max(64),
 });
 export type RegisterInput = z.infer<typeof registerSchema>;
 
