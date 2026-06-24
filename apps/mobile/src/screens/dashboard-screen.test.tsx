@@ -27,6 +27,9 @@ jest.mock('@expo/vector-icons', () => ({
 jest.mock('expo-blur', () => ({
   BlurView: ({ children }: { children: unknown }) => children,
 }));
+jest.mock('expo-linear-gradient', () => ({
+  LinearGradient: ({ children }: { children: unknown }) => children,
+}));
 
 import { api } from '../lib/runtime.native';
 import { DashboardScreen } from './dashboard-screen';

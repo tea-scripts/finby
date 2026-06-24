@@ -10,11 +10,14 @@ export interface SectionProps<T> {
   onRetry: () => void;
 }
 
+/** Section wrapper: an uppercase label above its content. The content floats
+ *  directly on the canvas (no surrounding box) — each section supplies its own
+ *  visual treatment (stat grid, gradient cards, rows). */
 export function SectionCard({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <View className="gap-2">
+    <View className="gap-2.5">
       <Text className="text-xs font-semibold uppercase tracking-wide text-muted">{title}</Text>
-      <View className="rounded-2xl border border-line bg-surface p-4">{children}</View>
+      {children}
     </View>
   );
 }

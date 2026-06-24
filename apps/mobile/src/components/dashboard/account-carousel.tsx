@@ -1,12 +1,21 @@
 import { useRef, useState } from 'react';
 import { Animated, Pressable, ScrollView, Text, View } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { money } from '@finby/core';
-import type { AccountView } from '@finby/shared';
-import { SectionLoading, SectionError, SectionEmpty, type SectionProps } from './section-card';
+import { ACCOUNT_TYPE_LABELS, type AccountType, type AccountView } from '@finby/shared';
+import { CurrencyFlag } from '../ui/currency-flag';
+import { SectionCard, SectionLoading, SectionError, SectionEmpty, type SectionProps } from './section-card';
 
-/** A single full-width account card. The account's color is a thin ring (border)
- *  around the card; `scale`/`opacity` animate it as the carousel pages. The card
- *  floats directly on the canvas (no surrounding section box). */
+const ACCENT = '#1d6ef5';
+
+/** A valid #RRGGBB tint, or the app accent when missing/invalid. */
+function tintColor(color: string | null): string {
+  return color && /^#[0-9a-fA-F]{6}$/.test(color) ? color : ACCENT;
+}
+
+/** A full-width account card tinted by the account's color: a diagonal gradient
+ *  fill, a matching translucent border, the currency flag + code, and the balance.
+ *  `scale`/`opacity` animate it as the carousel pages. */
 function AccountCard({
   a,
   width,
@@ -18,17 +27,42 @@ function AccountCard({
   scale: Animated.AnimatedInterpolation<number>;
   opacity: Animated.AnimatedInterpolation<number>;
 }) {
+  const tint = tintColor(a.color);
+  const typeLabel = ACCOUNT_TYPE_LABELS[a.accountType as AccountType] ?? a.accountType;
   return (
     <View style={{ width }} className="px-1">
       <Animated.View
-        style={{ transform: [{ scale }], opacity, borderWidth: 1.5, borderColor: a.color ?? '#1d6ef5' }}
-        className="gap-3 rounded-2xl bg-surface-2 p-4"
+        style={{
+          transform: [{ scale }],
+          opacity,
+          borderWidth: 1,
+          // `73` ≈ 45% border, `33` ≈ 20% fill (8-digit hex alpha) — mirrors the web.
+          borderColor: `${tint}73`,
+          borderRadius: 16,
+          overflow: 'hidden',
+        }}
       >
-        <Text className="text-sm font-medium text-ink" numberOfLines={1}>
-          {a.name}
-        </Text>
-        <Text className="text-2xl font-bold text-ink">{money(a.balance, a.currency)}</Text>
-        <Text className="text-xs uppercase tracking-wide text-muted">{a.accountType}</Text>
+        <LinearGradient
+          colors={[`${tint}33`, 'rgba(11,22,38,0.95)']}
+          locations={[0, 0.55]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={{ padding: 20, minHeight: 124 }}
+        >
+          <View className="flex-row items-center justify-between">
+            <Text className="text-xs font-medium text-muted">Balance</Text>
+            <View className="flex-row items-center gap-2">
+              <CurrencyFlag currency={a.currency} size={24} />
+              <Text className="text-sm font-semibold text-ink">{a.currency}</Text>
+            </View>
+          </View>
+          <Text className="mt-1 text-3xl font-bold tracking-tight text-ink">
+            {money(a.balance, a.currency)}
+          </Text>
+          <Text className="mt-1.5 text-xs text-faint" numberOfLines={1}>
+            {a.name} · {typeLabel}
+          </Text>
+        </LinearGradient>
       </Animated.View>
     </View>
   );
@@ -65,8 +99,7 @@ export function AccountCarousel({ state, onRetry }: SectionProps<AccountView[]>)
   const safeW = width || 1;
 
   return (
-    <View className="gap-2">
-      <Text className="text-xs font-semibold uppercase tracking-wide text-muted">Accounts</Text>
+    <SectionCard title="Accounts">
       {state.loading ? (
         <SectionLoading />
       ) : state.error || !state.data ? (
@@ -106,6 +139,6 @@ export function AccountCarousel({ state, onRetry }: SectionProps<AccountView[]>)
           <Dots count={accounts.length} index={index} onDot={goTo} />
         </View>
       )}
-    </View>
+    </SectionCard>
   );
 }

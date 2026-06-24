@@ -13,12 +13,16 @@ const data: SummaryResult = {
 };
 
 describe('MonthSummary', () => {
-  it('renders income, expenses and net', async () => {
+  it('renders the income/expenses/net/savings-rate stats', async () => {
     await render(<MonthSummary state={{ data, loading: false, error: null }} onRetry={jest.fn()} />);
+    expect(screen.getByText('Income')).toBeTruthy();
     expect(screen.getByText('$5,000.00')).toBeTruthy();
+    expect(screen.getByText('Expenses')).toBeTruthy();
     expect(screen.getByText('$1,200.50')).toBeTruthy();
+    expect(screen.getByText('Net savings')).toBeTruthy();
     expect(screen.getByText('$3,799.50')).toBeTruthy();
-    expect(screen.getByText(/76% saved/)).toBeTruthy();
+    expect(screen.getByText('Savings rate')).toBeTruthy();
+    expect(screen.getByText('76%')).toBeTruthy();
   });
 
   it('renders loading', async () => {
