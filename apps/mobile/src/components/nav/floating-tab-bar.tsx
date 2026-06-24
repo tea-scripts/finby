@@ -51,7 +51,8 @@ export function FloatingTabBar({ state, navigation }: BottomTabBarProps) {
             overflow: 'hidden',
             borderWidth: 1,
             borderColor: 'rgba(255,255,255,0.12)',
-            backgroundColor: 'rgba(13,22,38,0.55)',
+            // Slightly translucent so the blur reads as glass (content shows through).
+            backgroundColor: 'rgba(13,22,38,0.4)',
           }}
         >
           {state.routes.map((route, i) => {
@@ -78,10 +79,10 @@ export function FloatingTabBar({ state, navigation }: BottomTabBarProps) {
                 {/* Wide active highlight that fills most of the cell (IG-style). */}
                 <View
                   style={{
-                    height: 44,
-                    marginVertical: 8,
+                    height: 48,
+                    marginVertical: 6,
                     marginHorizontal: 4,
-                    borderRadius: 20,
+                    borderRadius: 22,
                     alignItems: 'center',
                     justifyContent: 'center',
                     backgroundColor: focused ? 'rgba(29,110,245,0.20)' : 'transparent',
