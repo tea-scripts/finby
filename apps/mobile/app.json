@@ -16,7 +16,8 @@
       "bundleIdentifier": "app.finby.mobile",
       "supportsTablet": true,
       "infoPlist": {
-        "NSFaceIDUsageDescription": "Finby uses Face ID to unlock the app and keep your finances private."
+        "NSFaceIDUsageDescription": "Finby uses Face ID to unlock the app and keep your finances private.",
+        "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
@@ -32,7 +33,12 @@
     },
     "extra": {
       "_comment": "Default API base (used by device/EAS builds). For a local backend, override with EXPO_PUBLIC_API_URL=http://<LAN-IP>:3001/api/v1 (localhost is unreachable from a physical device).",
-      "apiBase": "https://api.finby.app/api/v1"
-    }
+      "apiBase": "https://api.finby.app/api/v1",
+      "router": {},
+      "eas": {
+        "projectId": "32cba6b5-10ac-47d9-b04b-ab15cec95a17"
+      }
+    },
+    "owner": "teascripts"
   }
 }
