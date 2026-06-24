@@ -68,6 +68,7 @@ export function DashboardScreen() {
 
   const initialized = useRef(false);
   useEffect(() => {
+    // Fetch once per mount. This screen unmounts on logout/workspace change, so we don't re-fetch on workspace identity changes (avoids a double-fetch on the initial mount under Strict Mode).
     if (!workspace || initialized.current) return;
     initialized.current = true;
     void loadSummary();

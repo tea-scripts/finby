@@ -68,5 +68,6 @@ describe('DashboardScreen', () => {
     expect(dash.listBudgets).toHaveBeenCalledTimes(1);
     expect(dash.listAccounts).toHaveBeenCalledTimes(1);
     expect(dash.listRecentTransactions).toHaveBeenCalledWith('w1', 10);
+    expect(dash.listRecentTransactions).toHaveBeenCalledTimes(1);
   });
 });
