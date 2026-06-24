@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Linking, Text, View } from 'react-native';
-import { Toggle } from '../ui/toggle';
+import { Checkbox } from '../ui/checkbox';
 import { TermsModal } from './terms-modal';
 
 // NOTE: confirm the production privacy URL/domain before launch.
@@ -26,8 +26,10 @@ export function TermsGate({
 
   return (
     <View className="gap-2">
-      <View className="flex-row items-center gap-3">
-        <Toggle value={accepted} onValueChange={handleToggle} accessibilityLabel="Accept terms" />
+      <View className="flex-row items-start gap-3">
+        <View className="mt-0.5">
+          <Checkbox checked={accepted} onChange={handleToggle} accessibilityLabel="Accept terms" />
+        </View>
         <Text className="flex-1 text-sm text-muted">
           I agree to the{' '}
           <Text className="font-medium text-accent" onPress={() => setOpen(true)}>

@@ -16,7 +16,7 @@ describe('TermsGate', () => {
 
   it('blocks accept until terms are read — opens modal instead', async () => {
     await render(<TermsGate accepted={false} onAcceptedChange={onAcceptedChange} />);
-    await fireEvent(screen.getByLabelText('Accept terms'), 'valueChange', true);
+    await fireEvent.press(screen.getByLabelText('Accept terms'));
     expect(onAcceptedChange).not.toHaveBeenCalled();
     expect(screen.getByTestId('terms-scrollview')).toBeTruthy();
   });
@@ -24,7 +24,7 @@ describe('TermsGate', () => {
   it('allows accept after reading terms', async () => {
     await render(<TermsGate accepted={false} onAcceptedChange={onAcceptedChange} />);
     // Open modal by toggling (read=false)
-    await fireEvent(screen.getByLabelText('Accept terms'), 'valueChange', true);
+    await fireEvent.press(screen.getByLabelText('Accept terms'));
     // Scroll to bottom to mark as read
     await fireEvent(screen.getByTestId('terms-scrollview'), 'scroll', {
       nativeEvent: {
@@ -36,7 +36,7 @@ describe('TermsGate', () => {
     // Close modal
     await fireEvent.press(screen.getByText("I've read the Terms"));
     // Now toggle should call onAcceptedChange
-    await fireEvent(screen.getByLabelText('Accept terms'), 'valueChange', true);
+    await fireEvent.press(screen.getByLabelText('Accept terms'));
     expect(onAcceptedChange).toHaveBeenCalledWith(true);
   });
 
@@ -44,7 +44,7 @@ describe('TermsGate', () => {
     await render(<TermsGate accepted={false} onAcceptedChange={onAcceptedChange} />);
     expect(screen.getByText('Open the Terms and scroll to the end to continue.')).toBeTruthy();
     // Open modal by toggling (read=false)
-    await fireEvent(screen.getByLabelText('Accept terms'), 'valueChange', true);
+    await fireEvent.press(screen.getByLabelText('Accept terms'));
     // Scroll to bottom to mark as read
     await fireEvent(screen.getByTestId('terms-scrollview'), 'scroll', {
       nativeEvent: {
