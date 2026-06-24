@@ -90,17 +90,17 @@ export function OnboardingScreen() {
         ))}
       </View>
 
-      {/* Controls — Back appears once past the first slide; swipe works either way. */}
-      <View className="flex-row items-center gap-3 px-6 pb-4">
-        {index > 0 ? (
-          <View className="flex-1">
-            <Button variant="ghost" onPress={() => goTo(index - 1)}>
-              Back
-            </Button>
-          </View>
-        ) : null}
-        <View className="flex-1">
-          <Button onPress={onNext}>{last ? 'Get started' : 'Next'}</Button>
+      {/* Controls — the primary button stays full-width and fixed on every slide;
+          Back lives in a fixed-height slot below so neither the button nor the
+          dots shift position between slides (swipe works either way too). */}
+      <View className="px-6 pb-4">
+        <Button onPress={onNext}>{last ? 'Get started' : 'Next'}</Button>
+        <View className="mt-2 h-10 items-center justify-center">
+          {index > 0 ? (
+            <Pressable onPress={() => goTo(index - 1)} hitSlop={8} accessibilityRole="button">
+              <Text className="text-sm font-medium text-accent">Back</Text>
+            </Pressable>
+          ) : null}
         </View>
       </View>
     </SafeAreaView>
