@@ -3,6 +3,7 @@ import { createAuthStore } from './auth-store';
 import type { MobileSession } from './session';
 import type { Identity, IdentityStore } from '../adapters/identity-store';
 import type { OnboardingFlag } from '../adapters/onboarding-flag';
+import type { LockPref } from '../adapters/lock-pref';
 
 const USER = { id: 'u1' } as never;
 const WORKSPACE = { id: 'w1', tier: 'FREE' } as never;
@@ -42,11 +43,27 @@ function fakeOnboardingFlag(seen = false): OnboardingFlag {
   };
 }
 
-function makeStore(over: { session?: MobileSession; identityStore?: IdentityStore; onboardingFlag?: OnboardingFlag } = {}) {
+function fakeLockPref(enabled = true): LockPref {
+  let e = enabled;
+  return {
+    isEnabled: vi.fn(async () => e),
+    setEnabled: vi.fn(async (next: boolean) => void (e = next)),
+  };
+}
+
+function makeStore(
+  over: {
+    session?: MobileSession;
+    identityStore?: IdentityStore;
+    onboardingFlag?: OnboardingFlag;
+    lockPref?: LockPref;
+  } = {},
+) {
   return createAuthStore({
     session: over.session ?? fakeSession(),
     identityStore: over.identityStore ?? fakeIdentityStore(),
     onboardingFlag: over.onboardingFlag ?? fakeOnboardingFlag(),
+    lockPref: over.lockPref ?? fakeLockPref(),
   });
 }
 
@@ -131,5 +148,76 @@ describe('createAuthStore', () => {
     await store.getState().resetOnboarding();
     expect(store.getState().onboarded).toBe(false);
     expect(onboardingFlag.reset).toHaveBeenCalledTimes(1);
+  });
+
+  it('hydrate restores an authed session locked when the lock is enabled', async () => {
+    const identity = { user: USER, workspace: WORKSPACE } as Identity;
+    const store = makeStore({
+      session: fakeSession({ hydrate: vi.fn(async () => true) }),
+      identityStore: fakeIdentityStore(identity),
+      lockPref: fakeLockPref(true),
+    });
+    await store.getState().hydrate();
+    expect(store.getState().status).toBe('authed');
+    expect(store.getState().lockEnabled).toBe(true);
+    expect(store.getState().locked).toBe(true);
+  });
+
+  it('hydrate restores an authed session unlocked when the lock is disabled', async () => {
+    const identity = { user: USER, workspace: WORKSPACE } as Identity;
+    const store = makeStore({
+      session: fakeSession({ hydrate: vi.fn(async () => true) }),
+      identityStore: fakeIdentityStore(identity),
+      lockPref: fakeLockPref(false),
+    });
+    await store.getState().hydrate();
+    expect(store.getState().lockEnabled).toBe(false);
+    expect(store.getState().locked).toBe(false);
+  });
+
+  it('login starts unlocked even with the lock enabled (just authenticated)', async () => {
+    const store = makeStore({ lockPref: fakeLockPref(true) });
+    await store.getState().login('e@x.com', 'pw');
+    expect(store.getState().lockEnabled).toBe(true);
+    expect(store.getState().locked).toBe(false);
+  });
+
+  it('lockNow locks only when the lock is enabled', async () => {
+    const store = makeStore({
+      session: fakeSession({ hydrate: vi.fn(async () => true) }),
+      identityStore: fakeIdentityStore({ user: USER, workspace: WORKSPACE } as Identity),
+      lockPref: fakeLockPref(true),
+    });
+    await store.getState().hydrate();
+    store.getState().unlock();
+    expect(store.getState().locked).toBe(false);
+    store.getState().lockNow();
+    expect(store.getState().locked).toBe(true);
+  });
+
+  it('unlock clears the locked state', async () => {
+    const store = makeStore({
+      session: fakeSession({ hydrate: vi.fn(async () => true) }),
+      identityStore: fakeIdentityStore({ user: USER, workspace: WORKSPACE } as Identity),
+      lockPref: fakeLockPref(true),
+    });
+    await store.getState().hydrate();
+    expect(store.getState().locked).toBe(true);
+    store.getState().unlock();
+    expect(store.getState().locked).toBe(false);
+  });
+
+  it('setLockEnabled(false) persists the pref and unlocks', async () => {
+    const lockPref = fakeLockPref(true);
+    const store = makeStore({
+      session: fakeSession({ hydrate: vi.fn(async () => true) }),
+      identityStore: fakeIdentityStore({ user: USER, workspace: WORKSPACE } as Identity),
+      lockPref,
+    });
+    await store.getState().hydrate();
+    await store.getState().setLockEnabled(false);
+    expect(lockPref.setEnabled).toHaveBeenCalledWith(false);
+    expect(store.getState().lockEnabled).toBe(false);
+    expect(store.getState().locked).toBe(false);
   });
 });
