@@ -67,9 +67,9 @@ export function FloatingTabBar({ state, navigation }: BottomTabBarProps) {
         }}
       >
         <BlurView
-          intensity={70}
-          // The iOS ultra-thin material is genuinely translucent (content shows
-          // through it) — plain `dark` is near-opaque and reads as a solid panel.
+          // Lower intensity blends toward transparent, so more content shows
+          // through the frost. The ultra-thin dark material keeps it legible.
+          intensity={50}
           tint="systemUltraThinMaterialDark"
           style={{
             height: CAPSULE_HEIGHT,
