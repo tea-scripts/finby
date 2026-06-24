@@ -1,12 +1,10 @@
-import { Pressable, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
 import { Button } from '../components/ui/button';
 import { Toggle } from '../components/ui/toggle';
 import { useAuthStore } from '../lib/use-auth-store';
 
 export function SettingsScreen() {
-  const router = useRouter();
   const user = useAuthStore((s) => s.user);
   const logout = useAuthStore((s) => s.logout);
   const resetOnboarding = useAuthStore((s) => s.resetOnboarding);
@@ -22,10 +20,7 @@ export function SettingsScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-canvas" edges={['top', 'bottom']}>
-      <View className="flex-row items-center gap-3 border-b border-line px-4 py-3">
-        <Pressable onPress={() => router.back()} accessibilityRole="button" accessibilityLabel="Back" hitSlop={8}>
-          <Text className="text-2xl leading-none text-accent">‹</Text>
-        </Pressable>
+      <View className="border-b border-line px-4 py-3">
         <Text className="text-lg font-semibold text-ink">Settings</Text>
       </View>
 
