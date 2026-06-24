@@ -54,6 +54,8 @@ export interface RegisterInput {
   password: string;
   baseCurrency: string;
   timezone: string;
+  /** The Terms of Service version the user accepted (required by the API). */
+  acceptedTermsVersion: string;
 }
 
 export interface ChatMessageView {

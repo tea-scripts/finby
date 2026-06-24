@@ -17,7 +17,13 @@ export interface MembersApi {
   acceptInvite(token: string): Promise<{ workspaceId: string }>;
   acceptInviteSignup(
     token: string,
-    body: { displayName: string; password: string; baseCurrency?: string; timezone?: string },
+    body: {
+      displayName: string;
+      password: string;
+      baseCurrency?: string;
+      timezone?: string;
+      acceptedTermsVersion: string;
+    },
   ): Promise<AuthResult>;
 }
 

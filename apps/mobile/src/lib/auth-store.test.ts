@@ -69,7 +69,7 @@ describe('createAuthStore', () => {
   it('register persists identity and sets status authed', async () => {
     const identityStore = fakeIdentityStore();
     const store = makeStore({ identityStore });
-    await store.getState().register({ displayName: 'Tee', email: 'e@x.com', password: 'pw', baseCurrency: 'USD', timezone: 'UTC' });
+    await store.getState().register({ displayName: 'Tee', email: 'e@x.com', password: 'pw', baseCurrency: 'USD', timezone: 'UTC', acceptedTermsVersion: 'June 9, 2026' });
     expect(store.getState().status).toBe('authed');
     expect(identityStore.save).toHaveBeenCalledTimes(1);
   });
