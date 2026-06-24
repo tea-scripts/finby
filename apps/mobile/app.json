@@ -23,7 +23,8 @@
       "typedRoutes": true
     },
     "extra": {
-      "apiBase": "http://localhost:3001/api/v1"
+      "_comment": "Default API base (used by device/EAS builds). For a local backend, override with EXPO_PUBLIC_API_URL=http://<LAN-IP>:3001/api/v1 (localhost is unreachable from a physical device).",
+      "apiBase": "https://api.finby.app/api/v1"
     }
   }
 }
