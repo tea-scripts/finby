@@ -2,10 +2,11 @@ import { useRef, useState } from 'react';
 import { Animated, Pressable, ScrollView, Text, View } from 'react-native';
 import { money } from '@finby/core';
 import type { AccountView } from '@finby/shared';
-import { SectionCard, SectionLoading, SectionError, SectionEmpty, type SectionProps } from './section-card';
+import { SectionLoading, SectionError, SectionEmpty, type SectionProps } from './section-card';
 
-/** A single full-width account card. The account's color is rendered as a ring
- *  (border) around the card; `scale`/`opacity` animate it as the carousel pages. */
+/** A single full-width account card. The account's color is a thin ring (border)
+ *  around the card; `scale`/`opacity` animate it as the carousel pages. The card
+ *  floats directly on the canvas (no surrounding section box). */
 function AccountCard({
   a,
   width,
@@ -20,8 +21,8 @@ function AccountCard({
   return (
     <View style={{ width }} className="px-1">
       <Animated.View
-        style={{ transform: [{ scale }], opacity, borderColor: a.color ?? '#1d6ef5' }}
-        className="gap-3 rounded-2xl border-2 bg-surface-2 p-4"
+        style={{ transform: [{ scale }], opacity, borderWidth: 1.5, borderColor: a.color ?? '#1d6ef5' }}
+        className="gap-3 rounded-2xl bg-surface-2 p-4"
       >
         <Text className="text-sm font-medium text-ink" numberOfLines={1}>
           {a.name}
@@ -64,7 +65,8 @@ export function AccountCarousel({ state, onRetry }: SectionProps<AccountView[]>)
   const safeW = width || 1;
 
   return (
-    <SectionCard title="Accounts">
+    <View className="gap-2">
+      <Text className="text-xs font-semibold uppercase tracking-wide text-muted">Accounts</Text>
       {state.loading ? (
         <SectionLoading />
       ) : state.error || !state.data ? (
@@ -104,6 +106,6 @@ export function AccountCarousel({ state, onRetry }: SectionProps<AccountView[]>)
           <Dots count={accounts.length} index={index} onDot={goTo} />
         </View>
       )}
-    </SectionCard>
+    </View>
   );
 }
