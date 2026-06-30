@@ -40,7 +40,7 @@ describe('EditTransactionSheet', () => {
     );
     fireEvent.press(screen.getByText('Save'));
     await waitFor(() => expect(txns.updateTransaction).toHaveBeenCalledWith('w1', 't1', expect.objectContaining({
-      merchant: 'Pizza Hut', transactionDate: '2026-06-24',
+      categoryId: 'c1', merchant: 'Pizza Hut', description: null, transactionDate: '2026-06-24', tags: [],
     })));
     await waitFor(() => expect(onSaved).toHaveBeenCalled());
   });

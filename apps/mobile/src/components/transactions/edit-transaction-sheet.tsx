@@ -46,6 +46,8 @@ export function EditTransactionSheet({
     setDate(transaction.transactionDate.slice(0, 10));
     setTags(transaction.tags.join(', '));
     setConfirmVoid(false);
+    setSaving(false);
+    setVoiding(false);
     setError(null);
   }, [open, transaction]);
 
