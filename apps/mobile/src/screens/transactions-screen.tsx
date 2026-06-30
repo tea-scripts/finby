@@ -41,6 +41,7 @@ export function TransactionsScreen() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [editing, setEditing] = useState<Transaction | null>(null);
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const loadId = useRef(0);
 
   useEffect(() => {
     if (!workspace) return;
@@ -49,13 +50,16 @@ export function TransactionsScreen() {
 
   const reload = useCallback(async () => {
     if (!workspace) return;
+    const id = ++loadId.current;
     setError(null);
     try {
       const res = await api.transactions.listTransactions(workspace.id, { ...filters, limit: 20 });
+      if (loadId.current !== id) return; // a newer reload superseded this one
       setItems(res.transactions);
       setCursor(res.nextCursor);
       setHasMore(res.hasMore);
     } catch (e) {
+      if (loadId.current !== id) return;
       setError(errMsg(e));
     }
   }, [workspace, filters]);
@@ -74,14 +78,17 @@ export function TransactionsScreen() {
 
   async function loadMore() {
     if (!workspace || !cursor || loadingMore || !hasMore) return;
+    const id = loadId.current;
     setLoadingMore(true);
     try {
       const res = await api.transactions.listTransactions(workspace.id, { ...filters, cursor, limit: 20 });
-      setItems((prev) => [...prev, ...res.transactions]);
-      setCursor(res.nextCursor);
-      setHasMore(res.hasMore);
+      if (loadId.current === id) {
+        setItems((prev) => [...prev, ...res.transactions]);
+        setCursor(res.nextCursor);
+        setHasMore(res.hasMore);
+      }
     } catch (e) {
-      setError(errMsg(e));
+      if (loadId.current === id) setError(errMsg(e));
     } finally {
       setLoadingMore(false);
     }
