@@ -9,8 +9,13 @@ import { BottomSheet } from '../ui/bottom-sheet';
 import { DATE_PRESET_OPTIONS, presetRange, type DatePreset } from '../../lib/transactions-view';
 
 function presetOf(f: TransactionQuery): DatePreset {
-  if (f.fromDate || f.toDate) return 'CUSTOM';
-  return 'ALL';
+  if (!f.fromDate && !f.toDate) return 'ALL';
+  const now = new Date();
+  for (const p of ['THIS_MONTH', 'LAST_MONTH', 'LAST_90'] as const) {
+    const r = presetRange(p, now);
+    if (r.fromDate === f.fromDate && r.toDate === f.toDate) return p;
+  }
+  return 'CUSTOM';
 }
 
 export function TransactionFiltersSheet({
