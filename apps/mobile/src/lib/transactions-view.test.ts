@@ -19,8 +19,8 @@ describe('groupByDay', () => {
       tx('c', '2026-06-19T08:00:00.000Z'),
     ]);
     expect(sections).toHaveLength(2);
-    expect(sections[0].data.map((t) => t.id)).toEqual(['a', 'b']);
-    expect(sections[1].data.map((t) => t.id)).toEqual(['c']);
+    expect(sections[0]!.data.map((t) => t.id)).toEqual(['a', 'b']);
+    expect(sections[1]!.data.map((t) => t.id)).toEqual(['c']);
   });
 });
 
