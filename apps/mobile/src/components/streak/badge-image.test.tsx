@@ -52,4 +52,10 @@ describe('BadgeImage', () => {
     await render(<BadgeImage workspaceId="w1" slug="x" label="Badge Y" locked />);
     expect(screen.getByLabelText('Badge Y').props.style.opacity).toBe(0.4);
   });
+
+  it('is non-interactive so a wrapping Pressable receives taps (react-native-svg would otherwise steal them)', async () => {
+    getBadgeSvg.mockResolvedValue('<svg/>');
+    await render(<BadgeImage workspaceId="w1" slug="x" label="Badge Z" locked={false} />);
+    expect(screen.getByLabelText('Badge Z').props.pointerEvents).toBe('none');
+  });
 });

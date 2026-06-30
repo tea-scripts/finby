@@ -44,6 +44,10 @@ export function BadgeImage({
   return (
     <View
       accessibilityLabel={label}
+      // Purely decorative: react-native-svg views join the touch responder and
+      // would otherwise intermittently steal taps from a wrapping Pressable
+      // (the achievements grid). Let touches fall through to the parent.
+      pointerEvents="none"
       style={{ width: size, height: size, opacity: locked ? lockedOpacity : 1 }}
       className="items-center justify-center rounded-xl bg-surface-2"
     >

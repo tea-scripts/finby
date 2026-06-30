@@ -24,6 +24,7 @@ export function AchievementsGrid({ workspaceId, achievements }: { workspaceId: s
               testID={`achievement-${def.slug}`}
               onPress={() => setSelected(def)}
               accessibilityRole="button"
+              hitSlop={8}
               className="w-1/3 items-center gap-1 py-2"
             >
               <BadgeImage workspaceId={workspaceId} slug={def.slug} label={def.label} locked={!at} />
