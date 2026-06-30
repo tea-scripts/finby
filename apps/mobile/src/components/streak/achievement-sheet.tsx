@@ -3,9 +3,7 @@ import { Text, View } from 'react-native';
 import { relativeTime, type AchievementDefView } from '@finby/shared';
 import { BottomSheet } from '../ui/bottom-sheet';
 import { BadgeImage } from './badge-image';
-
-const TIER_LABEL: Record<string, string> = { BRONZE: 'Bronze', SILVER: 'Silver', GOLD: 'Gold' };
-const TIER_COLOR: Record<string, string> = { BRONZE: '#cd7f32', SILVER: '#c0c0c0', GOLD: '#f5a524' };
+import { TierChip } from './tier-chip';
 
 /** Detail sheet for one achievement: the badge, its tier, and what it means —
  *  how to unlock it (locked) or when it was earned (unlocked). Open while
@@ -21,7 +19,6 @@ export function AchievementSheet({
   unlockedAt?: string;
   onClose: () => void;
 }) {
-  const tierColor = achievement ? (TIER_COLOR[achievement.tier] ?? '#8da3c0') : '#8da3c0';
   return (
     <BottomSheet open={!!achievement} onClose={onClose}>
       {achievement ? (
@@ -34,11 +31,7 @@ export function AchievementSheet({
             lockedOpacity={0.6}
             size={96}
           />
-          <View className="rounded-full border px-2.5 py-0.5" style={{ borderColor: tierColor }}>
-            <Text className="text-xs font-semibold" style={{ color: tierColor }}>
-              {TIER_LABEL[achievement.tier] ?? achievement.tier}
-            </Text>
-          </View>
+          <TierChip tier={achievement.tier} />
           <Text className="text-lg font-semibold text-ink">{achievement.label}</Text>
           {unlockedAt ? (
             <>
