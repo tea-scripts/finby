@@ -1,6 +1,6 @@
 // apps/mobile/src/screens/transactions-screen.tsx
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Animated, RefreshControl, SectionList, Text, View } from 'react-native';
+import { ActivityIndicator, Animated, Pressable, RefreshControl, SectionList, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ApiError } from '@finby/core';
 import type { Category, Transaction, TransactionQuery } from '@finby/shared';
@@ -38,6 +38,7 @@ export function TransactionsScreen() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [loadMoreError, setLoadMoreError] = useState<string | null>(null);
   const [categories, setCategories] = useState<Category[]>([]);
   const [editing, setEditing] = useState<Transaction | null>(null);
   const [filtersOpen, setFiltersOpen] = useState(false);
@@ -52,6 +53,7 @@ export function TransactionsScreen() {
     if (!workspace) return;
     const id = ++loadId.current;
     setError(null);
+    setLoadMoreError(null);
     try {
       const res = await api.transactions.listTransactions(workspace.id, { ...filters, limit: 20 });
       if (loadId.current !== id) return; // a newer reload superseded this one
@@ -79,6 +81,7 @@ export function TransactionsScreen() {
   async function loadMore() {
     if (!workspace || !cursor || loadingMore || !hasMore) return;
     const id = loadId.current;
+    setLoadMoreError(null);
     setLoadingMore(true);
     try {
       const res = await api.transactions.listTransactions(workspace.id, { ...filters, cursor, limit: 20 });
@@ -88,7 +91,7 @@ export function TransactionsScreen() {
         setHasMore(res.hasMore);
       }
     } catch (e) {
-      if (loadId.current === id) setError(errMsg(e));
+      if (loadId.current === id) setLoadMoreError(errMsg(e));
     } finally {
       setLoadingMore(false);
     }
@@ -137,6 +140,7 @@ export function TransactionsScreen() {
         </View>
       ) : (
         <SectionList
+          testID="tx-list"
           sections={sections}
           keyExtractor={(t) => t.id}
           stickySectionHeadersEnabled
@@ -155,6 +159,10 @@ export function TransactionsScreen() {
               <View className="py-4">
                 <ActivityIndicator color="#8da3c0" />
               </View>
+            ) : loadMoreError ? (
+              <Pressable testID="load-more-retry" onPress={() => void loadMore()} className="items-center py-4">
+                <Text className="text-sm text-danger">Couldn't load more. Tap to retry.</Text>
+              </Pressable>
             ) : null
           }
         />

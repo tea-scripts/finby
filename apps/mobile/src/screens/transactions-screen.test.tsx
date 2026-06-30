@@ -64,4 +64,28 @@ describe('TransactionsScreen', () => {
     await render(<TransactionsScreen />);
     await waitFor(() => expect(screen.getByText(/No transactions/)).toBeTruthy());
   });
+
+  it('appends on end-reached', async () => {
+    txns.listTransactions.mockReset();
+    txns.listTransactions
+      .mockResolvedValueOnce({ transactions: [tx('a', '2026-06-24T10:00:00.000Z', 'Pizza Hut')], nextCursor: 'c1', hasMore: true })
+      .mockResolvedValueOnce({ transactions: [tx('b', '2026-06-23T10:00:00.000Z', 'Coffee')], nextCursor: null, hasMore: false });
+    await render(<TransactionsScreen />);
+    await waitFor(() => expect(screen.getByText('Pizza Hut')).toBeTruthy());
+    fireEvent(screen.getByTestId('tx-list'), 'endReached');
+    await waitFor(() => expect(screen.getByText('Coffee')).toBeTruthy());
+    expect(screen.getByText('Pizza Hut')).toBeTruthy();
+  });
+
+  it('pagination error keeps the list', async () => {
+    txns.listTransactions.mockReset();
+    txns.listTransactions
+      .mockResolvedValueOnce({ transactions: [tx('a', '2026-06-24T10:00:00.000Z', 'Pizza Hut')], nextCursor: 'c1', hasMore: true })
+      .mockRejectedValueOnce(new Error('boom'));
+    await render(<TransactionsScreen />);
+    await waitFor(() => expect(screen.getByText('Pizza Hut')).toBeTruthy());
+    fireEvent(screen.getByTestId('tx-list'), 'endReached');
+    await waitFor(() => expect(screen.getByTestId('load-more-retry')).toBeTruthy());
+    expect(screen.getByText('Pizza Hut')).toBeTruthy();
+  });
 });
