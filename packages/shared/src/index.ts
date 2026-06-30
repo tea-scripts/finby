@@ -8,3 +8,4 @@ export * from './password-strength';
 export * from './legal';
 export * from './streak-messages';
 export * from './streak-week';
+export * from './gamification-view';

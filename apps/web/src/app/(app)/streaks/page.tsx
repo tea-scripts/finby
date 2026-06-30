@@ -9,28 +9,14 @@ import { getStreakStatus, getStreakCalendar } from '@/lib/streaks-api';
 import { getAchievements, getXpHistory, getXpSummary } from '@/lib/gamification-api';
 import { relativeTime } from '@/lib/relative-time';
 import { useAuth } from '@/lib/store';
+import { XP_EVENT_LABELS, sortAchievementDefs } from '@finby/shared';
 import type {
-  AchievementDefView,
   AchievementsResult,
   StreakCalendar as StreakCalendarData,
   StreakStatus,
-  XpEvent,
   XpSummary,
   XpTransactionView,
 } from '@/lib/types';
-
-const XP_EVENT_LABELS: Record<XpEvent, string> = {
-  STREAK_DAY: 'Streak maintained',
-  STREAK_MILESTONE: 'Milestone bonus',
-  TRANSACTION_LOGGED: 'Transaction logged',
-  GOAL_HIT: 'Goal hit',
-  STREAK_RECOVERY: 'Streak recovery (spent)',
-  REFERRAL_BONUS: 'Referral bonus',
-  DAILY_LOGIN: 'Daily check-in',
-};
-
-const CATEGORY_ORDER: Record<string, number> = { STREAK: 0, TRANSACTIONS: 1, GOALS: 2 };
-const TIER_ORDER: Record<string, number> = { BRONZE: 0, SILVER: 1, GOLD: 2 };
 
 function Stat({ icon, value, label }: { icon: string; value: string; label: string }) {
   return (
@@ -84,26 +70,9 @@ export default function StreaksPage() {
   }, [workspaceId]);
 
   const unlockedMap = new Map((achievements?.unlocked ?? []).map((u) => [u.achievementDef.slug, u]));
-  const allAchievements: AchievementDefView[] = (() => {
-    const defs = [
-      ...(achievements?.unlocked.map((u) => u.achievementDef) ?? []),
-      ...(achievements?.locked ?? []),
-    ];
-    const seen = new Set<string>();
-    const out: AchievementDefView[] = [];
-    for (const d of defs) {
-      if (!seen.has(d.slug)) {
-        seen.add(d.slug);
-        out.push(d);
-      }
-    }
-    out.sort(
-      (a, b) =>
-        (CATEGORY_ORDER[a.category] ?? 99) - (CATEGORY_ORDER[b.category] ?? 99) ||
-        (TIER_ORDER[a.tier] ?? 99) - (TIER_ORDER[b.tier] ?? 99),
-    );
-    return out;
-  })();
+  const allAchievements = achievements
+    ? sortAchievementDefs(achievements)
+    : [];
 
   const totalLoggedDays = calendar ? calendar.activeDays.length + calendar.repairedDays.length : 0;
 
