@@ -40,4 +40,16 @@ describe('BadgeImage', () => {
     await waitFor(() => expect(getBadgeSvg).toHaveBeenCalled());
     expect(screen.queryByText('svg')).toBeNull();
   });
+
+  it('uses a custom lockedOpacity when provided', async () => {
+    getBadgeSvg.mockResolvedValue('<svg/>');
+    await render(<BadgeImage workspaceId="w1" slug="x" label="Badge X" locked lockedOpacity={0.6} />);
+    expect(screen.getByLabelText('Badge X').props.style.opacity).toBe(0.6);
+  });
+
+  it('defaults lockedOpacity to 0.4 when locked', async () => {
+    getBadgeSvg.mockResolvedValue('<svg/>');
+    await render(<BadgeImage workspaceId="w1" slug="x" label="Badge Y" locked />);
+    expect(screen.getByLabelText('Badge Y').props.style.opacity).toBe(0.4);
+  });
 });

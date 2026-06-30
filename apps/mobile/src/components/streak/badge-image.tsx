@@ -15,12 +15,14 @@ export function BadgeImage({
   label,
   locked,
   size = 64,
+  lockedOpacity = 0.4,
 }: {
   workspaceId: string;
   slug: string;
   label: string;
   locked: boolean;
   size?: number;
+  lockedOpacity?: number;
 }) {
   const [xml, setXml] = useState<string | null>(null);
 
@@ -42,7 +44,7 @@ export function BadgeImage({
   return (
     <View
       accessibilityLabel={label}
-      style={{ width: size, height: size, opacity: locked ? 0.4 : 1 }}
+      style={{ width: size, height: size, opacity: locked ? lockedOpacity : 1 }}
       className="items-center justify-center rounded-xl bg-surface-2"
     >
       {xml ? <SvgXml xml={xml} width={size} height={size} /> : null}
