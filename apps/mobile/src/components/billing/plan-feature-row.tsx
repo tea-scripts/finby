@@ -10,6 +10,7 @@ export function PlanFeatureRow({ feature }: { feature: PlanFeature }) {
       <Ionicons name="checkmark-circle" size={16} color="#1fae6a" style={{ marginTop: 2 }} />
       <View className="flex-1">
         <Text className="text-sm text-ink">
+          {/* own <Text> so getByText matches the label exactly, not the whole composite line */}
           <Text>{feature.label}</Text>
           {feature.note ? <Text className="text-muted"> ({feature.note})</Text> : null}
           {feature.badge ? <Text className="text-xs font-semibold text-accent"> {feature.badge}</Text> : null}
