@@ -127,7 +127,9 @@ export function StreakSheet({ open, onClose, workspaceId }: { open: boolean; onC
             </Button>
           ) : state === 'missed' ? (
             <Button disabled testID="streak-repair-disabled">
-              {status.repairUsedThisMonth ? 'Repair used this month' : `Need ${REPAIR_COST - xp.balance} more XP to recover`}
+              {status.repairUsedThisMonth
+                ? 'Repair used this month'
+                : `Need ${Math.max(0, REPAIR_COST - xp.balance)} more XP to recover`}
             </Button>
           ) : state === 'active' ? (
             <Button variant="ghost" onPress={() => void share()} testID="streak-share">
