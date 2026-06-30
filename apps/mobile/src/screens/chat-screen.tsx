@@ -16,6 +16,7 @@ import { MessageBubble } from '../components/chat/message-bubble';
 import { TypingIndicator } from '../components/chat/typing-indicator';
 import { Wordmark } from '../components/ui/wordmark';
 import { StreakBadge } from '../components/dashboard/streak-badge';
+import { StreakSheet } from '../components/streak/streak-sheet';
 import { useTabBarSpace } from '../components/nav/floating-tab-bar';
 import { chatNotice, type ChatNotice } from '../lib/chat-notice';
 import { createTypewriter } from '../lib/typewriter';
@@ -52,6 +53,7 @@ export function ChatScreen() {
   const [loadingHistory, setLoadingHistory] = useState(true);
   const [sending, setSending] = useState(false);
   const [notice, setNotice] = useState<ChatNotice | null>(null);
+  const [streakOpen, setStreakOpen] = useState(false);
   const listRef = useRef<FlatList<UiMessage>>(null);
   const tabBarSpace = useTabBarSpace();
   const keyboardVisible = useKeyboardVisible();
@@ -159,7 +161,7 @@ export function ChatScreen() {
       <View className="flex-row items-center justify-between border-b border-line px-4 py-3">
         <Wordmark height={22} />
         <View className="flex-row items-center gap-3">
-          <StreakBadge streak={user?.currentStreak ?? 0} />
+          <StreakBadge streak={user?.currentStreak ?? 0} onPress={() => setStreakOpen(true)} />
           <Pressable onPress={() => void newChat()} accessibilityRole="button" accessibilityLabel="New chat" hitSlop={8}>
             <Text className="text-sm font-medium text-accent">New chat</Text>
           </Pressable>
@@ -222,6 +224,9 @@ export function ChatScreen() {
           <Composer disabled={sending} onSend={send} />
         </View>
       </KeyboardAvoidingView>
+      {workspace ? (
+        <StreakSheet open={streakOpen} onClose={() => setStreakOpen(false)} workspaceId={workspace.id} />
+      ) : null}
     </SafeAreaView>
   );
 }

@@ -11,6 +11,9 @@ jest.mock('../lib/use-auth-store', () => ({
 
 // Create the chat mocks INSIDE the factory (so the module's `api.chat` and the
 // test's `mockChat` are the same object), then retrieve them via the mock.
+jest.mock('react-native-view-shot', () => ({ captureRef: jest.fn(async () => 'file://card.png') }));
+jest.mock('expo-sharing', () => ({ isAvailableAsync: jest.fn(async () => true), shareAsync: jest.fn(async () => {}) }));
+
 jest.mock('../lib/runtime.native', () => ({
   api: {
     chat: {
@@ -19,6 +22,12 @@ jest.mock('../lib/runtime.native', () => ({
       listMessages: jest.fn(),
       streamMessage: jest.fn(),
     },
+    streaks: {
+      getStreakStatus: jest.fn(async () => ({ currentStreak: 7, longestStreak: 10, atRisk: false, repairEligible: false, repairUsedThisMonth: false })),
+      repairStreak: jest.fn(),
+      getStreakCalendar: jest.fn(async () => ({ from: '2026-01-01', to: '2026-06-30', activeDays: [], repairedDays: [] })),
+    },
+    gamification: { getXpSummary: jest.fn(async () => ({ balance: 40, totalEarned: 1250, todayEarned: 10 })) },
   },
 }));
 
@@ -100,6 +109,13 @@ describe('ChatScreen', () => {
     await fireEvent.press(screen.getByTestId('composer-send'));
 
     await waitFor(() => expect(screen.getByText('Service unavailable')).toBeTruthy());
+  });
+
+  it('opens the streak sheet when the header badge is tapped', async () => {
+    await render(<ChatScreen />);
+    await waitFor(() => expect(mockChat.listMessages).toHaveBeenCalled());
+    await fireEvent.press(screen.getByLabelText('View your streak'));
+    await waitFor(() => expect(screen.getByText('Your streak')).toBeTruthy());
   });
 
 });
