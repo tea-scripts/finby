@@ -4,39 +4,44 @@
 
 **Goal:** Make the chat-header streak badge tappable, opening a native StreakSheet (everyday streak states + 10-XP repair + XP card + this-week row) with a "Share" that generates a hero-flame brag-card image.
 
-**Architecture:** Pure logic (state machine, ISO-week math, share-card stats, copy) lives in `src/lib/*.ts` (Vitest). Presentational pieces are small RN components in `src/components/streak/*` (RNTL). The sheet reuses the existing `BottomSheet`, `Button`, and `api`/`auth-store`, fetches `streaks` + `gamification` on open, and captures an off-screen card view via `react-native-view-shot` → `expo-sharing`.
+**Architecture:** Shared pure logic (`streakBand`/`streakCelebration`, `isoWeekDays`) is hoisted into `@finby/shared` so web and mobile consume one copy (mirrors the `password-strength`/`legal` precedent). Mobile-only pure logic (state machine, share-card stats, XP formatter) lives in `apps/mobile/src/lib/streak-view.ts` (Vitest). Presentational pieces are small RN components in `apps/mobile/src/components/streak/*` (RNTL). The sheet reuses the existing `BottomSheet`, `Button`, `api`, and `auth-store`, fetches `streaks` + `gamification` on open, and captures an off-screen card view via `react-native-view-shot` → `expo-sharing`.
 
-**Tech Stack:** Expo SDK 54, React Native 0.81, NativeWind, expo-router, zustand (vanilla store). Tests: Vitest (`*.test.ts`) + jest-expo/RNTL (`*.test.tsx`).
+**Tech Stack:** Expo SDK 54, React Native 0.81, NativeWind, expo-router, zustand (vanilla store). Tests: Vitest (`*.test.ts`, in `@finby/shared` and mobile) + jest-expo/RNTL (`*.test.tsx`, mobile).
 
 ## Global Constraints
 
-- **Expo Go only** — no custom native modules beyond what `bundledNativeModules.json` ships. New deps (`react-native-view-shot` 4.0.3, `expo-sharing` ~14.0.8) are bundled; install via `expo install` to pin SDK-54 versions.
+- **Branch:** all work on `feat/mobile-phase5d-streak-sheet` (this working tree). Re-orient git state before each task.
+- **Rebuild `@finby/shared` after Tasks 1–2.** Mobile (jest/vitest) and web resolve `@finby/shared` from its built `dist`. After changing the shared package, run `pnpm --filter @finby/shared build` before any consumer test/tsc. Tasks 1–2 also run `pnpm --filter finby-web test -- <file>` (or the file's vitest) for the touched web files.
+- **Expo Go only** — no native modules beyond `bundledNativeModules.json`. New deps (`react-native-view-shot` 4.0.3, `expo-sharing` ~14.0.8) are bundled; install via `expo install` to pin SDK-54 versions.
 - **No Reanimated / no SVG runtime in slice 1** — motion via RN `Animated` only (the `BottomSheet` already handles this).
 - **Strict tsconfig** `noUncheckedIndexedAccess` — `arr[0]` is possibly-undefined; guard or `!` it (especially in Vitest array-index assertions).
 - **eslint flat config has no react-hooks plugin** — never add `// eslint-disable-line react-hooks/exhaustive-deps` (errors as unknown rule). Loose `.js` files use `globalThis.console`.
-- **Mock native-backed modules in tests** — any test whose import tree pulls `react-native-view-shot`, `expo-sharing`, `expo-blur`, or `lottie-react-native` must `jest.mock` them (they touch native view managers). `@expo/vector-icons` works unmocked in screen tests but mock it in focused component tests that assert icon names.
+- **Mock native-backed modules in tests** — any test whose import tree pulls `react-native-view-shot`, `expo-sharing`, `expo-blur`, or `lottie-react-native` must `jest.mock` them. `@expo/vector-icons` works unmocked in screen tests but mock it in focused component tests that assert icon names.
 - **RNTL is async** — `await render(...)`, `await fireEvent.*(...)`, `await renderHook(...)`; wrap `unmount()` in `await act(async () => {...})`.
 - **Theme tokens** (`src/theme/tokens.ts`): canvas `#06101f`, surface `#0b1626`, surface-2 `#11203a`, line `#1c2c46`, accent `#1d6ef5`, ink `#e8eef7`, muted `#8da3c0`, faint `#5b6f8c`, **warn (amber)** `#f5a524`, danger `#ef4444`. Use the `warn` class for amber; there is no `amber-*` class.
-- **Commit style (HARD RULE):** no AI-attribution trailers / "Generated with" boilerplate. Atomic commits (one logical change each).
-- **Gate (run before declaring done):** `pnpm --filter finby-mobile test` (pristine, 0 console/act lines) · `pnpm --filter finby-mobile exec tsc --noEmit` (clean) · `pnpm lint` (0 errors; the pre-existing `apps/web/public/sw.js` `_e` warning is OK). Per-task, also run `npx eslint <changed files>`.
+- **Commit style (HARD RULE):** no AI-attribution trailers / "Generated with" boilerplate. Atomic commits.
+- **Gate (run before declaring done):** `pnpm --filter @finby/shared test` · `pnpm --filter finby-mobile test` (pristine, 0 console/act lines) · `pnpm --filter finby-mobile exec tsc --noEmit` (clean) · `pnpm lint` (0 errors; the pre-existing `apps/web/public/sw.js` `_e` warning is OK). Per-task, also run `npx eslint <changed files>`.
 
 ---
 
-### Task 1: Streak celebration copy (`streak-messages.ts`)
+### Task 1: Hoist `streak-messages` into `@finby/shared`
 
-Port the web's bucketed congratulatory copy verbatim so the active state shows fresh tier-based messages.
+Move the web's bucketed congratulatory copy into the shared package so mobile and web consume one copy.
 
 **Files:**
-- Create: `apps/mobile/src/lib/streak-messages.ts`
-- Test: `apps/mobile/src/lib/streak-messages.test.ts`
+- Create: `packages/shared/src/streak-messages.ts`
+- Create: `packages/shared/src/streak-messages.test.ts`
+- Modify: `packages/shared/src/index.ts` (add an export line)
+- Modify: `apps/web/src/lib/streak-messages.ts` (replace body with a re-export shim)
+- Keep: `apps/web/src/lib/streak-messages.test.ts` (now exercises the shim — unchanged)
 
 **Interfaces:**
-- Produces: `streakBand(streak: number): string[]`, `streakCelebration(streak: number, rand?: () => number): string`
+- Produces (from `@finby/shared`): `streakBand(streak: number): string[]`, `streakCelebration(streak: number, rand?: () => number): string`
 
 - [ ] **Step 1: Write the failing test**
 
 ```ts
-// apps/mobile/src/lib/streak-messages.test.ts
+// packages/shared/src/streak-messages.test.ts
 import { describe, expect, it } from 'vitest';
 import { streakBand, streakCelebration } from './streak-messages';
 
@@ -47,7 +52,6 @@ describe('streakBand', () => {
     expect(streakBand(7).some((m) => m.includes('week'))).toBe(true);
     expect(streakBand(400).some((m) => m.includes('year'))).toBe(true);
   });
-
   it('always returns a non-empty list', () => {
     expect(streakBand(-5).length).toBeGreaterThan(0);
   });
@@ -63,16 +67,16 @@ describe('streakCelebration', () => {
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `cd apps/mobile && pnpm exec vitest run src/lib/streak-messages.test.ts`
+Run: `pnpm --filter @finby/shared exec vitest run src/streak-messages.test.ts`
 Expected: FAIL — cannot find module `./streak-messages`.
 
-- [ ] **Step 3: Write the implementation** (port of `apps/web/src/lib/streak-messages.ts`)
+- [ ] **Step 3: Create the shared module** (verbatim port of the current web file)
 
 ```ts
-// apps/mobile/src/lib/streak-messages.ts
+// packages/shared/src/streak-messages.ts
 /** Congratulatory streak copy, bucketed by streak length. Each band carries a
- *  few variants so the message feels fresh when the user opens the sheet.
- *  Ported verbatim from apps/web/src/lib/streak-messages.ts. */
+ *  few variants so the message feels fresh when the user opens the streak UI.
+ *  Shared by web (StreakRepair tooltip) and mobile (streak sheet). */
 interface StreakBand {
   min: number;
   messages: string[];
@@ -103,25 +107,134 @@ export function streakCelebration(streak: number, rand: () => number = Math.rand
 }
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [ ] **Step 4: Export it from the shared index** — add to `packages/shared/src/index.ts` (after the `./legal` line):
 
-Run: `cd apps/mobile && pnpm exec vitest run src/lib/streak-messages.test.ts`
-Expected: PASS (4 assertions).
+```ts
+export * from './streak-messages';
+```
 
-- [ ] **Step 5: Lint + commit**
+- [ ] **Step 5: Replace the web file with a shim** — overwrite `apps/web/src/lib/streak-messages.ts` entirely:
+
+```ts
+export { streakBand, streakCelebration } from '@finby/shared';
+```
+
+- [ ] **Step 6: Build shared, run both test suites**
+
+Run:
+```bash
+pnpm --filter @finby/shared build
+pnpm --filter @finby/shared exec vitest run src/streak-messages.test.ts
+pnpm --filter finby-web exec vitest run src/lib/streak-messages.test.ts
+```
+Expected: shared builds; both suites PASS (the web test now exercises the shim).
+
+- [ ] **Step 7: Lint + commit**
 
 ```bash
-cd apps/mobile && npx eslint src/lib/streak-messages.ts src/lib/streak-messages.test.ts
 cd /home/unicorn/Documents/finby
-git add apps/mobile/src/lib/streak-messages.ts apps/mobile/src/lib/streak-messages.test.ts
-git commit -m "feat(mobile): port streak celebration copy bands"
+npx eslint packages/shared/src/streak-messages.ts packages/shared/src/streak-messages.test.ts apps/web/src/lib/streak-messages.ts
+git add packages/shared/src/streak-messages.ts packages/shared/src/streak-messages.test.ts packages/shared/src/index.ts apps/web/src/lib/streak-messages.ts
+git commit -m "refactor(shared): hoist streak celebration copy into @finby/shared"
 ```
 
 ---
 
-### Task 2: Streak view logic (`streak-view.ts`)
+### Task 2: Hoist `isoWeekDays` into `@finby/shared` + refactor web WeekRow
 
-The pure brains of the sheet: the state-machine selector, ISO-week dates, share-card stat builder, and a thousands formatter.
+The Mon–Sun date math is currently a private function in the web `WeekRow`. Hoist it to shared so both web and mobile use one copy.
+
+**Files:**
+- Create: `packages/shared/src/streak-week.ts`
+- Create: `packages/shared/src/streak-week.test.ts`
+- Modify: `packages/shared/src/index.ts` (add an export line)
+- Modify: `apps/web/src/features/gamification/components/WeekRow.tsx` (remove the local `isoWeekDays`, import from `@finby/shared`)
+
+**Interfaces:**
+- Produces (from `@finby/shared`): `isoWeekDays(today: string): string[]` — the 7 YYYY-MM-DD dates (Mon–Sun) of the ISO week containing `today`.
+
+- [ ] **Step 1: Write the failing test**
+
+```ts
+// packages/shared/src/streak-week.test.ts
+import { describe, expect, it } from 'vitest';
+import { isoWeekDays } from './streak-week';
+
+describe('isoWeekDays', () => {
+  it('returns Mon–Sun for a midweek date', () => {
+    // 2026-06-30 is a Tuesday → Mon 06-29 .. Sun 07-05
+    expect(isoWeekDays('2026-06-30')).toEqual([
+      '2026-06-29', '2026-06-30', '2026-07-01', '2026-07-02', '2026-07-03', '2026-07-04', '2026-07-05',
+    ]);
+  });
+  it('treats Sunday as the end of its week', () => {
+    expect(isoWeekDays('2026-07-05')[0]).toBe('2026-06-29');
+    expect(isoWeekDays('2026-07-05')[6]).toBe('2026-07-05');
+  });
+});
+```
+
+- [ ] **Step 2: Run test to verify it fails**
+
+Run: `pnpm --filter @finby/shared exec vitest run src/streak-week.test.ts`
+Expected: FAIL — cannot find module `./streak-week`.
+
+- [ ] **Step 3: Create the shared module**
+
+```ts
+// packages/shared/src/streak-week.ts
+const DAY_MS = 86_400_000;
+
+/** The seven YYYY-MM-DD dates of the ISO week (Mon–Sun) containing `today`.
+ *  Pure UTC math on the date string, which is already the user's local day. */
+export function isoWeekDays(today: string): string[] {
+  const [y, m, d] = today.split('-').map(Number);
+  const base = Date.UTC(y!, m! - 1, d!);
+  const dow = new Date(base).getUTCDay(); // 0=Sun..6=Sat
+  const offsetToMonday = dow === 0 ? -6 : 1 - dow;
+  const monday = base + offsetToMonday * DAY_MS;
+  return Array.from({ length: 7 }, (_, i) => new Date(monday + i * DAY_MS).toISOString().slice(0, 10));
+}
+```
+
+- [ ] **Step 4: Export from the shared index** — add to `packages/shared/src/index.ts`:
+
+```ts
+export * from './streak-week';
+```
+
+- [ ] **Step 5: Refactor web WeekRow** — in `apps/web/src/features/gamification/components/WeekRow.tsx`, delete the local `const DAY_MS` and the `function isoWeekDays(...) {...}` block, and add to the imports at the top:
+
+```ts
+import { isoWeekDays } from '@finby/shared';
+```
+
+(Leave the rest of `WeekRow` unchanged — it still calls `isoWeekDays(today)`.)
+
+- [ ] **Step 6: Build shared, run shared + web WeekRow tests**
+
+Run:
+```bash
+pnpm --filter @finby/shared build
+pnpm --filter @finby/shared exec vitest run src/streak-week.test.ts
+pnpm --filter finby-web exec vitest run src/features/gamification/components/WeekRow.test.tsx
+```
+Expected: shared builds; shared test PASSES; the existing web WeekRow test PASSES (behavior unchanged).
+
+- [ ] **Step 7: Lint + commit**
+
+```bash
+cd /home/unicorn/Documents/finby
+npx eslint packages/shared/src/streak-week.ts packages/shared/src/streak-week.test.ts apps/web/src/features/gamification/components/WeekRow.tsx
+git add packages/shared/src/streak-week.ts packages/shared/src/streak-week.test.ts packages/shared/src/index.ts apps/web/src/features/gamification/components/WeekRow.tsx
+git commit -m "refactor(shared): hoist isoWeekDays into @finby/shared, reuse in WeekRow"
+```
+
+---
+
+### Task 3: Mobile streak view logic (`streak-view.ts`)
+
+Mobile-only pure logic: the state-machine selector, share-card stat builder, and a thousands formatter. (ISO-week math now comes from `@finby/shared`.)
 
 **Files:**
 - Create: `apps/mobile/src/lib/streak-view.ts`
@@ -132,7 +245,6 @@ The pure brains of the sheet: the state-machine selector, ISO-week dates, share-
 - Produces:
   - `REPAIR_COST: 10`
   - `streakSheetState(status: StreakStatus, xpBalance: number): 'new' | 'active' | 'recoverable' | 'missed'`
-  - `isoWeekDays(today: string): string[]` (7 YYYY-MM-DD, Mon–Sun)
   - `interface ShareCardStats { name: string; streak: number; best: number; xp: number; daysLogged: number }`
   - `shareCardStats(user, status, xp, calendar): ShareCardStats`
   - `formatXp(n: number): string`
@@ -143,7 +255,7 @@ The pure brains of the sheet: the state-machine selector, ISO-week dates, share-
 // apps/mobile/src/lib/streak-view.test.ts
 import { describe, expect, it } from 'vitest';
 import type { StreakStatus, StreakCalendar, XpSummary } from '@finby/shared';
-import { REPAIR_COST, formatXp, isoWeekDays, shareCardStats, streakSheetState } from './streak-view';
+import { REPAIR_COST, formatXp, shareCardStats, streakSheetState } from './streak-view';
 
 const status = (over: Partial<StreakStatus> = {}): StreakStatus => ({
   currentStreak: 5, longestStreak: 10, atRisk: false, repairEligible: false, repairUsedThisMonth: false, ...over,
@@ -164,20 +276,6 @@ describe('streakSheetState', () => {
   });
   it('is "missed" when at risk but not repair-eligible', () => {
     expect(streakSheetState(status({ atRisk: true, repairEligible: false }), 999)).toBe('missed');
-  });
-});
-
-describe('isoWeekDays', () => {
-  it('returns Mon–Sun for a midweek date', () => {
-    // 2026-06-30 is a Tuesday → week is Mon 06-29 .. Sun 07-05
-    expect(isoWeekDays('2026-06-30')).toEqual([
-      '2026-06-29', '2026-06-30', '2026-07-01', '2026-07-02', '2026-07-03', '2026-07-04', '2026-07-05',
-    ]);
-  });
-  it('treats Sunday as the end of its week', () => {
-    // 2026-07-05 is a Sunday → still Mon 06-29 .. Sun 07-05
-    expect(isoWeekDays('2026-07-05')[0]).toBe('2026-06-29');
-    expect(isoWeekDays('2026-07-05')[6]).toBe('2026-07-05');
   });
 });
 
@@ -227,19 +325,6 @@ export function streakSheetState(status: StreakStatus, xpBalance: number): Strea
   return 'missed';
 }
 
-const DAY_MS = 86_400_000;
-
-/** The seven YYYY-MM-DD dates of the ISO week (Mon–Sun) containing `today`.
- *  Pure UTC math on the date string, which is already the user's local day. */
-export function isoWeekDays(today: string): string[] {
-  const [y, m, d] = today.split('-').map(Number);
-  const base = Date.UTC(y!, m! - 1, d!);
-  const dow = new Date(base).getUTCDay(); // 0=Sun..6=Sat
-  const offsetToMonday = dow === 0 ? -6 : 1 - dow;
-  const monday = base + offsetToMonday * DAY_MS;
-  return Array.from({ length: 7 }, (_, i) => new Date(monday + i * DAY_MS).toISOString().slice(0, 10));
-}
-
 export interface ShareCardStats {
   name: string;
   streak: number;
@@ -248,8 +333,8 @@ export interface ShareCardStats {
   daysLogged: number;
 }
 
-/** Build the brag-card fields. `daysLogged` is the count of distinct dates across
- *  active + repaired days; `best` never reads below the current streak. */
+/** Build the brag-card fields. `daysLogged` counts distinct dates across active +
+ *  repaired days; `best` never reads below the current streak. */
 export function shareCardStats(
   user: Pick<ApiUser, 'displayName'>,
   status: StreakStatus,
@@ -283,12 +368,12 @@ Expected: PASS (all groups).
 cd apps/mobile && npx eslint src/lib/streak-view.ts src/lib/streak-view.test.ts
 cd /home/unicorn/Documents/finby
 git add apps/mobile/src/lib/streak-view.ts apps/mobile/src/lib/streak-view.test.ts
-git commit -m "feat(mobile): streak sheet state machine + week/share-card logic"
+git commit -m "feat(mobile): streak sheet state machine + share-card logic"
 ```
 
 ---
 
-### Task 3: WeekRow component
+### Task 4: WeekRow component
 
 A Mon–Sun activity strip of circular indicators.
 
@@ -297,7 +382,7 @@ A Mon–Sun activity strip of circular indicators.
 - Test: `apps/mobile/src/components/streak/week-row.test.tsx`
 
 **Interfaces:**
-- Consumes: `isoWeekDays` from `../../lib/streak-view`.
+- Consumes: `isoWeekDays` from `@finby/shared`.
 - Produces: `WeekRow({ activeDays: string[]; repairedDays: string[]; today: string })`
 
 - [ ] **Step 1: Write the failing test**
@@ -315,10 +400,7 @@ import { WeekRow } from './week-row';
 
 describe('WeekRow', () => {
   it('marks active and repaired days with a check and shows weekday labels', async () => {
-    await render(
-      <WeekRow activeDays={['2026-06-29']} repairedDays={['2026-06-30']} today="2026-06-30" />,
-    );
-    // Two logged days → two checkmarks. Mon label present.
+    await render(<WeekRow activeDays={['2026-06-29']} repairedDays={['2026-06-30']} today="2026-06-30" />);
     expect(screen.getAllByText('checkmark')).toHaveLength(2);
     expect(screen.getAllByText('M').length).toBeGreaterThan(0);
   });
@@ -342,7 +424,7 @@ Expected: FAIL — cannot find module `./week-row`.
 // apps/mobile/src/components/streak/week-row.tsx
 import { Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { isoWeekDays } from '../../lib/streak-view';
+import { isoWeekDays } from '@finby/shared';
 
 const LABELS = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
 
@@ -367,11 +449,7 @@ export function WeekRow({
         const isToday = date === today;
         const isFuture = date > today;
         const dayNum = Number(date.slice(8, 10));
-        const circle = isActive
-          ? 'bg-warn'
-          : isToday
-            ? 'border-2 border-warn'
-            : 'border border-line';
+        const circle = isActive ? 'bg-warn' : isToday ? 'border-2 border-warn' : 'border border-line';
         return (
           <View key={date} className="items-center gap-1" accessibilityRole="text">
             <Text className="text-xs text-muted">{LABELS[i]}</Text>
@@ -406,7 +484,7 @@ git commit -m "feat(mobile): WeekRow Mon-Sun streak activity strip"
 
 ---
 
-### Task 4: StreakShareCard component
+### Task 5: StreakShareCard component
 
 The off-screen hero-flame brag card that gets captured to a PNG.
 
@@ -434,9 +512,7 @@ import { StreakShareCard } from './streak-share-card';
 
 describe('StreakShareCard', () => {
   it('renders the name, streak and stats', async () => {
-    await render(
-      <StreakShareCard stats={{ name: 'Timilehin', streak: 30, best: 30, xp: 1250, daysLogged: 48 }} />,
-    );
+    await render(<StreakShareCard stats={{ name: 'Timilehin', streak: 30, best: 30, xp: 1250, daysLogged: 48 }} />);
     expect(screen.getByText('Timilehin')).toBeTruthy();
     expect(screen.getByText('30')).toBeTruthy();
     expect(screen.getByText(/1,250 XP/)).toBeTruthy();
@@ -482,9 +558,7 @@ export function StreakShareCard({ stats }: { stats: ShareCardStats }) {
 
       <View className="gap-1">
         <Text className="text-lg font-semibold text-ink">{stats.name}</Text>
-        <Text className="text-sm text-muted">
-          best {stats.best} · ⚡ {formatXp(stats.xp)} XP
-        </Text>
+        <Text className="text-sm text-muted">best {stats.best} · ⚡ {formatXp(stats.xp)} XP</Text>
         <Text className="text-sm text-muted">{stats.daysLogged} days logged</Text>
       </View>
 
@@ -510,13 +584,13 @@ git commit -m "feat(mobile): hero-flame streak share card"
 
 ---
 
-### Task 5: auth-store `setStreak` action
+### Task 6: auth-store `setStreak` action
 
 Lets the sheet push a repaired streak back to the cached user so the header badge updates.
 
 **Files:**
 - Modify: `apps/mobile/src/lib/auth-store.ts` (add to `AuthState` interface + store body)
-- Test: `apps/mobile/src/lib/auth-store.test.ts` (add one case)
+- Test: `apps/mobile/src/lib/auth-store.test.ts` (add two cases)
 
 **Interfaces:**
 - Produces: `setStreak(currentStreak: number, longestStreak: number): void` on `AuthState`.
@@ -548,7 +622,7 @@ Expected: FAIL — `setStreak` is not a function.
 In `AuthState` (after `verifyPin`):
 
 ```ts
-  /** Update the cached user's streak counters (after a repair) so the header badge reflects it. */
+  /** Update the cached user's streak counters (after a repair) so the badge reflects it. */
   setStreak(currentStreak: number, longestStreak: number): void;
 ```
 
@@ -575,13 +649,13 @@ git commit -m "feat(mobile): auth-store setStreak action for badge sync"
 
 ---
 
-### Task 6: Make StreakBadge tappable
+### Task 7: Make StreakBadge tappable
 
 Add an optional `onPress` so the chat header can open the sheet. No visual change when omitted.
 
 **Files:**
 - Modify: `apps/mobile/src/components/dashboard/streak-badge.tsx`
-- Test: `apps/mobile/src/components/dashboard/streak-badge.test.tsx` (add one case)
+- Test: `apps/mobile/src/components/dashboard/streak-badge.test.tsx` (update import + add one case)
 
 **Interfaces:**
 - Produces: `StreakBadge({ streak: number; onPress?: () => void })`
@@ -650,7 +724,7 @@ git commit -m "feat(mobile): make StreakBadge tappable via optional onPress"
 
 ---
 
-### Task 7: Install capture + share deps and verify the bundle
+### Task 8: Install capture + share deps and verify the bundle
 
 **Files:**
 - Modify: `apps/mobile/package.json` (via `expo install`), root `pnpm-lock.yaml`.
@@ -666,7 +740,7 @@ Run:
 ```bash
 cd apps/mobile && pnpm exec expo export:embed --platform ios --dev false --bundle-output /tmp/b.js && grep -c "SharedArrayBuffer.prototype" /tmp/b.js
 ```
-Expected: bundle writes; grep prints `0` (clean). If `expo export:embed` hangs, Ctrl-C — the install itself is the deliverable; the bundle check can be re-run later.
+Expected: bundle writes; grep prints `0` (clean). If `expo export:embed` hangs >2 min, Ctrl-C — the install is the deliverable; re-run the bundle check later.
 
 - [ ] **Step 3: Commit**
 
@@ -678,7 +752,7 @@ git commit -m "build(mobile): add react-native-view-shot + expo-sharing (Expo Go
 
 ---
 
-### Task 8: StreakSheet component
+### Task 9: StreakSheet component
 
 The interactive sheet: fetch on open, state machine, repair, share, loading/error.
 
@@ -687,7 +761,7 @@ The interactive sheet: fetch on open, state machine, repair, share, loading/erro
 - Test: `apps/mobile/src/components/streak/streak-sheet.test.tsx`
 
 **Interfaces:**
-- Consumes: `BottomSheet` (`../ui/bottom-sheet`), `Button` (`../ui/button`), `WeekRow`, `StreakShareCard`, `REPAIR_COST`/`shareCardStats`/`streakSheetState`/`ShareCardStats` (`../../lib/streak-view`), `streakCelebration` (`../../lib/streak-messages`), `chatNotice` (`../../lib/chat-notice`), `useAuthStore` (`../../lib/use-auth-store`), `api` (`../../lib/runtime.native`). Calls `api.streaks.getStreakStatus|repairStreak|getStreakCalendar`, `api.gamification.getXpSummary`. `captureRef` (`react-native-view-shot`), `Sharing` (`expo-sharing`).
+- Consumes: `BottomSheet` (`../ui/bottom-sheet`), `Button` (`../ui/button`), `WeekRow`, `StreakShareCard`, `REPAIR_COST`/`shareCardStats`/`streakSheetState`/`ShareCardStats` (`../../lib/streak-view`), `streakCelebration` (`@finby/shared`), `chatNotice` (`../../lib/chat-notice`), `useAuthStore` (`../../lib/use-auth-store`), `api` (`../../lib/runtime.native`). Calls `api.streaks.getStreakStatus|repairStreak|getStreakCalendar`, `api.gamification.getXpSummary`. `captureRef` (`react-native-view-shot`), `Sharing` (`expo-sharing`).
 - Produces: `StreakSheet({ open: boolean; onClose: () => void; workspaceId: string })`
 
 - [ ] **Step 1: Write the failing test**
@@ -794,13 +868,12 @@ import { ActivityIndicator, Text, View } from 'react-native';
 import { captureRef } from 'react-native-view-shot';
 import * as Sharing from 'expo-sharing';
 import { Ionicons } from '@expo/vector-icons';
-import type { StreakCalendar, StreakStatus, XpSummary } from '@finby/shared';
+import { streakCelebration, type StreakCalendar, type StreakStatus, type XpSummary } from '@finby/shared';
 import { BottomSheet } from '../ui/bottom-sheet';
 import { Button } from '../ui/button';
 import { WeekRow } from './week-row';
 import { StreakShareCard } from './streak-share-card';
 import { REPAIR_COST, shareCardStats, streakSheetState, type ShareCardStats } from '../../lib/streak-view';
-import { streakCelebration } from '../../lib/streak-messages';
 import { chatNotice } from '../../lib/chat-notice';
 import { useAuthStore } from '../../lib/use-auth-store';
 import { api } from '../../lib/runtime.native';
@@ -943,7 +1016,7 @@ export function StreakSheet({ open, onClose, workspaceId }: { open: boolean; onC
 - [ ] **Step 4: Run test to verify it passes**
 
 Run: `cd apps/mobile && pnpm exec jest src/components/streak/streak-sheet.test.tsx`
-Expected: PASS (5 tests). If an `act(...)` warning prints for a state settling after `waitFor`, it is filtered by the existing `jest.setup.js`; genuine warnings still surface.
+Expected: PASS (5 tests). A benign `act(...)` warning for state settling after `waitFor` is filtered by the existing `jest.setup.js`; genuine warnings still surface.
 
 - [ ] **Step 5: Lint + commit**
 
@@ -956,13 +1029,13 @@ git commit -m "feat(mobile): interactive streak sheet (states, repair, share)"
 
 ---
 
-### Task 9: Wire the sheet into the chat header
+### Task 10: Wire the sheet into the chat header
 
 Open the sheet when the header badge is tapped.
 
 **Files:**
 - Modify: `apps/mobile/src/screens/chat-screen.tsx`
-- Modify: `apps/mobile/src/screens/chat-screen.test.tsx` (add the two native-module mocks + an open-on-tap test)
+- Modify: `apps/mobile/src/screens/chat-screen.test.tsx` (add native-module mocks + extend the api mock + a tap test)
 
 **Interfaces:**
 - Consumes: `StreakSheet` (`../components/streak/streak-sheet`).
@@ -976,8 +1049,7 @@ jest.mock('react-native-view-shot', () => ({ captureRef: jest.fn(async () => 'fi
 jest.mock('expo-sharing', () => ({ isAvailableAsync: jest.fn(async () => true), shareAsync: jest.fn(async () => {}) }));
 ```
 
-Extend the existing `jest.mock('../lib/runtime.native', …)` factory so the sheet's
-fetch resolves cleanly — add `streaks` and `gamification` to the mocked `api`:
+Replace the existing `jest.mock('../lib/runtime.native', …)` factory so the sheet's fetch resolves cleanly:
 
 ```tsx
 jest.mock('../lib/runtime.native', () => ({
@@ -1012,7 +1084,7 @@ Add a test inside `describe('ChatScreen', …)`:
 - [ ] **Step 2: Run test to verify it fails**
 
 Run: `cd apps/mobile && pnpm exec jest src/screens/chat-screen.test.tsx`
-Expected: FAIL — no element labelled `View your streak` (badge not yet tappable in the screen).
+Expected: FAIL — no element labelled `View your streak`.
 
 - [ ] **Step 3: Wire the screen**
 
@@ -1034,7 +1106,7 @@ Pass `onPress` to the header badge (replace the existing `<StreakBadge … />` l
           <StreakBadge streak={user?.currentStreak ?? 0} onPress={() => setStreakOpen(true)} />
 ```
 
-Render the sheet — add just before the closing `</SafeAreaView>` (after the `</KeyboardAvoidingView>`):
+Render the sheet — add just before the closing `</SafeAreaView>` (after `</KeyboardAvoidingView>`):
 
 ```tsx
       {workspace ? (
@@ -1058,7 +1130,7 @@ git commit -m "feat(mobile): open streak sheet from the chat header badge"
 
 ---
 
-### Task 10: Full gate + device validation
+### Task 11: Full gate + device validation
 
 **Files:** none (verification only).
 
@@ -1066,11 +1138,13 @@ git commit -m "feat(mobile): open streak sheet from the chat header badge"
 
 ```bash
 cd /home/unicorn/Documents/finby
+pnpm --filter @finby/shared build
+pnpm --filter @finby/shared test
 pnpm --filter finby-mobile test
 pnpm --filter finby-mobile exec tsc --noEmit
 pnpm lint
 ```
-Expected: all tests pass with **pristine output** (0 console/act lines); tsc clean; lint 0 errors (only the pre-existing `sw.js` `_e` warning).
+Expected: shared builds + tests pass; mobile tests pass with **pristine output** (0 console/act lines); tsc clean; lint 0 errors (only the pre-existing `sw.js` `_e` warning).
 
 - [ ] **Step 2: Device smoke (user, Expo Go)**
 
