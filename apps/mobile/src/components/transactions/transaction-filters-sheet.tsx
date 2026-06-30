@@ -39,7 +39,8 @@ export function TransactionFiltersSheet({
   const [fromDate, setFromDate] = useState(filters.fromDate ?? '');
   const [toDate, setToDate] = useState(filters.toDate ?? '');
 
-  // Re-seed the draft from the active filters whenever the sheet opens.
+  // Re-seed the draft from the active filters only when the sheet opens (keyed on
+  // `open`); re-seeding on every `filters` change would clobber in-progress edits.
   useEffect(() => {
     if (!open) return;
     setCategoryId(filters.categoryId ?? '');
@@ -47,7 +48,7 @@ export function TransactionFiltersSheet({
     setPreset(presetOf(filters));
     setFromDate(filters.fromDate ?? '');
     setToDate(filters.toDate ?? '');
-  }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [open]);
 
   const currencyCodes = preferredCurrencies.length > 0 ? preferredCurrencies : CURRENCY_CODES;
   const categoryOptions = [
