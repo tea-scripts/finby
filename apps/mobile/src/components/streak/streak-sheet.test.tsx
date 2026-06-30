@@ -22,6 +22,9 @@ jest.mock('@expo/vector-icons', () => ({
 }));
 jest.mock('../ui/wordmark', () => ({ Wordmark: () => null }));
 
+const mockPush = jest.fn();
+jest.mock('expo-router', () => ({ useRouter: () => ({ push: mockPush }) }));
+
 import { captureRef } from 'react-native-view-shot';
 import * as Sharing from 'expo-sharing';
 import { api } from '../../lib/runtime.native';
@@ -41,6 +44,7 @@ beforeEach(() => {
   mock.gamification.getXpSummary.mockReset().mockResolvedValue({ balance: 40, totalEarned: 1250, todayEarned: 10 });
   (captureRef as jest.Mock).mockClear();
   (Sharing.shareAsync as jest.Mock).mockClear();
+  mockPush.mockReset();
 });
 
 describe('StreakSheet', () => {
@@ -81,5 +85,16 @@ describe('StreakSheet', () => {
     mock.streaks.getStreakStatus.mockRejectedValue(new Error('nope'));
     await render(<StreakSheet open onClose={jest.fn()} workspaceId="w1" />);
     await waitFor(() => expect(screen.getByText('Retry')).toBeTruthy());
+  });
+
+  it('navigates to the streaks screen and closes from "See full history"', async () => {
+    mockPush.mockReset();
+    const onClose = jest.fn();
+    mock.streaks.getStreakStatus.mockResolvedValue({ currentStreak: 7, longestStreak: 10, atRisk: false, repairEligible: false, repairUsedThisMonth: false });
+    await render(<StreakSheet open onClose={onClose} workspaceId="w1" />);
+    await waitFor(() => expect(screen.getByText('See full history →')).toBeTruthy());
+    await fireEvent.press(screen.getByText('See full history →'));
+    expect(mockPush).toHaveBeenCalledWith('/streaks');
+    expect(onClose).toHaveBeenCalled();
   });
 });

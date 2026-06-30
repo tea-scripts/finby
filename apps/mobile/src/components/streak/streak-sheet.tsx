@@ -1,6 +1,7 @@
 // apps/mobile/src/components/streak/streak-sheet.tsx
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, Text, View } from 'react-native';
+import { useRouter } from 'expo-router';
 import { captureRef } from 'react-native-view-shot';
 import * as Sharing from 'expo-sharing';
 import { Ionicons } from '@expo/vector-icons';
@@ -18,6 +19,7 @@ import { api } from '../../lib/runtime.native';
  *  everyday state machine (new/active/recoverable/missed), repairs for 10 XP,
  *  and shares a generated brag card. Milestone + full history are slice 2. */
 export function StreakSheet({ open, onClose, workspaceId }: { open: boolean; onClose: () => void; workspaceId: string }) {
+  const router = useRouter();
   const user = useAuthStore((s) => s.user);
   const setStreak = useAuthStore((s) => s.setStreak);
   const [status, setStatus] = useState<StreakStatus | null>(null);
@@ -144,6 +146,18 @@ export function StreakSheet({ open, onClose, workspaceId }: { open: boolean; onC
               <StreakShareCard stats={stats} />
             </View>
           ) : null}
+
+          <Pressable
+            onPress={() => {
+              onClose();
+              router.push('/streaks');
+            }}
+            accessibilityRole="button"
+            hitSlop={8}
+            className="items-center pt-1"
+          >
+            <Text className="text-sm font-medium text-accent">See full history →</Text>
+          </Pressable>
         </View>
       ) : null}
     </BottomSheet>
