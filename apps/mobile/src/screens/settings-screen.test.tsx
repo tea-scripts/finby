@@ -24,4 +24,10 @@ describe('SettingsScreen', () => {
     await fireEvent.press(screen.getByLabelText('View your streak progress'));
     expect(mockPush).toHaveBeenCalledWith('/streaks');
   });
+
+  it('opens the subscription screen from the plan row', async () => {
+    await render(<SettingsScreen />);
+    await fireEvent.press(screen.getByLabelText('Plan and billing'));
+    expect(mockPush).toHaveBeenCalledWith('/subscription');
+  });
 });

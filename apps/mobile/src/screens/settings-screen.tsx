@@ -38,6 +38,16 @@ export function SettingsScreen() {
           <Text className="text-sm font-medium text-accent">View progress →</Text>
         </Pressable>
 
+        <Pressable
+          onPress={() => router.push('/subscription')}
+          accessibilityRole="button"
+          accessibilityLabel="Plan and billing"
+          className="flex-row items-center justify-between rounded-xl border border-line bg-surface px-4 py-3"
+        >
+          <Text className="text-base text-ink">Plan &amp; Billing</Text>
+          <Text className="text-sm font-medium text-accent">Manage →</Text>
+        </Pressable>
+
         {user ? <Text className="text-muted">Signed in as {user.displayName}</Text> : null}
 
         <View className="flex-row items-center justify-between">
