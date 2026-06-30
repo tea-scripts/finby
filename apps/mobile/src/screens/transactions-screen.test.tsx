@@ -13,6 +13,9 @@ jest.mock('react-native-safe-area-context', () => ({
   SafeAreaView: ({ children }: { children: unknown }) => children,
   useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }),
 }));
+jest.mock('expo-blur', () => ({
+  BlurView: ({ children }: { children: unknown }) => children,
+}));
 
 import { api } from '../lib/runtime.native';
 import { TransactionsScreen } from './transactions-screen';
