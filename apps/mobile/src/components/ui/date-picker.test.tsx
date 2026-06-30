@@ -1,3 +1,4 @@
+import { type ReactNode } from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react-native';
 
 jest.mock('react-native-safe-area-context', () => ({
@@ -5,7 +6,7 @@ jest.mock('react-native-safe-area-context', () => ({
 }));
 
 jest.mock('./bottom-sheet', () => ({
-  BottomSheet: ({ open, children }: { open: boolean; children: unknown }) => (open ? children : null),
+  BottomSheet: ({ open, children }: { open: boolean; children: ReactNode }) => (open ? children : null),
 }));
 
 import { DatePicker } from './date-picker';
