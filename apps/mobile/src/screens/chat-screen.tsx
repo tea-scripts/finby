@@ -238,6 +238,8 @@ export function ChatScreen() {
           <Pressable
             disabled={!notice.upgrade}
             onPress={() => router.push('/subscription')}
+            accessibilityRole="link"
+            accessibilityLabel={notice.upgrade ? 'See subscription plans' : undefined}
             className={`mx-3 mb-2 rounded-xl border px-3.5 py-2.5 ${NOTICE_STYLES[notice.kind]}`}
           >
             <Text className={`text-sm ${notice.kind === 'error' ? 'text-danger' : 'text-warn'}`}>
