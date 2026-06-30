@@ -13,6 +13,7 @@ export default function AppLayout() {
         {TABS.map((t) => (
           <Tabs.Screen key={t.name} name={t.name} />
         ))}
+        <Tabs.Screen name="streaks" options={{ href: null }} />
       </Tabs>
     </AppLockGate>
   );
