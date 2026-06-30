@@ -124,6 +124,13 @@ describe('ChatScreen', () => {
     await waitFor(() => expect(screen.getByText('Your streak')).toBeTruthy());
   });
 
+  it('previews the celebration from the dev trigger', async () => {
+    await render(<ChatScreen />);
+    await waitFor(() => expect(mockChat.listMessages).toHaveBeenCalled());
+    await fireEvent.press(screen.getByTestId('dev-preview-unlock'));
+    await waitFor(() => expect(screen.getByText('Achievement unlocked! 🎉')).toBeTruthy());
+  });
+
   it('celebrates when a logged transaction unlocks an achievement', async () => {
     mockChat.streamMessage.mockImplementation(async (_ws, _c, _content, handlers) => {
       handlers.onAction({

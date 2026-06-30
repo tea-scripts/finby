@@ -168,6 +168,21 @@ export function ChatScreen() {
       <View className="flex-row items-center justify-between border-b border-line px-4 py-3">
         <Wordmark height={22} />
         <View className="flex-row items-center gap-3">
+          {__DEV__ ? (
+            <Pressable
+              testID="dev-preview-unlock"
+              onPress={() =>
+                setCelebration([
+                  { slug: 'streak-bronze', tier: 'BRONZE', label: 'Week Warrior', unlockedAt: new Date().toISOString() },
+                ])
+              }
+              accessibilityRole="button"
+              accessibilityLabel="Preview achievement unlock (dev)"
+              hitSlop={8}
+            >
+              <Text className="text-base">🎉</Text>
+            </Pressable>
+          ) : null}
           <StreakBadge streak={user?.currentStreak ?? 0} onPress={() => setStreakOpen(true)} />
           <Pressable onPress={() => void newChat()} accessibilityRole="button" accessibilityLabel="New chat" hitSlop={8}>
             <Text className="text-sm font-medium text-accent">New chat</Text>
