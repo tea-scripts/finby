@@ -14,11 +14,15 @@ jest.mock('@expo/vector-icons', () => ({
 }));
 
 import { api } from '../../lib/runtime.native';
+import { clearBadgeCache, getCachedBadge, setCachedBadge } from '../../lib/badge-cache';
 import { BadgeImage } from './badge-image';
 
 const getBadgeSvg = api.gamification.getBadgeSvg as jest.Mock;
 
-beforeEach(() => getBadgeSvg.mockReset());
+beforeEach(() => {
+  getBadgeSvg.mockReset();
+  clearBadgeCache();
+});
 
 describe('BadgeImage', () => {
   it('fetches and renders the SVG when unlocked', async () => {
@@ -57,5 +61,19 @@ describe('BadgeImage', () => {
     getBadgeSvg.mockResolvedValue('<svg/>');
     await render(<BadgeImage workspaceId="w1" slug="x" label="Badge Z" locked={false} />);
     expect(screen.getByLabelText('Badge Z').props.pointerEvents).toBe('none');
+  });
+
+  it('renders instantly from the cache without fetching', async () => {
+    setCachedBadge('w1', 'cached', '<svg/>');
+    await render(<BadgeImage workspaceId="w1" slug="cached" label="A" locked={false} />);
+    expect(screen.getByText('svg')).toBeTruthy();
+    expect(getBadgeSvg).not.toHaveBeenCalled();
+  });
+
+  it('populates the cache after a fetch so a later instance is instant', async () => {
+    getBadgeSvg.mockResolvedValue('<svg/>');
+    await render(<BadgeImage workspaceId="w1" slug="fresh" label="A" locked={false} />);
+    await screen.findByText('svg');
+    expect(getCachedBadge('w1', 'fresh')).toBe('<svg/>');
   });
 });

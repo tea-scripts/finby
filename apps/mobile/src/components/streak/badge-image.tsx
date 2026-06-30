@@ -4,6 +4,7 @@ import { View } from 'react-native';
 import { SvgXml } from 'react-native-svg';
 import { Ionicons } from '@expo/vector-icons';
 import { api } from '../../lib/runtime.native';
+import { getCachedBadge, setCachedBadge } from '../../lib/badge-cache';
 
 /** An achievement badge: fetches the bearer-protected server SVG by slug and
  *  renders it with react-native-svg. Locked badges are dimmed with a lock
@@ -24,13 +25,21 @@ export function BadgeImage({
   size?: number;
   lockedOpacity?: number;
 }) {
-  const [xml, setXml] = useState<string | null>(null);
+  // Initialize from the session cache so an already-loaded badge (e.g. the grid
+  // already fetched it) renders instantly with no loading flash.
+  const [xml, setXml] = useState<string | null>(() => getCachedBadge(workspaceId, slug) ?? null);
 
   useEffect(() => {
+    const cached = getCachedBadge(workspaceId, slug);
+    if (cached) {
+      setXml(cached);
+      return;
+    }
     let active = true;
     api.gamification
       .getBadgeSvg(workspaceId, slug)
       .then((svg) => {
+        setCachedBadge(workspaceId, slug, svg);
         if (active) setXml(svg);
       })
       .catch(() => {
