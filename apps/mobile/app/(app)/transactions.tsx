@@ -1,1 +1,2 @@
-export { TransactionsPlaceholderScreen as default } from '../../src/screens/transactions-placeholder-screen';
+// apps/mobile/app/(app)/transactions.tsx
+export { TransactionsScreen as default } from '../../src/screens/transactions-screen';
