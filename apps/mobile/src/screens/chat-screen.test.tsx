@@ -11,6 +11,9 @@ jest.mock('../lib/use-auth-store', () => ({
 
 // Create the chat mocks INSIDE the factory (so the module's `api.chat` and the
 // test's `mockChat` are the same object), then retrieve them via the mock.
+jest.mock('react-native-confetti-cannon', () => () => null);
+jest.mock('../lib/haptics', () => ({ celebrateHaptic: jest.fn() }));
+jest.mock('react-native-svg', () => ({ SvgXml: () => null }));
 jest.mock('react-native-view-shot', () => ({ captureRef: jest.fn(async () => 'file://card.png') }));
 jest.mock('expo-sharing', () => ({ isAvailableAsync: jest.fn(async () => true), shareAsync: jest.fn(async () => {}) }));
 
@@ -27,7 +30,10 @@ jest.mock('../lib/runtime.native', () => ({
       repairStreak: jest.fn(),
       getStreakCalendar: jest.fn(async () => ({ from: '2026-01-01', to: '2026-06-30', activeDays: [], repairedDays: [] })),
     },
-    gamification: { getXpSummary: jest.fn(async () => ({ balance: 40, totalEarned: 1250, todayEarned: 10 })) },
+    gamification: {
+      getXpSummary: jest.fn(async () => ({ balance: 40, totalEarned: 1250, todayEarned: 10 })),
+      getBadgeSvg: jest.fn(async () => '<svg/>'),
+    },
   },
 }));
 
@@ -116,6 +122,28 @@ describe('ChatScreen', () => {
     await waitFor(() => expect(mockChat.listMessages).toHaveBeenCalled());
     await fireEvent.press(screen.getByLabelText('View your streak'));
     await waitFor(() => expect(screen.getByText('Your streak')).toBeTruthy());
+  });
+
+  it('celebrates when a logged transaction unlocks an achievement', async () => {
+    mockChat.streamMessage.mockImplementation(async (_ws, _c, _content, handlers) => {
+      handlers.onAction({
+        type: 'TRANSACTION_CREATED',
+        transactionId: 't1',
+        txType: 'EXPENSE',
+        preview: { amount: '12.00', currency: 'USD', merchant: 'Cafe', category: 'Food' },
+        currentStreak: 7,
+        newAchievements: [{ slug: 'streak-bronze', tier: 'BRONZE', label: 'Week Warrior', unlockedAt: '2026-07-01T00:00:00Z' }],
+      });
+      handlers.onDone({ id: 'm1', role: 'ASSISTANT', content: 'Logged.', createdAt: '2026-07-01T00:00:00Z' });
+    });
+
+    await render(<ChatScreen />);
+    await waitFor(() => expect(mockChat.listMessages).toHaveBeenCalled());
+    await fireEvent.changeText(screen.getByTestId('composer-input'), 'spent 12 on lunch');
+    await fireEvent.press(screen.getByTestId('composer-send'));
+
+    await waitFor(() => expect(screen.getByText('Achievement unlocked! 🎉')).toBeTruthy());
+    expect(screen.getByText('Week Warrior')).toBeTruthy();
   });
 
 });

@@ -8,7 +8,7 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import type { ChatAction, ChatMessageView, PendingConfirmation } from '@finby/shared';
+import type { ChatAction, ChatMessageView, NewAchievement, PendingConfirmation } from '@finby/shared';
 import { ActionCard } from '../components/chat/action-card';
 import { Composer } from '../components/chat/composer';
 import { ConfirmationCard } from '../components/chat/confirmation-card';
@@ -17,6 +17,7 @@ import { TypingIndicator } from '../components/chat/typing-indicator';
 import { Wordmark } from '../components/ui/wordmark';
 import { StreakBadge } from '../components/dashboard/streak-badge';
 import { StreakSheet } from '../components/streak/streak-sheet';
+import { AchievementUnlockedModal } from '../components/chat/achievement-unlocked-modal';
 import { useTabBarSpace } from '../components/nav/floating-tab-bar';
 import { chatNotice, type ChatNotice } from '../lib/chat-notice';
 import { createTypewriter } from '../lib/typewriter';
@@ -54,6 +55,7 @@ export function ChatScreen() {
   const [sending, setSending] = useState(false);
   const [notice, setNotice] = useState<ChatNotice | null>(null);
   const [streakOpen, setStreakOpen] = useState(false);
+  const [celebration, setCelebration] = useState<NewAchievement[]>([]);
   const listRef = useRef<FlatList<UiMessage>>(null);
   const tabBarSpace = useTabBarSpace();
   const keyboardVisible = useKeyboardVisible();
@@ -104,6 +106,7 @@ export function ChatScreen() {
     const typer = createTypewriter((text) => patch((msg) => ({ ...msg, content: text })));
     let produced = false;
     let finalMessage: ChatMessageView | null = null;
+    const unlocked: NewAchievement[] = [];
 
     try {
       await api.chat.streamMessage(workspace.id, conversationId, content, {
@@ -111,7 +114,10 @@ export function ChatScreen() {
           produced = true;
           typer.push(text);
         },
-        onAction: (a) => patch((msg) => ({ ...msg, actions: [...(msg.actions ?? []), a] })),
+        onAction: (a) => {
+          if (a.type === 'TRANSACTION_CREATED' && a.newAchievements?.length) unlocked.push(...a.newAchievements);
+          patch((msg) => ({ ...msg, actions: [...(msg.actions ?? []), a] }));
+        },
         onPending: (c) => patch((msg) => ({ ...msg, confirmations: [...(msg.confirmations ?? []), c] })),
         onDone: (message) => {
           finalMessage = message;
@@ -133,6 +139,7 @@ export function ChatScreen() {
       await typer.finish();
       const fm = finalMessage as ChatMessageView | null;
       if (fm) patch((msg) => ({ ...msg, id: fm.id, createdAt: fm.createdAt }));
+      if (unlocked.length) setCelebration((c) => [...c, ...unlocked]);
     } catch (err) {
       // Pre-stream failure (429/503/400): nothing rendered — drop the placeholder.
       typer.cancel();
@@ -226,6 +233,14 @@ export function ChatScreen() {
       </KeyboardAvoidingView>
       {workspace ? (
         <StreakSheet open={streakOpen} onClose={() => setStreakOpen(false)} workspaceId={workspace.id} />
+      ) : null}
+      {workspace ? (
+        <AchievementUnlockedModal
+          workspaceId={workspace.id}
+          achievement={celebration[0] ?? null}
+          remaining={celebration.length}
+          onContinue={() => setCelebration((c) => c.slice(1))}
+        />
       ) : null}
     </SafeAreaView>
   );
