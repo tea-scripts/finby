@@ -8,6 +8,7 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useRouter } from 'expo-router';
 import type { ChatAction, ChatMessageView, NewAchievement, PendingConfirmation } from '@finby/shared';
 import { ActionCard } from '../components/chat/action-card';
 import { Composer } from '../components/chat/composer';
@@ -47,6 +48,7 @@ const NOTICE_STYLES: Record<ChatNotice['kind'], string> = {
 };
 
 export function ChatScreen() {
+  const router = useRouter();
   const workspace = useAuthStore((s) => s.workspace);
   const user = useAuthStore((s) => s.user);
   const [conversationId, setConversationId] = useState<string | null>(null);
@@ -233,11 +235,16 @@ export function ChatScreen() {
         )}
 
         {notice ? (
-          <View className={`mx-3 mb-2 rounded-xl border px-3.5 py-2.5 ${NOTICE_STYLES[notice.kind]}`}>
+          <Pressable
+            disabled={!notice.upgrade}
+            onPress={() => router.push('/subscription')}
+            className={`mx-3 mb-2 rounded-xl border px-3.5 py-2.5 ${NOTICE_STYLES[notice.kind]}`}
+          >
             <Text className={`text-sm ${notice.kind === 'error' ? 'text-danger' : 'text-warn'}`}>
-              {notice.message}
+              <Text>{notice.message}</Text>
+              {notice.upgrade ? <Text className="font-medium"> — see plans →</Text> : null}
             </Text>
-          </View>
+          </Pressable>
         ) : null}
 
         {/* While the keyboard is up it covers the floating tab bar, so drop that

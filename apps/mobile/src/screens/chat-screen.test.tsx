@@ -117,6 +117,19 @@ describe('ChatScreen', () => {
     await waitFor(() => expect(screen.getByText('Service unavailable')).toBeTruthy());
   });
 
+  it('routes the upgrade notice to the subscription screen on tap', async () => {
+    mockChat.streamMessage.mockRejectedValue(
+      new ApiError(429, 'LIMIT', 'Daily limit reached', { upgradeRequired: true }),
+    );
+    await render(<ChatScreen />);
+    await waitFor(() => expect(mockChat.listMessages).toHaveBeenCalled());
+    await fireEvent.changeText(screen.getByTestId('composer-input'), 'hi');
+    await fireEvent.press(screen.getByTestId('composer-send'));
+    await waitFor(() => expect(screen.getByText('Daily limit reached')).toBeTruthy());
+    await fireEvent.press(screen.getByText('Daily limit reached'));
+    expect(mockPush).toHaveBeenCalledWith('/subscription');
+  });
+
   it('opens the streak sheet when the header badge is tapped', async () => {
     await render(<ChatScreen />);
     await waitFor(() => expect(mockChat.listMessages).toHaveBeenCalled());
