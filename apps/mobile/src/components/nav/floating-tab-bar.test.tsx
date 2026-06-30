@@ -57,4 +57,29 @@ describe('FloatingTabBar', () => {
     fireEvent.press(screen.getByTestId('tab-index'));
     expect(navigate).not.toHaveBeenCalled();
   });
+
+  it('renders only the 4 real tabs and hides a hidden route (streaks)', async () => {
+    const props = {
+      state: {
+        index: 3,
+        routes: [
+          { key: 'index-1', name: 'index' },
+          { key: 'dashboard-1', name: 'dashboard' },
+          { key: 'transactions-1', name: 'transactions' },
+          { key: 'settings-1', name: 'settings' },
+          { key: 'streaks-1', name: 'streaks' },
+        ],
+      },
+      navigation: {
+        emit: jest.fn(() => ({ defaultPrevented: false })),
+        navigate: jest.fn(),
+      },
+    } as unknown as BottomTabBarProps;
+    await render(<FloatingTabBar {...props} />);
+    expect(screen.getByTestId('tab-index')).toBeTruthy();
+    expect(screen.getByTestId('tab-dashboard')).toBeTruthy();
+    expect(screen.getByTestId('tab-transactions')).toBeTruthy();
+    expect(screen.getByTestId('tab-settings')).toBeTruthy();
+    expect(screen.queryByTestId('tab-streaks')).toBeNull();
+  });
 });

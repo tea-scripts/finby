@@ -25,16 +25,25 @@ export function useTabBarSpace() {
 export function FloatingTabBar({ state, navigation }: BottomTabBarProps) {
   const insets = useSafeAreaInsets();
   const [rowWidth, setRowWidth] = useState(0);
-  const count = state.routes.length;
+  // Only count routes that have a real tab entry (excludes href:null hidden routes).
+  const tabRoutes = state.routes.filter((r) => TABS.some((t) => t.name === r.name));
+  const count = tabRoutes.length;
   const cellWidth = count > 0 ? rowWidth / count : 0;
   const translateX = useRef(new Animated.Value(0)).current;
   const firstLayout = useRef(true);
 
+  // Map state.index (which indexes state.routes, potentially including hidden
+  // routes) to an index within the visible tabRoutes array.
+  const activeKey = state.routes[state.index]?.key;
+  const activeIndex = tabRoutes.findIndex((r) => r.key === activeKey);
+
   // Slide the highlight to the active tab. Snap (no animation) on the first
   // measured layout so it starts under the active tab instead of sliding in.
+  // Skip animating entirely when the focused route is hidden (activeIndex < 0).
   useEffect(() => {
     if (cellWidth <= 0) return;
-    const to = state.index * cellWidth;
+    if (activeIndex < 0) return;
+    const to = activeIndex * cellWidth;
     if (firstLayout.current) {
       translateX.setValue(to);
       firstLayout.current = false;
@@ -47,7 +56,7 @@ export function FloatingTabBar({ state, navigation }: BottomTabBarProps) {
         mass: 1,
       }).start();
     }
-  }, [state.index, cellWidth, translateX]);
+  }, [activeIndex, cellWidth, translateX]);
 
   return (
     <View
@@ -95,10 +104,10 @@ export function FloatingTabBar({ state, navigation }: BottomTabBarProps) {
                 }}
               />
             ) : null}
-            {state.routes.map((route, i) => {
+            {tabRoutes.map((route, i) => {
               const tab = TABS.find((t) => t.name === route.name);
               if (!tab) return null;
-              const focused = state.index === i;
+              const focused = activeIndex === i;
               function onPress() {
                 const event = navigation.emit({
                   type: 'tabPress',
