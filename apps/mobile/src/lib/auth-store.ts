@@ -35,6 +35,8 @@ export interface AuthState {
   setPin(pin: string): Promise<void>;
   /** Check an entered PIN against the stored one. */
   verifyPin(pin: string): Promise<boolean>;
+  /** Update the cached user's streak counters (after a repair) so the badge reflects it. */
+  setStreak(currentStreak: number, longestStreak: number): void;
 }
 
 /** Mobile auth store: identity + status, plus the cold-start restore that the
@@ -134,5 +136,8 @@ export function createAuthStore(deps: {
     },
 
     verifyPin: (pin) => lockCode.verify(pin),
+
+    setStreak: (currentStreak, longestStreak) =>
+      set((s) => (s.user ? { user: { ...s.user, currentStreak, longestStreak } } : {})),
   }));
 }

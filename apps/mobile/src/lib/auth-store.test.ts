@@ -264,4 +264,17 @@ describe('createAuthStore', () => {
     expect(await store.getState().verifyPin('1234')).toBe(true);
     expect(await store.getState().verifyPin('0000')).toBe(false);
   });
+
+  it('setStreak updates the cached user streak counters', async () => {
+    const store = makeStore();
+    await store.getState().login('e@x.com', 'pw');
+    store.getState().setStreak(12, 30);
+    expect(store.getState().user).toMatchObject({ currentStreak: 12, longestStreak: 30 });
+  });
+
+  it('setStreak is a no-op when there is no user', () => {
+    const store = makeStore();
+    store.getState().setStreak(5, 5);
+    expect(store.getState().user).toBeNull();
+  });
 });
