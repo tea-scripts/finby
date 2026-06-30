@@ -20,6 +20,7 @@ import { useTabBarSpace } from '../components/nav/floating-tab-bar';
 import { chatNotice, type ChatNotice } from '../lib/chat-notice';
 import { createTypewriter } from '../lib/typewriter';
 import { useAuthStore } from '../lib/use-auth-store';
+import { useKeyboardVisible } from '../lib/use-keyboard-visible';
 import { api } from '../lib/runtime.native';
 
 interface UiMessage {
@@ -53,6 +54,7 @@ export function ChatScreen() {
   const [notice, setNotice] = useState<ChatNotice | null>(null);
   const listRef = useRef<FlatList<UiMessage>>(null);
   const tabBarSpace = useTabBarSpace();
+  const keyboardVisible = useKeyboardVisible();
 
   // Bootstrap: reuse the latest conversation or create one, then load history.
   useEffect(() => {
@@ -214,7 +216,9 @@ export function ChatScreen() {
           </View>
         ) : null}
 
-        <View style={{ paddingBottom: tabBarSpace }}>
+        {/* While the keyboard is up it covers the floating tab bar, so drop that
+            clearance — otherwise it stacks on the keyboard as a dead gap. */}
+        <View style={{ paddingBottom: keyboardVisible ? 0 : tabBarSpace }}>
           <Composer disabled={sending} onSend={send} />
         </View>
       </KeyboardAvoidingView>
