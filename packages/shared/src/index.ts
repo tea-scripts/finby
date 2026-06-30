@@ -9,3 +9,4 @@ export * from './legal';
 export * from './streak-messages';
 export * from './streak-week';
 export * from './gamification-view';
+export * from './relative-time';
