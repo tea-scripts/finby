@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react-native';
+import { render, screen, fireEvent } from '@testing-library/react-native';
 
 jest.mock('@expo/vector-icons', () => ({
   Ionicons: ({ name }: { name: string }) =>
@@ -17,5 +17,12 @@ describe('StreakBadge', () => {
   it('shows zero', async () => {
     await render(<StreakBadge streak={0} />);
     expect(screen.getByText('0')).toBeTruthy();
+  });
+
+  it('calls onPress when tapped', async () => {
+    const onPress = jest.fn();
+    await render(<StreakBadge streak={5} onPress={onPress} />);
+    await fireEvent.press(screen.getByRole('button'));
+    expect(onPress).toHaveBeenCalledTimes(1);
   });
 });
