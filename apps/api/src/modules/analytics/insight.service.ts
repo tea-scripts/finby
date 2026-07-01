@@ -88,11 +88,25 @@ function buildMessage(p: {
   currency: string;
 }): string {
   if (!p.hasPrev) return 'Not enough history yet to compare to last month.';
-  const verb = p.isCurrentMonth ? 'on pace to spend' : 'spent';
+
   const cmp = p.isCurrentMonth ? 'last month' : 'the month before';
-  if (p.direction === 'flat') return `You're spending about the same as ${cmp}.`;
-  const dir = p.direction === 'less' ? 'less' : 'more';
-  let msg = `You're ${verb} ${p.spendDeltaPercent}% ${dir} than ${cmp}.`;
+
+  let msg: string;
+  if (p.direction === 'flat') {
+    if (p.isCurrentMonth) {
+      msg = `You're spending about the same as ${cmp}.`;
+    } else {
+      msg = `You spent about the same as ${cmp}.`;
+    }
+  } else {
+    const dir = p.direction === 'less' ? 'less' : 'more';
+    if (p.isCurrentMonth) {
+      msg = `You're on pace to spend ${p.spendDeltaPercent}% ${dir} than ${cmp}.`;
+    } else {
+      msg = `You spent ${p.spendDeltaPercent}% ${dir} than ${cmp}.`;
+    }
+  }
+
   if (p.isCurrentMonth && p.projectedSavings !== null && p.projectedSavings > 0) {
     const amount = Math.round(p.projectedSavings).toLocaleString('en-US');
     msg += ` At this rate you'll save ${p.currency} ${amount} this month.`;

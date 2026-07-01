@@ -36,6 +36,7 @@ describe('InsightService', () => {
     expect(Number(r.projectedSavings)).toBeCloseTo((500 * 31) / 15, 1);
     expect(r.spendDeltaPercent).toBeGreaterThan(0);
     expect(r.comparedTo).toEqual({ from: '2026-06-01', to: '2026-06-30' });
+    expect(r.message).toMatch(/on pace to spend/);
   });
 
   it('is retrospective (no projection) for a past month', async () => {
@@ -48,6 +49,8 @@ describe('InsightService', () => {
     expect(r.projectedSpend).toBeNull();
     expect(r.projectedSavings).toBeNull();
     expect(r.direction).toBe('less'); // 1800 < 2000
+    expect(r.message).toMatch(/^You spent /);
+    expect(r.message).not.toMatch(/You're spent/);
   });
 
   it('returns flat with a friendly message when there is no prior-month history', async () => {
