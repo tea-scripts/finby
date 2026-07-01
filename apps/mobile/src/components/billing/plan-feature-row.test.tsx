@@ -16,4 +16,10 @@ describe('PlanFeatureRow', () => {
     await render(<PlanFeatureRow feature={{ label: 'Spending streak' }} />);
     expect(screen.getByText('Spending streak')).toBeTruthy();
   });
+
+  it('renders a bare blue check glyph (matching the web FeatureRow), not a green icon', async () => {
+    await render(<PlanFeatureRow feature={{ label: 'Spending streak' }} />);
+    const check = screen.getByText('✓');
+    expect(check.props.style).toMatchObject({ color: '#1d6ef5' });
+  });
 });
