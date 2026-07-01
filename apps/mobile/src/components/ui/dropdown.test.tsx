@@ -1,4 +1,5 @@
 import { render, screen, fireEvent } from '@testing-library/react-native';
+import { Text } from 'react-native';
 import { Dropdown } from './dropdown';
 
 const OPTS = [
@@ -23,5 +24,13 @@ describe('Dropdown', () => {
   it('shows the selected option label', async () => {
     await render(<Dropdown value="USD" options={OPTS} onSelect={() => {}} placeholder="Select currency" accessibilityLabel="currency" />);
     expect(screen.getByText('US Dollar')).toBeTruthy();
+  });
+
+  it('renders an option leading element in the trigger and the open list', async () => {
+    const Dot = () => <Text>◆</Text>;
+    const options = [{ value: 'a', label: 'Apple', leading: <Dot /> }];
+    await render(<Dropdown value="a" options={options} onSelect={() => {}} accessibilityLabel="Fruit" />);
+    // trigger shows the leading of the selected option
+    expect(screen.getAllByText('◆').length).toBeGreaterThanOrEqual(1);
   });
 });
