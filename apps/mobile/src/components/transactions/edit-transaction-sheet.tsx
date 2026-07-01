@@ -9,6 +9,7 @@ import { Field } from '../ui/field';
 import { Input } from '../ui/input';
 import { DatePicker } from '../ui/date-picker';
 import { BottomSheet } from '../ui/bottom-sheet';
+import { CategoryAvatar } from '../category/category-avatar';
 
 export function EditTransactionSheet({
   open,
@@ -53,7 +54,13 @@ export function EditTransactionSheet({
 
   const categoryOptions = [
     { value: '', label: 'Uncategorized' },
-    ...categories.filter((c) => !c.isArchived).map((c) => ({ value: c.id, label: c.name })),
+    ...categories
+      .filter((c) => !c.isArchived)
+      .map((c) => ({
+        value: c.id,
+        label: c.name,
+        leading: <CategoryAvatar category={{ name: c.name, icon: c.icon, color: c.color }} size="sm" />,
+      })),
   ];
 
   function fail(e: unknown) {

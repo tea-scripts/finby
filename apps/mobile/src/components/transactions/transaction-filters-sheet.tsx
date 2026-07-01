@@ -6,6 +6,7 @@ import { Dropdown } from '../ui/dropdown';
 import { Field } from '../ui/field';
 import { DatePicker } from '../ui/date-picker';
 import { BottomSheet } from '../ui/bottom-sheet';
+import { CategoryAvatar } from '../category/category-avatar';
 import { DATE_PRESET_OPTIONS, presetRange, type DatePreset } from '../../lib/transactions-view';
 
 function presetOf(f: TransactionQuery): DatePreset {
@@ -53,7 +54,13 @@ export function TransactionFiltersSheet({
   const currencyCodes = preferredCurrencies.length > 0 ? preferredCurrencies : CURRENCY_CODES;
   const categoryOptions = [
     { value: '', label: 'All categories' },
-    ...categories.filter((c) => !c.isArchived).map((c) => ({ value: c.id, label: c.name })),
+    ...categories
+      .filter((c) => !c.isArchived)
+      .map((c) => ({
+        value: c.id,
+        label: c.name,
+        leading: <CategoryAvatar category={{ name: c.name, icon: c.icon, color: c.color }} size="sm" />,
+      })),
   ];
   const currencyOptions = [{ value: '', label: 'All currencies' }, ...currencyCodes.map((c) => ({ value: c, label: c }))];
 
