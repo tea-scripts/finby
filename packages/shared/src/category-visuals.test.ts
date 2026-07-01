@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { resolveCategoryVisual, type CategoryVisual } from './category-visuals';
 
+function emojiChar(v: CategoryVisual): string {
+  if (v.kind !== 'emoji') throw new Error(`expected emoji visual, got ${v.kind}`);
+  return v.char;
+}
+
 describe('resolveCategoryVisual', () => {
   it('maps a known icon key to a branded icon visual with its default color', () => {
     expect(resolveCategoryVisual({ name: 'Groceries', icon: 'cart' })).toEqual<CategoryVisual>({
@@ -22,13 +27,13 @@ describe('resolveCategoryVisual', () => {
   });
 
   it('keyword-derives an emoji from the name when there is no icon', () => {
-    expect(resolveCategoryVisual({ name: 'Monthly Payroll' }).char).toBe('💼');
-    expect(resolveCategoryVisual({ name: 'Groceries' }).char).toBe('🛒');
-    expect(resolveCategoryVisual({ name: 'Uber rides' }).char).toBe('🚕');
+    expect(emojiChar(resolveCategoryVisual({ name: 'Monthly Payroll' }))).toBe('💼');
+    expect(emojiChar(resolveCategoryVisual({ name: 'Groceries' }))).toBe('🛒');
+    expect(emojiChar(resolveCategoryVisual({ name: 'Uber rides' }))).toBe('🚕');
   });
 
   it('falls back to a generic emoji for an unrecognized name', () => {
-    expect(resolveCategoryVisual({ name: 'Zorblax' }).char).toBe('🏷️');
+    expect(emojiChar(resolveCategoryVisual({ name: 'Zorblax' }))).toBe('🏷️');
   });
 
   it('derives a deterministic, palette-bounded color for emoji visuals', () => {

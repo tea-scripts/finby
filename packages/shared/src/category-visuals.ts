@@ -52,7 +52,7 @@ function deriveColor(name: string): string {
   for (let i = 0; i < key.length; i += 1) {
     hash = (hash * 31 + key.charCodeAt(i)) >>> 0;
   }
-  return PALETTE[hash % PALETTE.length];
+  return PALETTE[hash % PALETTE.length] ?? PALETTE[0] ?? '#6B7280';
 }
 
 export function resolveCategoryVisual(input: CategoryVisualInput): CategoryVisual {
