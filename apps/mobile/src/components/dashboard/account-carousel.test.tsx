@@ -39,6 +39,12 @@ describe('AccountCarousel', () => {
     expect(screen.getByTestId('section-retry')).toBeTruthy();
   });
 
+  it('shows a skeleton, not the spinner, while loading', async () => {
+    await render(<AccountCarousel state={{ data: null, loading: true, error: null }} onRetry={() => {}} />);
+    expect(screen.getAllByTestId('skeleton', { includeHiddenElements: true }).length).toBeGreaterThan(0);
+    expect(screen.queryByTestId('section-loading')).toBeNull();
+  });
+
   it('renders a paging dot per account when there is more than one', async () => {
     const second = { ...acct, id: 'a2', name: 'Wise USD', balance: '379.32' };
     await render(

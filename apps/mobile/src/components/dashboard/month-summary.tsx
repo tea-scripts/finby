@@ -1,7 +1,8 @@
 import { Platform, Text, View } from 'react-native';
 import { money } from '@finby/core';
 import type { SummaryResult } from '@finby/shared';
-import { SectionCard, SectionLoading, SectionError, type SectionProps } from './section-card';
+import { Skeleton } from '../ui/skeleton';
+import { SectionCard, SectionError, type SectionProps } from './section-card';
 
 const MONO = Platform.select({ ios: 'Menlo', default: 'monospace' });
 
@@ -22,7 +23,16 @@ export function MonthSummary({ state, onRetry }: SectionProps<SummaryResult>) {
   return (
     <SectionCard title="This month">
       {state.loading ? (
-        <SectionLoading />
+        <View className="gap-3" accessible accessibilityLabel="Loading">
+          <View className="flex-row gap-3">
+            <Skeleton style={{ flex: 1, height: 64 }} />
+            <Skeleton style={{ flex: 1, height: 64 }} />
+          </View>
+          <View className="flex-row gap-3">
+            <Skeleton style={{ flex: 1, height: 64 }} />
+            <Skeleton style={{ flex: 1, height: 64 }} />
+          </View>
+        </View>
       ) : state.error || !state.data ? (
         <SectionError onRetry={onRetry} />
       ) : (

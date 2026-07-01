@@ -2,7 +2,8 @@ import { Platform, Text, View } from 'react-native';
 import { money } from '@finby/core';
 import type { BudgetView } from '@finby/shared';
 import { CategoryAvatar } from '../category/category-avatar';
-import { SectionCard, SectionLoading, SectionError, SectionEmpty, type SectionProps } from './section-card';
+import { Skeleton } from '../ui/skeleton';
+import { SectionCard, SectionError, SectionEmpty, type SectionProps } from './section-card';
 
 const MONO = Platform.select({ ios: 'Menlo', default: 'monospace' });
 
@@ -43,7 +44,17 @@ export function BudgetList({ state, onRetry }: SectionProps<BudgetView[]>) {
   return (
     <SectionCard title="Budgets">
       {state.loading ? (
-        <SectionLoading />
+        <View className="gap-4" accessible accessibilityLabel="Loading">
+          {[0, 1, 2].map((i) => (
+            <View key={i} className="gap-1.5">
+              <View className="flex-row items-center gap-2">
+                <Skeleton style={{ width: 32, height: 32 }} />
+                <Skeleton style={{ flex: 1, height: 14 }} />
+              </View>
+              <Skeleton style={{ height: 8, borderRadius: 999 }} />
+            </View>
+          ))}
+        </View>
       ) : state.error || !state.data ? (
         <SectionError onRetry={onRetry} />
       ) : state.data.length === 0 ? (

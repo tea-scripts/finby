@@ -36,4 +36,10 @@ describe('InsightCard', () => {
     await render(<InsightCard state={{ data: flat, loading: false, error: null }} onRetry={() => {}} />);
     expect(screen.getByText(/not enough history/i)).toBeTruthy();
   });
+
+  it('shows a skeleton, not the spinner, while loading', async () => {
+    await render(<InsightCard state={{ data: null, loading: true, error: null }} onRetry={() => {}} />);
+    expect(screen.getAllByTestId('skeleton', { includeHiddenElements: true }).length).toBeGreaterThan(0);
+    expect(screen.queryByTestId('section-loading')).toBeNull();
+  });
 });

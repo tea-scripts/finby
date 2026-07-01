@@ -4,7 +4,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { money } from '@finby/core';
 import { ACCOUNT_TYPE_LABELS, type AccountType, type AccountView } from '@finby/shared';
 import { CurrencyFlag } from '../ui/currency-flag';
-import { SectionCard, SectionLoading, SectionError, SectionEmpty, type SectionProps } from './section-card';
+import { Skeleton } from '../ui/skeleton';
+import { SectionCard, SectionError, SectionEmpty, type SectionProps } from './section-card';
 
 const ACCENT = '#1d6ef5';
 
@@ -101,7 +102,9 @@ export function AccountCarousel({ state, onRetry }: SectionProps<AccountView[]>)
   return (
     <SectionCard title="Accounts">
       {state.loading ? (
-        <SectionLoading />
+        <View accessible accessibilityLabel="Loading">
+          <Skeleton style={{ height: 132, borderRadius: 16 }} />
+        </View>
       ) : state.error || !state.data ? (
         <SectionError onRetry={onRetry} />
       ) : accounts.length === 0 ? (

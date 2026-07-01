@@ -43,51 +43,85 @@ export function DashboardScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const tabBarSpace = useTabBarSpace();
 
-  const loadMonth = useCallback(
+  const loadSummary = useCallback(
     (m: MonthRef) => {
       if (!workspace) return Promise.resolve();
       const { from, to } = monthToRange(m);
       setSummary(LOADING);
-      setDonut(LOADING);
-      setInsight(LOADING);
-      setBudgets(LOADING);
-      return Promise.all([
-        api.dashboard
-          .getSummary(workspace.id, from, to)
-          .then((d) => setSummary({ data: d, loading: false, error: null }))
-          .catch((e) => setSummary({ data: null, loading: false, error: errMsg(e) })),
-        api.dashboard
-          .getByCategory(workspace.id, from, to, 'EXPENSE')
-          .then((d) => setDonut({ data: d, loading: false, error: null }))
-          .catch((e) => setDonut({ data: null, loading: false, error: errMsg(e) })),
-        api.dashboard
-          .getInsight(workspace.id, from, to)
-          .then((d) => setInsight({ data: d, loading: false, error: null }))
-          .catch((e) => setInsight({ data: null, loading: false, error: errMsg(e) })),
-        api.dashboard
-          .listBudgets(workspace.id, from)
-          .then((d) => setBudgets({ data: d, loading: false, error: null }))
-          .catch((e) => setBudgets({ data: null, loading: false, error: errMsg(e) })),
-      ]);
+      return api.dashboard
+        .getSummary(workspace.id, from, to)
+        .then((d) => setSummary({ data: d, loading: false, error: null }))
+        .catch((e) => setSummary({ data: null, loading: false, error: errMsg(e) }));
     },
     [workspace],
   );
 
-  const loadStatic = useCallback(() => {
+  const loadDonut = useCallback(
+    (m: MonthRef) => {
+      if (!workspace) return Promise.resolve();
+      const { from, to } = monthToRange(m);
+      setDonut(LOADING);
+      return api.dashboard
+        .getByCategory(workspace.id, from, to, 'EXPENSE')
+        .then((d) => setDonut({ data: d, loading: false, error: null }))
+        .catch((e) => setDonut({ data: null, loading: false, error: errMsg(e) }));
+    },
+    [workspace],
+  );
+
+  const loadInsight = useCallback(
+    (m: MonthRef) => {
+      if (!workspace) return Promise.resolve();
+      const { from, to } = monthToRange(m);
+      setInsight(LOADING);
+      return api.dashboard
+        .getInsight(workspace.id, from, to)
+        .then((d) => setInsight({ data: d, loading: false, error: null }))
+        .catch((e) => setInsight({ data: null, loading: false, error: errMsg(e) }));
+    },
+    [workspace],
+  );
+
+  const loadBudgets = useCallback(
+    (m: MonthRef) => {
+      if (!workspace) return Promise.resolve();
+      const { from } = monthToRange(m);
+      setBudgets(LOADING);
+      return api.dashboard
+        .listBudgets(workspace.id, from)
+        .then((d) => setBudgets({ data: d, loading: false, error: null }))
+        .catch((e) => setBudgets({ data: null, loading: false, error: errMsg(e) }));
+    },
+    [workspace],
+  );
+
+  const loadAccounts = useCallback(() => {
     if (!workspace) return Promise.resolve();
     setAccounts(LOADING);
-    setTrend(LOADING);
-    return Promise.all([
-      api.dashboard
-        .listAccounts(workspace.id)
-        .then((d) => setAccounts({ data: d, loading: false, error: null }))
-        .catch((e) => setAccounts({ data: null, loading: false, error: errMsg(e) })),
-      api.dashboard
-        .getTrend(workspace.id)
-        .then((d) => setTrend({ data: d, loading: false, error: null }))
-        .catch((e) => setTrend({ data: null, loading: false, error: errMsg(e) })),
-    ]);
+    return api.dashboard
+      .listAccounts(workspace.id)
+      .then((d) => setAccounts({ data: d, loading: false, error: null }))
+      .catch((e) => setAccounts({ data: null, loading: false, error: errMsg(e) }));
   }, [workspace]);
+
+  const loadTrend = useCallback(() => {
+    if (!workspace) return Promise.resolve();
+    setTrend(LOADING);
+    return api.dashboard
+      .getTrend(workspace.id)
+      .then((d) => setTrend({ data: d, loading: false, error: null }))
+      .catch((e) => setTrend({ data: null, loading: false, error: errMsg(e) }));
+  }, [workspace]);
+
+  const loadMonth = useCallback(
+    (m: MonthRef) => Promise.all([loadSummary(m), loadDonut(m), loadInsight(m), loadBudgets(m)]),
+    [loadSummary, loadDonut, loadInsight, loadBudgets],
+  );
+
+  const loadStatic = useCallback(
+    () => Promise.all([loadAccounts(), loadTrend()]),
+    [loadAccounts, loadTrend],
+  );
 
   const initialized = useRef(false);
   useEffect(() => {
@@ -119,12 +153,12 @@ export function DashboardScreen() {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#8da3c0" />}
       >
         <MonthSelector month={month} onChange={onSelectMonth} tier={tier} />
-        <MonthSummary state={summary} onRetry={() => loadMonth(month)} />
-        <AccountCarousel state={accounts} onRetry={loadStatic} />
-        <SpendingDonut state={donut} onRetry={() => loadMonth(month)} />
-        <BudgetList state={budgets} onRetry={() => loadMonth(month)} />
-        <SpendTrend state={trend} onRetry={loadStatic} />
-        <InsightCard state={insight} onRetry={() => loadMonth(month)} />
+        <MonthSummary state={summary} onRetry={() => loadSummary(month)} />
+        <AccountCarousel state={accounts} onRetry={loadAccounts} />
+        <SpendingDonut state={donut} onRetry={() => loadDonut(month)} />
+        <BudgetList state={budgets} onRetry={() => loadBudgets(month)} />
+        <SpendTrend state={trend} onRetry={loadTrend} />
+        <InsightCard state={insight} onRetry={() => loadInsight(month)} />
       </ScrollView>
     </SafeAreaView>
   );

@@ -40,4 +40,10 @@ describe('BudgetList', () => {
     await render(<BudgetList state={{ data: null, loading: false, error: 'x' }} onRetry={jest.fn()} />);
     expect(screen.getByTestId('section-retry')).toBeTruthy();
   });
+
+  it('shows a skeleton, not the spinner, while loading', async () => {
+    await render(<BudgetList state={{ data: null, loading: true, error: null }} onRetry={() => {}} />);
+    expect(screen.getAllByTestId('skeleton', { includeHiddenElements: true }).length).toBeGreaterThan(0);
+    expect(screen.queryByTestId('section-loading')).toBeNull();
+  });
 });
