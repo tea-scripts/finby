@@ -31,7 +31,7 @@ export function MonthSelector({
       <View className="flex-row items-center gap-1">
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="Previous month"
+          accessibilityLabel={prevBlocked ? 'Upgrade to see older months' : 'Previous month'}
           hitSlop={8}
           onPress={() => (prevBlocked ? setUpsell(true) : onChange(prev))}
         >

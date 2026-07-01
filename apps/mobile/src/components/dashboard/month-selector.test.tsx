@@ -25,7 +25,7 @@ describe('MonthSelector', () => {
     // A far-past month guarantees FREE is at/over the floor regardless of "now".
     const onChange = jest.fn();
     await render(<MonthSelector month={{ year: 2000, month: 0 }} onChange={onChange} tier="FREE" />);
-    await fireEvent.press(screen.getByLabelText('Previous month'));
+    await fireEvent.press(screen.getByLabelText('Upgrade to see older months'));
     expect(onChange).not.toHaveBeenCalled();
     expect(screen.getByText('PLANS_OPEN')).toBeTruthy();
   });
