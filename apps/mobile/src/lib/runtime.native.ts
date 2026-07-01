@@ -8,6 +8,8 @@ import { createLockCode } from '../adapters/lock-code';
 import { pinHasher } from '../adapters/crypto.native';
 import { createBiometric } from '../adapters/biometric';
 import { localAuth } from '../adapters/local-auth.native';
+import { createNotifications } from '../adapters/notifications';
+import { notificationsBinding } from '../adapters/notifications.native';
 import { secureStore } from '../adapters/secure-store.native';
 import { streamFetch } from '../adapters/stream.native';
 import { createMobileSession } from './session';
@@ -39,5 +41,10 @@ export const authStore = createAuthStore({
 /** Biometric app-lock (Face ID / Touch ID / passcode fallback). Read by the
  *  UnlockScreen behind the AppLockGate that wraps the (app) group. */
 export const biometric = createBiometric(localAuth);
+
+export const projectId =
+  (Constants.expoConfig?.extra as { eas?: { projectId?: string } } | undefined)?.eas?.projectId;
+
+export const notifications = createNotifications(notificationsBinding);
 
 export const api = createMobileApi(session, apiBase);
