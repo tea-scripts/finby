@@ -35,4 +35,27 @@ describe('createDashboardApi', () => {
     await expect(api.listAccounts('ws1')).resolves.toEqual([{ id: 'a1' }]);
     expect(authed).toHaveBeenCalledWith('/workspaces/ws1/accounts');
   });
+
+  it('getByCategory builds the range+type query and returns the breakdown', async () => {
+    const authed = mockAuthed({ breakdown: [{ category: { id: 'c1' } }], currency: 'USD' });
+    const api = createDashboardApi(authed);
+    await api.getByCategory('ws1', '2026-07-01', '2026-07-31', 'EXPENSE');
+    expect(authed).toHaveBeenCalledWith(
+      '/workspaces/ws1/analytics/by-category?from=2026-07-01&to=2026-07-31&type=EXPENSE',
+    );
+  });
+
+  it('getTrend defaults months to 6', async () => {
+    const authed = mockAuthed({ trend: [], currency: 'USD' });
+    const api = createDashboardApi(authed);
+    await api.getTrend('ws1');
+    expect(authed).toHaveBeenCalledWith('/workspaces/ws1/analytics/trend?months=6');
+  });
+
+  it('getInsight builds the range query', async () => {
+    const authed = mockAuthed({ direction: 'flat' });
+    const api = createDashboardApi(authed);
+    await api.getInsight('ws1', '2026-07-01', '2026-07-15');
+    expect(authed).toHaveBeenCalledWith('/workspaces/ws1/analytics/insight?from=2026-07-01&to=2026-07-15');
+  });
 });

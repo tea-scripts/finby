@@ -5,11 +5,12 @@ import { BudgetsModule } from '../budgets/budgets.module';
 import { AnalyticsController } from './analytics.controller';
 import { AnalyticsService } from './analytics.service';
 import { FinancialIntelligenceService } from './financial-intelligence.service';
+import { InsightService } from './insight.service';
 
 @Module({
   imports: [FxModule, PortfolioModule, BudgetsModule],
   controllers: [AnalyticsController],
-  providers: [AnalyticsService, FinancialIntelligenceService],
-  exports: [AnalyticsService, FinancialIntelligenceService],
+  providers: [AnalyticsService, FinancialIntelligenceService, InsightService],
+  exports: [AnalyticsService, FinancialIntelligenceService, InsightService],
 })
 export class AnalyticsModule {}

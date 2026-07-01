@@ -65,6 +65,26 @@ describe('AnalyticsService.byCategory', () => {
     expect(groceries?.percent).toBeCloseTo(70, 0); // 420 / 600
     expect(groceries?.transactionCount).toBe(12);
   });
+
+  it('includes each category icon and color', async () => {
+    const groupBy = jest.fn().mockResolvedValue([
+      { categoryId: 'c1', _sum: { amountBase: dec('100') }, _count: 2 },
+    ]);
+    const findMany = jest.fn().mockResolvedValue([
+      { id: 'c1', name: 'Groceries', icon: 'cart', color: '#1A7A4A' },
+    ]);
+    const prisma = { transaction: { groupBy }, category: { findMany } };
+    const service = new AnalyticsService(prisma as unknown as PrismaService, {} as unknown as FxService, {} as unknown as PortfolioService);
+
+    const result = await service.byCategory('w1', 'USD', '2026-07-01', '2026-07-31', 'EXPENSE');
+
+    expect(result.breakdown[0]?.category).toEqual({
+      id: 'c1',
+      name: 'Groceries',
+      icon: 'cart',
+      color: '#1A7A4A',
+    });
+  });
 });
 
 describe('AnalyticsService.trend', () => {

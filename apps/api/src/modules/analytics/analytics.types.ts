@@ -9,7 +9,7 @@ export interface SummaryResult {
 }
 
 export interface CategoryBreakdownItem {
-  category: { id: string; name: string };
+  category: { id: string; name: string; icon: string | null; color: string | null };
   total: string;
   percent: number;
   transactionCount: number;

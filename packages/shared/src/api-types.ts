@@ -148,6 +148,44 @@ export interface SummaryResult {
   transactionCount: number;
 }
 
+/** GET analytics/by-category */
+export interface CategoryBreakdownItem {
+  category: { id: string; name: string; icon: string | null; color: string | null };
+  total: string;
+  percent: number;
+  transactionCount: number;
+}
+export interface CategoryBreakdownResult {
+  breakdown: CategoryBreakdownItem[];
+  currency: string;
+}
+
+/** GET analytics/trend */
+export interface TrendPoint {
+  month: string; // YYYY-MM
+  income: string;
+  expenses: string;
+  savings: string;
+}
+export interface TrendResult {
+  trend: TrendPoint[];
+  currency: string;
+}
+
+/** GET analytics/insight — structured signal + a plain message (a11y/fallback).
+ *  The client composes the styled sentence from the structured fields. */
+export interface InsightResult {
+  period: { from: string; to: string };
+  currency: string;
+  direction: 'less' | 'more' | 'flat'; // current spend vs last month
+  spendDeltaPercent: number; // magnitude >= 0; direction carries the sign
+  projectionApplies: boolean; // true only for the in-progress current month
+  projectedSpend: string | null;
+  projectedSavings: string | null;
+  comparedTo: { from: string; to: string };
+  message: string;
+}
+
 /** GET budgets → { budgets: BudgetView[] } */
 export interface BudgetView {
   id: string;
