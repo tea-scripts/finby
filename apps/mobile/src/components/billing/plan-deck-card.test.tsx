@@ -23,11 +23,13 @@ describe('PlanDeckCard', () => {
     expect(screen.queryByText('Upgrade to Free')).toBeNull();
   });
 
-  it('the current tier shows a disabled "Current plan" marker', async () => {
+  it('the current tier shows a disabled "Current plan" marker (pill + CTA) and a note', async () => {
     const onSelect = jest.fn();
     await render(<PlanDeckCard tier="PRO" currentTier="PRO" focused onSelect={onSelect} />);
-    expect(screen.getByText('Current plan')).toBeTruthy();
-    await fireEvent.press(screen.getByText('Current plan'));
+    // "Current plan" now appears twice: the header pill and the disabled CTA label.
+    expect(screen.getAllByText('Current plan').length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByText("You're on this plan")).toBeTruthy();
+    await fireEvent.press(screen.getByTestId('deck-cta'));
     expect(onSelect).not.toHaveBeenCalled();
   });
 });

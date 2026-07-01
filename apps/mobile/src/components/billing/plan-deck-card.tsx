@@ -32,10 +32,15 @@ export function PlanDeckCard({
   return (
     <View
       className={`gap-2 rounded-2xl border p-5 ${focused ? 'border-accent bg-surface-2' : 'border-line bg-surface'}`}
-      style={{ opacity: focused ? 1 : 0.5 }}
+      style={focused ? undefined : { opacity: 0.5 }}
     >
       <View className="flex-row items-center justify-between">
         <Text className="text-base font-semibold text-ink">{TIER_NAME[tier]}</Text>
+        {isCurrent && (
+          <View style={{ backgroundColor: 'rgba(29,110,245,0.15)' }} className="rounded-full px-2 py-0.5">
+            <Text className="text-[11px] font-medium text-accent">Current plan</Text>
+          </View>
+        )}
       </View>
       <Text className="text-2xl font-semibold text-ink">{price}</Text>
       <View className="mb-1">
@@ -43,9 +48,10 @@ export function PlanDeckCard({
           <PlanFeatureRow key={f.label} feature={f} />
         ))}
       </View>
-      <Button variant={isCurrent ? 'ghost' : 'primary'} disabled={isCurrent} onPress={onSelect}>
+      <Button testID="deck-cta" variant={isCurrent ? 'ghost' : 'primary'} disabled={isCurrent} onPress={onSelect}>
         {ctaLabel}
       </Button>
+      {isCurrent && <Text className="text-center text-xs text-muted">You&apos;re on this plan</Text>}
     </View>
   );
 }
