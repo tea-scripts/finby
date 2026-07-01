@@ -18,10 +18,10 @@ export function PlanFeatureRow({ feature }: { feature: PlanFeature }) {
         </Text>
         {feature.badge ? (
           <View
-            style={{ backgroundColor: 'rgba(245,165,36,0.15)' }}
+            style={{ backgroundColor: 'rgba(245,158,11,0.15)' }}
             className="mt-0.5 self-start rounded-full px-1.5 py-0.5"
           >
-            <Text style={{ color: '#f5a524' }} className="text-[10px] font-semibold uppercase">
+            <Text style={{ color: '#fcd34d' }} className="text-[10px] font-semibold uppercase">
               {feature.badge}
             </Text>
           </View>
