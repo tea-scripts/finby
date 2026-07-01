@@ -37,6 +37,10 @@ export interface AuthState {
   verifyPin(pin: string): Promise<boolean>;
   /** Update the cached user's streak counters (after a repair) so the badge reflects it. */
   setStreak(currentStreak: number, longestStreak: number): void;
+  /** Merge a patch into the cached user and persist the identity snapshot. */
+  setUser(patch: Partial<ApiUser>): void;
+  /** Merge a patch into the cached workspace and persist the identity snapshot. */
+  setWorkspace(patch: Partial<ApiWorkspace>): void;
 }
 
 /** Mobile auth store: identity + status, plus the cold-start restore that the
@@ -52,7 +56,7 @@ export function createAuthStore(deps: {
 }): StoreApi<AuthState> {
   const { session, identityStore, onboardingFlag, lockPref, lockCode } = deps;
 
-  return createStore<AuthState>((set) => ({
+  return createStore<AuthState>((set, get) => ({
     user: null,
     workspace: null,
     status: 'loading',
@@ -139,5 +143,17 @@ export function createAuthStore(deps: {
 
     setStreak: (currentStreak, longestStreak) =>
       set((s) => (s.user ? { user: { ...s.user, currentStreak, longestStreak } } : {})),
+
+    setUser: (patch) => {
+      set((s) => (s.user ? { user: { ...s.user, ...patch } } : {}));
+      const { user, workspace } = get();
+      if (user && workspace) void identityStore.save({ user, workspace });
+    },
+
+    setWorkspace: (patch) => {
+      set((s) => (s.workspace ? { workspace: { ...s.workspace, ...patch } } : {}));
+      const { user, workspace } = get();
+      if (user && workspace) void identityStore.save({ user, workspace });
+    },
   }));
 }
