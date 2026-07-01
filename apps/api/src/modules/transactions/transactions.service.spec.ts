@@ -239,12 +239,16 @@ describe('TransactionsService.update', () => {
   it('moves budget spend off the old category and onto the new one when re-categorized', async () => {
     const prisma = buildPrisma();
     prisma.transaction.findFirst.mockResolvedValue(txRow({ categoryId: 'c-old' }));
-    prisma.transaction.update.mockResolvedValue(txRow({ categoryId: 'c-new', category: { id: 'c-new', name: 'Dining' } }));
+    prisma.transaction.update.mockResolvedValue(
+      txRow({ categoryId: 'c-new', category: { id: 'c-new', name: 'Dining', icon: 'utensils', color: '#E2683C' } }),
+    );
     const fx = buildFx();
     const budgets = buildBudgets();
     const service = new TransactionsService(prisma as unknown as PrismaService, fx as unknown as FxService, budgets as unknown as BudgetsService, buildAlerts() as unknown as AlertsService, buildStreaks() as unknown as StreaksService);
 
-    await service.update('w1', 't1', { categoryId: 'c-new' } as never);
+    const result = await service.update('w1', 't1', { categoryId: 'c-new' } as never);
+
+    expect(result.category).toEqual({ id: 'c-new', name: 'Dining', icon: 'utensils', color: '#E2683C' });
 
     // reverse old category (sign -1) then apply new category (sign +1)
     expect(budgets.applyTransactionSpend).toHaveBeenNthCalledWith(

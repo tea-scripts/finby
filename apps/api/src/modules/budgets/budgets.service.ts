@@ -206,7 +206,12 @@ export class BudgetsService {
   private toView(budget: BudgetWithCategory): BudgetView {
     return {
       id: budget.id,
-      category: { id: budget.category.id, name: budget.category.name },
+      category: {
+        id: budget.category.id,
+        name: budget.category.name,
+        icon: budget.category.icon,
+        color: budget.category.color,
+      },
       amountLimit: budget.amountLimit.toString(),
       amountSpent: budget.amountSpent.toString(),
       currency: budget.currency,

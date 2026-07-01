@@ -1,6 +1,7 @@
 import { Platform, Text, View } from 'react-native';
 import { money } from '@finby/core';
 import type { BudgetView } from '@finby/shared';
+import { CategoryAvatar } from '../category/category-avatar';
 import { SectionCard, SectionLoading, SectionError, SectionEmpty, type SectionProps } from './section-card';
 
 const MONO = Platform.select({ ios: 'Menlo', default: 'monospace' });
@@ -16,8 +17,11 @@ function BudgetRow({ b }: { b: BudgetView }) {
   const pct = Math.round(b.utilizationPercent);
   return (
     <View className="gap-1.5">
-      <View className="flex-row items-baseline justify-between gap-2">
-        <Text className="text-sm text-ink">{b.category.name}</Text>
+      <View className="flex-row items-center gap-2">
+        <CategoryAvatar category={b.category} size="sm" />
+        <Text className="min-w-0 flex-1 text-sm text-ink" numberOfLines={1}>
+          {b.category.name}
+        </Text>
         <Text className="text-xs text-muted" style={{ fontFamily: MONO }}>
           {money(b.amountSpent, b.currency)} / {money(b.amountLimit, b.currency)}
         </Text>

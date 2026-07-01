@@ -2,7 +2,7 @@ export type BudgetPeriodP3 = 'MONTHLY' | 'WEEKLY' | 'QUARTERLY' | 'ANNUAL';
 
 export interface BudgetView {
   id: string;
-  category: { id: string; name: string };
+  category: { id: string; name: string; icon: string | null; color: string | null };
   amountLimit: string;
   amountSpent: string;
   currency: string;

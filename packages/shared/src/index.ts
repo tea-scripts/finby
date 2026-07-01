@@ -11,3 +11,4 @@ export * from './streak-week';
 export * from './gamification-view';
 export * from './relative-time';
 export * from './plan-features';
+export * from './category-visuals';

@@ -5,7 +5,7 @@ import { TransactionRow } from './transaction-row';
 const tx: Transaction = {
   id: 't1', type: 'EXPENSE', status: 'CONFIRMED', amountOriginal: '11.08', currencyOriginal: 'USD',
   amountBase: '11.08', currencyBase: 'USD', fxRateUsed: '1', merchant: 'Pizza Hut', description: null,
-  category: { id: 'c1', name: 'Dining' }, account: null, transactionDate: '2026-06-24T10:00:00.000Z',
+  category: { id: 'c1', name: 'Dining', icon: null, color: null }, account: null, transactionDate: '2026-06-24T10:00:00.000Z',
   tags: ['weekly'], aiConfidence: null, loggedByUserId: 'u1', createdAt: '2026-06-24T10:00:00.000Z',
 };
 
@@ -16,6 +16,7 @@ describe('TransactionRow', () => {
     expect(screen.getByText('Pizza Hut')).toBeTruthy();
     expect(screen.getByText('Dining')).toBeTruthy();
     expect(screen.getByText('−$11.08')).toBeTruthy();
+    expect(screen.getByText('🍽️', { includeHiddenElements: true })).toBeTruthy(); // 'Dining' derives the dining emoji
     fireEvent.press(screen.getByText('Pizza Hut'));
     expect(onPress).toHaveBeenCalledTimes(1);
   });

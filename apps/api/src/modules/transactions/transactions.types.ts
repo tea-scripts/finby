@@ -43,7 +43,7 @@ export interface TransactionView {
   fxRateUsed: string;
   merchant: string | null;
   description: string | null;
-  category: { id: string; name: string } | null;
+  category: { id: string; name: string; icon: string | null; color: string | null } | null;
   account: { id: string; name: string } | null;
   transactionDate: string;
   tags: string[];
