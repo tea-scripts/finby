@@ -24,7 +24,7 @@ describe('CategoryAvatar', () => {
   });
 
   it('renders an Ionicons glyph for a known icon key', async () => {
-    await render(<CategoryAvatar category={{ name: 'Groceries', icon: 'cart' }} />);
-    expect(screen.getByText('cart', HIDDEN)).toBeTruthy();
+    await render(<CategoryAvatar category={{ name: 'Shopping', icon: 'bag' }} />);
+    expect(screen.getByText('bag-handle', HIDDEN)).toBeTruthy();
   });
 });
