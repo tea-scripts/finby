@@ -1,7 +1,7 @@
 import { Platform, Pressable, Text, View } from 'react-native';
 import { money } from '@finby/core';
 import type { Transaction } from '@finby/shared';
-import { CategoryAvatar } from '../category/category-avatar';
+import { TransactionAvatar } from '../category/transaction-avatar';
 
 const MONO = Platform.select({ ios: 'Menlo', default: 'monospace' });
 
@@ -25,9 +25,7 @@ export function TransactionRow({ tx, onPress }: { tx: Transaction; onPress: () =
       accessibilityRole="button"
       className="flex-row items-center gap-3 px-1 py-3"
     >
-      <CategoryAvatar
-        category={{ name: categoryName ?? title, icon: tx.category?.icon, color: tx.category?.color }}
-      />
+      <TransactionAvatar tx={tx} />
       <View className="min-w-0 flex-1">
         <Text className="text-sm text-ink" numberOfLines={1}>
           {title}
