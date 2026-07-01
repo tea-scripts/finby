@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { SUPPORT_CATEGORIES, SUPPORT_CATEGORY_LABELS, type SupportCategory, type SupportTicketView } from '@finby/shared';
+import { SUPPORT_CATEGORIES, SUPPORT_CATEGORY_LABELS, SUPPORT_STATUS_LABELS, type SupportCategory, type SupportTicketView } from '@finby/shared';
 import { ApiError } from '@finby/core';
 import { SettingsHeader } from '../../components/settings/settings-header';
 import { Field } from '../../components/ui/field';
@@ -83,7 +83,7 @@ export function SupportScreen() {
                   <Text className="text-xs text-faint">{SUPPORT_CATEGORY_LABELS[t.category]}</Text>
                 </View>
                 <View className={`rounded-full px-2.5 py-0.5 ${STATUS_BG[t.status]}`}>
-                  <Text className={`text-xs font-semibold ${STATUS_TEXT[t.status]}`}>{t.status.replace('_', ' ')}</Text>
+                  <Text className={`text-xs font-semibold ${STATUS_TEXT[t.status]}`}>{SUPPORT_STATUS_LABELS[t.status]}</Text>
                 </View>
               </View>
             ))}

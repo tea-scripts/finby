@@ -1,4 +1,4 @@
-import { render, screen, fireEvent, waitFor } from '@testing-library/react-native';
+import { render, screen, waitFor } from '@testing-library/react-native';
 
 jest.mock('../../lib/use-auth-store', () => ({ useAuthStore: (s: (x: unknown) => unknown) => s({ workspace: { id: 'w1', baseCurrency: 'USD', preferredCurrencies: ['USD'] } }) }));
 jest.mock('../../lib/use-workspace-role', () => ({ useWorkspaceRole: () => 'OWNER' }));
