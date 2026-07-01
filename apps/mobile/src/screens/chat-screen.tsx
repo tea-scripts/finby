@@ -269,6 +269,8 @@ export function ChatScreen() {
       <PlanCarouselSheet
         open={plansOpen}
         onClose={() => setPlansOpen(false)}
+        // currentTier from cached workspace.tier (no fetch in chat) — only affects the
+        // carousel's Upgrade/Switch verb + "Current plan" marker; the 429 case is ~always FREE.
         currentTier={workspace?.tier ?? 'FREE'}
       />
     </SafeAreaView>
