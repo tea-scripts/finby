@@ -1,4 +1,5 @@
 import Constants from 'expo-constants';
+import { Platform } from 'react-native';
 import { resolveApiBase } from '../config';
 import { createTokenStore } from '../adapters/token-store';
 import { createIdentityStore } from '../adapters/identity-store';
@@ -15,6 +16,8 @@ import { streamFetch } from '../adapters/stream.native';
 import { createMobileSession } from './session';
 import { createAuthStore } from './auth-store';
 import { createMobileApi } from './api';
+import { createPush } from './push';
+import { pushStore } from './push-store';
 
 const apiBase = resolveApiBase({
   envUrl: process.env.EXPO_PUBLIC_API_URL,
@@ -48,3 +51,11 @@ export const projectId =
 export const notifications = createNotifications(notificationsBinding);
 
 export const api = createMobileApi(session, apiBase);
+
+export const push = createPush({
+  notifications,
+  api: api.push,
+  store: pushStore,
+  projectId,
+  platform: Platform.OS === 'android' ? 'android' : 'ios',
+});
