@@ -25,9 +25,10 @@ describe('MonthSummary', () => {
     expect(screen.getByText('76%')).toBeTruthy();
   });
 
-  it('renders loading', async () => {
-    await render(<MonthSummary state={{ data: null, loading: true, error: null }} onRetry={jest.fn()} />);
-    expect(screen.getByTestId('section-loading')).toBeTruthy();
+  it('shows a skeleton, not the spinner, while loading', async () => {
+    await render(<MonthSummary state={{ data: null, loading: true, error: null }} onRetry={() => {}} />);
+    expect(screen.getAllByTestId('skeleton', { includeHiddenElements: true }).length).toBeGreaterThan(0);
+    expect(screen.queryByTestId('section-loading')).toBeNull();
   });
 
   it('renders error with retry', async () => {

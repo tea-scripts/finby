@@ -1,10 +1,18 @@
 import { Text, View } from 'react-native';
 import { money } from '@finby/core';
 import type { InsightResult } from '@finby/shared';
-import { SectionLoading, SectionError, type SectionProps } from './section-card';
+import { Skeleton } from '../ui/skeleton';
+import { SectionError, type SectionProps } from './section-card';
 
 export function InsightCard({ state, onRetry }: SectionProps<InsightResult>) {
-  if (state.loading) return <SectionLoading />;
+  if (state.loading) {
+    return (
+      <View className="gap-2 rounded-2xl border border-line bg-surface p-4" accessible accessibilityLabel="Loading">
+        <Skeleton style={{ height: 14, width: '90%' }} />
+        <Skeleton style={{ height: 14, width: '60%' }} />
+      </View>
+    );
+  }
   if (state.error || !state.data) return <SectionError onRetry={onRetry} />;
   const d = state.data;
 
