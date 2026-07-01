@@ -1,7 +1,8 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as webpush from 'web-push';
-import type { PushSubscription } from '@prisma/client';
+import { Expo, type ExpoPushMessage, type ExpoPushTicket } from 'expo-server-sdk';
+import type { PushSubscription, MobilePushDevice } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import type { Env } from '../../config/env.schema';
 import type { SubscribeInput } from './dto/push.schemas';
@@ -17,6 +18,7 @@ export class PushService {
   private readonly logger = new Logger(PushService.name);
   private readonly publicKey: string | null;
   private readonly configured: boolean;
+  private readonly expo: Expo;
 
   constructor(
     private readonly prisma: PrismaService,
@@ -31,8 +33,11 @@ export class PushService {
     if (this.configured) {
       webpush.setVapidDetails(subject, publicKey as string, privateKey as string);
     } else {
-      this.logger.warn('VAPID keys not set — push notifications are disabled.');
+      this.logger.warn('VAPID keys not set — web push is disabled (Expo push still delivers).');
     }
+
+    const expoAccessToken = config.get('EXPO_ACCESS_TOKEN', { infer: true });
+    this.expo = new Expo(expoAccessToken ? { accessToken: expoAccessToken } : {});
   }
 
   /** The VAPID public key the browser needs to create a subscription. */
@@ -59,23 +64,40 @@ export class PushService {
     await this.prisma.pushSubscription.deleteMany({ where: { endpoint, workspaceId, userId } });
   }
 
-  /** Fan a notification out to a member's devices in one workspace. */
-  async sendToUser(workspaceId: string, userId: string, payload: PushPayload): Promise<void> {
-    if (!this.configured) return;
+  /** Store (or refresh) a mobile device's Expo push token, keyed by the token. */
+  async registerExpoDevice(workspaceId: string, userId: string, token: string, platform: string): Promise<void> {
+    await this.prisma.mobilePushDevice.upsert({
+      where: { expoPushToken: token },
+      create: { workspaceId, userId, expoPushToken: token, platform },
+      update: { workspaceId, userId, platform },
+    });
+  }
 
-    const subs = await this.prisma.pushSubscription.findMany({ where: { workspaceId, userId } });
-    if (subs.length === 0) return;
-    await this.deliver(subs, payload);
+  async unregisterExpoDevice(token: string): Promise<void> {
+    await this.prisma.mobilePushDevice.deleteMany({ where: { expoPushToken: token } });
+  }
+
+  /** Fan a notification out to a member's devices in one workspace (both transports). */
+  async sendToUser(workspaceId: string, userId: string, payload: PushPayload): Promise<void> {
+    const [subs, devices] = await Promise.all([
+      this.configured
+        ? this.prisma.pushSubscription.findMany({ where: { workspaceId, userId } })
+        : Promise.resolve([] as PushSubscription[]),
+      this.prisma.mobilePushDevice.findMany({ where: { workspaceId, userId } }),
+    ]);
+    await Promise.all([this.deliver(subs, payload), this.deliverExpo(devices, payload)]);
   }
 
   /** Fan a notification out to every device a user has, across all workspaces.
    *  Used for user-level notifications (e.g. the daily reminder). */
   async sendToUserDevices(userId: string, payload: PushPayload): Promise<void> {
-    if (!this.configured) return;
-
-    const subs = await this.prisma.pushSubscription.findMany({ where: { userId } });
-    if (subs.length === 0) return;
-    await this.deliver(subs, payload);
+    const [subs, devices] = await Promise.all([
+      this.configured
+        ? this.prisma.pushSubscription.findMany({ where: { userId } })
+        : Promise.resolve([] as PushSubscription[]),
+      this.prisma.mobilePushDevice.findMany({ where: { userId } }),
+    ]);
+    await Promise.all([this.deliver(subs, payload), this.deliverExpo(devices, payload)]);
   }
 
   /** Send to a set of subscriptions; prunes dead (404/410) endpoints. */
@@ -83,6 +105,8 @@ export class PushService {
     subs: PushSubscription[],
     payload: PushPayload,
   ): Promise<void> {
+    if (subs.length === 0) return;
+
     const body = JSON.stringify(payload);
     await Promise.allSettled(
       subs.map(async (sub) => {
@@ -104,5 +128,35 @@ export class PushService {
         }
       }),
     );
+  }
+
+  /** Send to Expo devices via the Expo push service; prunes DeviceNotRegistered tokens. */
+  private async deliverExpo(devices: MobilePushDevice[], payload: PushPayload): Promise<void> {
+    const messages: ExpoPushMessage[] = devices
+      .filter((d) => Expo.isExpoPushToken(d.expoPushToken))
+      .map((d) => ({
+        to: d.expoPushToken,
+        title: payload.title,
+        body: payload.body,
+        sound: 'default',
+        data: payload.url ? { url: payload.url } : {},
+      }));
+    if (messages.length === 0) return;
+
+    for (const chunk of this.expo.chunkPushNotifications(messages)) {
+      try {
+        const tickets: ExpoPushTicket[] = await this.expo.sendPushNotificationsAsync(chunk);
+        tickets.forEach((ticket, i) => {
+          if (ticket.status === 'error' && ticket.details?.error === 'DeviceNotRegistered') {
+            const token = chunk[i]?.to as string;
+            void this.prisma.mobilePushDevice
+              .deleteMany({ where: { expoPushToken: token } })
+              .catch(() => undefined);
+          }
+        });
+      } catch {
+        this.logger.warn('Expo push send failed for a chunk.');
+      }
+    }
   }
 }

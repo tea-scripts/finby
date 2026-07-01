@@ -9,6 +9,18 @@ jest.mock('web-push', () => ({
   sendNotification: jest.fn(),
 }));
 
+jest.mock('expo-server-sdk', () => {
+  const sendPushNotificationsAsync = jest.fn();
+  class Expo {
+    static isExpoPushToken = (t: string) => typeof t === 'string' && t.startsWith('ExponentPushToken');
+    chunkPushNotifications = (m: unknown[]) => [m];
+    sendPushNotificationsAsync = sendPushNotificationsAsync;
+  }
+  return { Expo, __sendPushNotificationsAsync: sendPushNotificationsAsync };
+});
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const expoSend = require('expo-server-sdk').__sendPushNotificationsAsync as jest.Mock;
+
 const sendNotification = webpush.sendNotification as jest.Mock;
 
 function makeConfig(values: Record<string, string | undefined>): ConfigService<Env, true> {
@@ -28,7 +40,8 @@ beforeEach(() => jest.clearAllMocks());
 describe('PushService (unconfigured)', () => {
   it('reports no public key and skips sending', async () => {
     const findMany = jest.fn();
-    const prisma = { pushSubscription: { findMany } };
+    const devFind = jest.fn().mockResolvedValue([]);
+    const prisma = { pushSubscription: { findMany }, mobilePushDevice: { findMany: devFind } };
     const service = new PushService(prisma as unknown as PrismaService, makeConfig({}));
 
     expect(service.getPublicKey()).toBeNull();
@@ -65,7 +78,8 @@ describe('PushService (configured)', () => {
     ];
     const findMany = jest.fn().mockResolvedValue(subs);
     const del = jest.fn().mockResolvedValue({});
-    const prisma = { pushSubscription: { findMany, delete: del } };
+    const devFind = jest.fn().mockResolvedValue([]);
+    const prisma = { pushSubscription: { findMany, delete: del }, mobilePushDevice: { findMany: devFind } };
 
     sendNotification
       .mockResolvedValueOnce(undefined)
@@ -83,7 +97,8 @@ describe('PushService (configured)', () => {
       { endpoint: 'https://push.example/d1', p256dh: 'a', auth: 'b' },
       { endpoint: 'https://push.example/d2', p256dh: 'c', auth: 'd' },
     ]);
-    const prisma = { pushSubscription: { findMany } };
+    const devFind = jest.fn().mockResolvedValue([]);
+    const prisma = { pushSubscription: { findMany }, mobilePushDevice: { findMany: devFind } };
     const service = new PushService(prisma as unknown as PrismaService, makeConfig(CONFIGURED));
 
     await service.sendToUserDevices('u1', { title: 'Finby', body: 'hi', url: '/chat' });
@@ -99,7 +114,8 @@ describe('PushService (configured)', () => {
     ];
     const findMany = jest.fn().mockResolvedValue(subs);
     const del = jest.fn().mockResolvedValue({});
-    const prisma = { pushSubscription: { findMany, delete: del } };
+    const devFind = jest.fn().mockResolvedValue([]);
+    const prisma = { pushSubscription: { findMany, delete: del }, mobilePushDevice: { findMany: devFind } };
 
     sendNotification
       .mockResolvedValueOnce(undefined)
@@ -114,21 +130,70 @@ describe('PushService (configured)', () => {
 
   it('sendToUserDevices no-ops sends when the user has no subscriptions', async () => {
     const findMany = jest.fn().mockResolvedValue([]);
-    const prisma = { pushSubscription: { findMany } };
+    const devFind = jest.fn().mockResolvedValue([]);
+    const prisma = { pushSubscription: { findMany }, mobilePushDevice: { findMany: devFind } };
     const service = new PushService(prisma as unknown as PrismaService, makeConfig(CONFIGURED));
 
     await service.sendToUserDevices('u1', { title: 'Daily', body: 'Check in' });
 
     expect(sendNotification).not.toHaveBeenCalled();
   });
+
+  it('registerExpoDevice upserts by token', async () => {
+    const upsert = jest.fn().mockResolvedValue({});
+    const prisma = { mobilePushDevice: { upsert } };
+    const service = new PushService(prisma as unknown as PrismaService, makeConfig(CONFIGURED));
+    await service.registerExpoDevice('w1', 'u1', 'ExponentPushToken[abc]', 'ios');
+    expect(upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { expoPushToken: 'ExponentPushToken[abc]' },
+        create: expect.objectContaining({ workspaceId: 'w1', userId: 'u1', platform: 'ios' }),
+      }),
+    );
+  });
+
+  it('sendToUser delivers to Expo devices and prunes DeviceNotRegistered', async () => {
+    const subFind = jest.fn().mockResolvedValue([]); // no web-push subs
+    const devFind = jest.fn().mockResolvedValue([
+      { expoPushToken: 'ExponentPushToken[live]', platform: 'ios' },
+      { expoPushToken: 'ExponentPushToken[dead]', platform: 'android' },
+    ]);
+    const devDelete = jest.fn().mockResolvedValue({});
+    const prisma = {
+      pushSubscription: { findMany: subFind },
+      mobilePushDevice: { findMany: devFind, deleteMany: devDelete },
+    };
+    expoSend.mockResolvedValueOnce([
+      { status: 'ok', id: 'x' },
+      { status: 'error', message: 'gone', details: { error: 'DeviceNotRegistered' } },
+    ]);
+    const service = new PushService(prisma as unknown as PrismaService, makeConfig(CONFIGURED));
+    await service.sendToUser('w1', 'u1', { title: 'Budget', body: 'over', url: '/budgets' });
+    expect(expoSend).toHaveBeenCalledTimes(1);
+    expect(devDelete).toHaveBeenCalledWith({ where: { expoPushToken: 'ExponentPushToken[dead]' } });
+  });
 });
 
 describe('PushService (sendToUserDevices unconfigured)', () => {
   it('sendToUserDevices no-ops when unconfigured', async () => {
     const findMany = jest.fn();
-    const prisma = { pushSubscription: { findMany } };
+    const devFind = jest.fn().mockResolvedValue([]);
+    const prisma = { pushSubscription: { findMany }, mobilePushDevice: { findMany: devFind } };
     const service = new PushService(prisma as unknown as PrismaService, makeConfig({}));
     await service.sendToUserDevices('u1', { title: 'x', body: 'y' });
     expect(findMany).not.toHaveBeenCalled();
+  });
+
+  it('delivers to Expo even when VAPID is unconfigured', async () => {
+    const devFind = jest.fn().mockResolvedValue([{ expoPushToken: 'ExponentPushToken[a]', platform: 'ios' }]);
+    const prisma = {
+      pushSubscription: { findMany: jest.fn() },
+      mobilePushDevice: { findMany: devFind, deleteMany: jest.fn() },
+    };
+    expoSend.mockResolvedValueOnce([{ status: 'ok', id: 'x' }]);
+    const service = new PushService(prisma as unknown as PrismaService, makeConfig({})); // no VAPID
+    await service.sendToUserDevices('u1', { title: 'Daily', body: 'Check in' });
+    expect(devFind).toHaveBeenCalledWith({ where: { userId: 'u1' } });
+    expect(expoSend).toHaveBeenCalledTimes(1);
   });
 });
