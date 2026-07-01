@@ -277,4 +277,48 @@ describe('createAuthStore', () => {
     store.getState().setStreak(5, 5);
     expect(store.getState().user).toBeNull();
   });
+
+  it('setUser merges a patch and persists identity', async () => {
+    const identityStore = fakeIdentityStore();
+    const store = makeStore({ identityStore });
+    await store.getState().login('e@x.com', 'pw');
+
+    store.getState().setUser({ displayName: 'New' } as never);
+
+    expect(store.getState().user).toMatchObject({ id: 'u1', displayName: 'New' });
+    expect(identityStore.save).toHaveBeenLastCalledWith({
+      user: expect.objectContaining({ displayName: 'New' }),
+      workspace: expect.objectContaining({ id: 'w1' }),
+    });
+  });
+
+  it('setUser is a no-op when there is no user', () => {
+    const identityStore = fakeIdentityStore();
+    const store = makeStore({ identityStore });
+    store.getState().setUser({ displayName: 'New' } as never);
+    expect(store.getState().user).toBeNull();
+    expect(identityStore.save).not.toHaveBeenCalled();
+  });
+
+  it('setWorkspace merges a patch (base + preferred currencies) and persists identity', async () => {
+    const identityStore = fakeIdentityStore();
+    const store = makeStore({ identityStore });
+    await store.getState().login('e@x.com', 'pw');
+
+    store.getState().setWorkspace({ baseCurrency: 'EUR', preferredCurrencies: ['EUR', 'USD'] } as never);
+
+    expect(store.getState().workspace).toMatchObject({ baseCurrency: 'EUR', preferredCurrencies: ['EUR', 'USD'] });
+    expect(identityStore.save).toHaveBeenLastCalledWith({
+      user: expect.objectContaining({ id: 'u1' }),
+      workspace: expect.objectContaining({ baseCurrency: 'EUR' }),
+    });
+  });
+
+  it('setWorkspace is a no-op when there is no workspace', () => {
+    const identityStore = fakeIdentityStore();
+    const store = makeStore({ identityStore });
+    store.getState().setWorkspace({ baseCurrency: 'EUR' } as never);
+    expect(store.getState().workspace).toBeNull();
+    expect(identityStore.save).not.toHaveBeenCalled();
+  });
 });
