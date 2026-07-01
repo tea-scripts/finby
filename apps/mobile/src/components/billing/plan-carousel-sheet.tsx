@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import type { SubscriptionTier } from '@finby/shared';
-import { openWebBilling } from '../../lib/billing-links';
+import { openWebBilling } from '../../lib/open-web-billing';
 import { BottomSheet } from '../ui/bottom-sheet';
 import { PlanDeckCard } from './plan-deck-card';
 
