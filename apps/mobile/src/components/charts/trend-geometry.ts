@@ -26,11 +26,11 @@ export function trendGeometry(
   if (points.length === 0) return { line: '', area: '', points };
 
   // Catmull-Rom → cubic bezier for a smooth line.
-  let line = `M ${points[0].x} ${points[0].y}`;
+  let line = `M ${points[0]!.x} ${points[0]!.y}`;
   for (let i = 0; i < points.length - 1; i += 1) {
-    const p0 = points[i - 1] ?? points[i];
-    const p1 = points[i];
-    const p2 = points[i + 1];
+    const p1 = points[i]!;
+    const p2 = points[i + 1]!;
+    const p0 = points[i - 1] ?? p1;
     const p3 = points[i + 2] ?? p2;
     const c1x = p1.x + (p2.x - p0.x) / 6;
     const c1y = p1.y + (p2.y - p0.y) / 6;
@@ -39,8 +39,8 @@ export function trendGeometry(
     line += ` C ${c1x} ${c1y}, ${c2x} ${c2y}, ${p2.x} ${p2.y}`;
   }
 
-  const last = points[points.length - 1];
-  const first = points[0];
+  const last = points[points.length - 1]!;
+  const first = points[0]!;
   const area = `${line} L ${last.x} ${height - padding} L ${first.x} ${height - padding} Z`;
 
   return { line, area, points };
