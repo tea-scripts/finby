@@ -28,6 +28,9 @@ export interface DashboardApi {
     type?: 'EXPENSE' | 'INCOME',
   ): Promise<CategoryBreakdownResult>;
   getTrend(workspaceId: string, months?: number): Promise<TrendResult>;
+  /** Month-scoped: the insight month is derived from `from` (its calendar
+   *  month); `to` is passed for signature parity with summary/by-category but
+   *  is not read server-side. */
   getInsight(workspaceId: string, from: string, to: string): Promise<InsightResult>;
 }
 

@@ -20,6 +20,10 @@ export const trendQuerySchema = z.object({
 });
 export type TrendQuery = z.infer<typeof trendQuerySchema>;
 
+/** Insight is month-scoped: the reported month is derived from `from` (its
+ *  calendar month), and the current-vs-prior comparison + projection are
+ *  computed from that. `to` is accepted for call-signature uniformity with
+ *  summary/by-category but is NOT read by the service. */
 export const insightQuerySchema = z.object({
   from: isoDate,
   to: isoDate,
