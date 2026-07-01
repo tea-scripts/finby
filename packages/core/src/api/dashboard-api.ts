@@ -18,7 +18,7 @@ export interface SectionState<T> {
 
 export interface DashboardApi {
   getSummary(workspaceId: string, from: string, to: string): Promise<SummaryResult>;
-  listBudgets(workspaceId: string): Promise<BudgetView[]>;
+  listBudgets(workspaceId: string, periodStart?: string): Promise<BudgetView[]>;
   listRecentTransactions(workspaceId: string, limit?: number): Promise<Transaction[]>;
   listAccounts(workspaceId: string): Promise<AccountView[]>;
   getByCategory(
@@ -41,8 +41,9 @@ export function createDashboardApi(authed: AuthedFetch): DashboardApi {
       const q = new URLSearchParams({ from, to });
       return authed<SummaryResult>(`/workspaces/${workspaceId}/analytics/summary?${q}`);
     },
-    async listBudgets(workspaceId) {
-      const res = await authed<{ budgets: BudgetView[] }>(`/workspaces/${workspaceId}/budgets`);
+    async listBudgets(workspaceId, periodStart) {
+      const q = periodStart ? `?${new URLSearchParams({ periodStart })}` : '';
+      const res = await authed<{ budgets: BudgetView[] }>(`/workspaces/${workspaceId}/budgets${q}`);
       return res.budgets;
     },
     async listRecentTransactions(workspaceId, limit = 10) {

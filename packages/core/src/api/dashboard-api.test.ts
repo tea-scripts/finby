@@ -22,6 +22,20 @@ describe('createDashboardApi', () => {
     expect(authed).toHaveBeenCalledWith('/workspaces/ws1/budgets');
   });
 
+  it('listBudgets passes periodStart when given', async () => {
+    const authed = mockAuthed({ budgets: [] });
+    const api = createDashboardApi(authed as never);
+    await api.listBudgets('ws1', '2026-05-01');
+    expect(authed).toHaveBeenCalledWith('/workspaces/ws1/budgets?periodStart=2026-05-01');
+  });
+
+  it('listBudgets omits periodStart when not given', async () => {
+    const authed = mockAuthed({ budgets: [] });
+    const api = createDashboardApi(authed as never);
+    await api.listBudgets('ws1');
+    expect(authed).toHaveBeenCalledWith('/workspaces/ws1/budgets');
+  });
+
   it('listRecentTransactions defaults limit to 10 and unwraps { transactions }', async () => {
     const authed = mockAuthed({ transactions: [{ id: 't1' }] });
     const api = createDashboardApi(authed);
