@@ -3,6 +3,7 @@ import type { InsightResult } from '@finby/shared';
 import { AnalyticsService } from './analytics.service';
 
 const iso = (d: Date): string => d.toISOString().slice(0, 10);
+const formatAmount = (n: number): string => Math.round(n).toLocaleString('en-US');
 const MIN_PROJECTION_DAYS = 5;
 
 @Injectable()
@@ -38,7 +39,7 @@ export class InsightService {
 
     const daysElapsed = Math.max(1, now.getUTCDate());
     if (isCurrentMonth && daysElapsed < MIN_PROJECTION_DAYS) {
-      const mtd = Math.round(curSpend).toLocaleString('en-US');
+      const mtd = formatAmount(curSpend);
       return {
         period: { from: iso(periodStart), to: periodTo },
         currency,
@@ -124,7 +125,7 @@ function buildMessage(p: {
   }
 
   if (p.isCurrentMonth && p.projectedSavings !== null && p.projectedSavings > 0) {
-    const amount = Math.round(p.projectedSavings).toLocaleString('en-US');
+    const amount = formatAmount(p.projectedSavings);
     msg += ` At this rate you'll save ${p.currency} ${amount} this month.`;
   }
   return msg;
