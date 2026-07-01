@@ -38,3 +38,18 @@ it('lists members and sends an invite as owner', async () => {
   await fireEvent.press(screen.getByText('Send invite'));
   await waitFor(() => expect(members.inviteMember).toHaveBeenCalledWith('w1', 'new@e.co', 'VIEWER'));
 });
+
+it('cancels a pending invite only after the server call succeeds', async () => {
+  members.listInvites.mockReset().mockResolvedValue([
+    { id: 'i1', email: 'pending@e.co', role: 'VIEWER', invitedByUserId: 'm1', expiresAt: '', createdAt: '' },
+  ]);
+  members.cancelInvite.mockReset().mockResolvedValue(undefined);
+
+  await render(<MembersScreen />);
+  await waitFor(() => expect(screen.getByText('pending@e.co')).toBeTruthy());
+
+  await fireEvent.press(screen.getByText('Cancel'));
+
+  await waitFor(() => expect(members.cancelInvite).toHaveBeenCalledWith('w1', 'i1'));
+  await waitFor(() => expect(screen.queryByText('pending@e.co')).toBeNull());
+});

@@ -84,6 +84,19 @@ export function MembersScreen() {
     try { await api.members.leaveWorkspace(workspace!.id); } finally { setBusy(false); setLeaving(false); }
   }
 
+  async function resendInvite(inv: InviteView) {
+    try {
+      await api.members.resendInvite(workspace!.id, inv.id);
+    } catch (e) { if (!(e instanceof ApiError)) throw e; }
+  }
+
+  async function cancelInvite(inv: InviteView) {
+    try {
+      await api.members.cancelInvite(workspace!.id, inv.id);
+      setInvites((p) => p.filter((x) => x.id !== inv.id));
+    } catch (e) { if (!(e instanceof ApiError)) throw e; }
+  }
+
   return (
     <SafeAreaView className="flex-1 bg-canvas" edges={['bottom']}>
       <SettingsHeader title="Family members" />
@@ -130,8 +143,8 @@ export function MembersScreen() {
                   <View key={inv.id} className="flex-row items-center justify-between rounded-xl border border-line bg-surface px-4 py-3">
                     <Text className="flex-1 pr-2 text-sm text-ink">{inv.email}</Text>
                     <View className="flex-row gap-3">
-                      <Text onPress={() => void api.members.resendInvite(workspace!.id, inv.id)} accessibilityRole="button" className="text-xs font-medium text-accent">Resend</Text>
-                      <Text onPress={() => { void api.members.cancelInvite(workspace!.id, inv.id); setInvites((p) => p.filter((x) => x.id !== inv.id)); }} accessibilityRole="button" className="text-xs font-medium text-danger">Cancel</Text>
+                      <Text onPress={() => void resendInvite(inv)} accessibilityRole="button" className="text-xs font-medium text-accent">Resend</Text>
+                      <Text onPress={() => void cancelInvite(inv)} accessibilityRole="button" className="text-xs font-medium text-danger">Cancel</Text>
                     </View>
                   </View>
                 ))}
