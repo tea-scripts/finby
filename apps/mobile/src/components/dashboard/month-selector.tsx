@@ -37,7 +37,7 @@ export function MonthSelector({
         >
           <Ionicons name="chevron-back" size={20} color={prevBlocked ? '#42506a' : '#8da3c0'} />
         </Pressable>
-        <Text className="min-w-[92px] text-center text-sm font-medium text-ink">
+        <Text className="min-w-[116px] text-center text-sm font-medium text-ink" numberOfLines={1}>
           {formatMonthLabel(month)}
         </Text>
         <Pressable

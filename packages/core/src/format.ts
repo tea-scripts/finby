@@ -130,7 +130,9 @@ const MONTH_NAMES = [
   'July', 'August', 'September', 'October', 'November', 'December',
 ];
 
-export function formatMonthLabel(ref: MonthRef, now: Date = new Date()): string {
+/** Always includes the year so the selected period is unambiguous across year
+ *  boundaries (e.g. "December 2026" → "January 2027"). */
+export function formatMonthLabel(ref: MonthRef): string {
   const name = MONTH_NAMES[ref.month] ?? '';
-  return ref.year === now.getUTCFullYear() ? name : `${name} ${ref.year}`;
+  return `${name} ${ref.year}`;
 }

@@ -71,8 +71,9 @@ describe('month helpers', () => {
     expect(monthToRange({ year: 2026, month: 4 }, JUL)).toEqual({ from: '2026-05-01', to: '2026-05-31' });
   });
 
-  it('formatMonthLabel omits the year only for the current year', () => {
-    expect(formatMonthLabel({ year: 2026, month: 6 }, JUL)).toBe('July');
-    expect(formatMonthLabel({ year: 2025, month: 4 }, JUL)).toBe('May 2025');
+  it('formatMonthLabel always shows the month and year (unambiguous across years)', () => {
+    expect(formatMonthLabel({ year: 2026, month: 6 })).toBe('July 2026');
+    expect(formatMonthLabel({ year: 2025, month: 4 })).toBe('May 2025');
+    expect(formatMonthLabel({ year: 2027, month: 0 })).toBe('January 2027');
   });
 });
