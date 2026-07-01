@@ -66,6 +66,11 @@ export function PlanCarouselSheet({
 
   const [containerW, setContainerW] = useState(0);
   const [index, setIndex] = useState(currentIndex);
+  // Tracks the tallest laid-out card so every card can share one `minHeight` —
+  // otherwise the modal resizes as shorter/taller tiers scroll into focus.
+  // Note: this means one reflow on open as heights settle (each card's onLayout
+  // fires as it mounts) — acceptable since it happens before any interaction.
+  const [cardH, setCardH] = useState(0);
   const scrollRef = useRef<ScrollView>(null);
   // Guards the initial scroll-to-current-tier so it only fires once per open,
   // after the container width has been measured via onLayout.
@@ -161,12 +166,17 @@ export function PlanCarouselSheet({
                   extrapolate: 'clamp',
                 });
                 return (
-                  <Animated.View key={tier} style={{ width: cardW, transform: [{ scale }], opacity }}>
+                  <Animated.View
+                    key={tier}
+                    style={{ width: cardW, transform: [{ scale }], opacity }}
+                    onLayout={(e) => setCardH((h) => Math.max(h, Math.round(e.nativeEvent.layout.height)))}
+                  >
                     <PlanDeckCard
                       tier={tier}
                       currentTier={currentTier}
                       focused={i === index}
                       onSelect={handleSelect}
+                      minHeight={cardH || undefined}
                     />
                   </Animated.View>
                 );
