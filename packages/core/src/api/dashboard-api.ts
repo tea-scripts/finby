@@ -1,4 +1,12 @@
-import type { AccountView, BudgetView, SummaryResult, Transaction } from '@finby/shared';
+import type {
+  AccountView,
+  BudgetView,
+  CategoryBreakdownResult,
+  InsightResult,
+  SummaryResult,
+  Transaction,
+  TrendResult,
+} from '@finby/shared';
 import type { AuthedFetch } from './contract';
 
 /** Per-section async state so each dashboard section paints independently. */
@@ -13,6 +21,14 @@ export interface DashboardApi {
   listBudgets(workspaceId: string): Promise<BudgetView[]>;
   listRecentTransactions(workspaceId: string, limit?: number): Promise<Transaction[]>;
   listAccounts(workspaceId: string): Promise<AccountView[]>;
+  getByCategory(
+    workspaceId: string,
+    from: string,
+    to: string,
+    type?: 'EXPENSE' | 'INCOME',
+  ): Promise<CategoryBreakdownResult>;
+  getTrend(workspaceId: string, months?: number): Promise<TrendResult>;
+  getInsight(workspaceId: string, from: string, to: string): Promise<InsightResult>;
 }
 
 /** Dashboard data helpers. Transport (bearer + 401 refresh) is injected. */
@@ -35,6 +51,20 @@ export function createDashboardApi(authed: AuthedFetch): DashboardApi {
     async listAccounts(workspaceId) {
       const res = await authed<{ accounts: AccountView[] }>(`/workspaces/${workspaceId}/accounts`);
       return res.accounts;
+    },
+    getByCategory(workspaceId, from, to, type = 'EXPENSE') {
+      const q = new URLSearchParams({ from, to, type });
+      return authed<CategoryBreakdownResult>(
+        `/workspaces/${workspaceId}/analytics/by-category?${q}`,
+      );
+    },
+    getTrend(workspaceId, months = 6) {
+      const q = new URLSearchParams({ months: String(months) });
+      return authed<TrendResult>(`/workspaces/${workspaceId}/analytics/trend?${q}`);
+    },
+    getInsight(workspaceId, from, to) {
+      const q = new URLSearchParams({ from, to });
+      return authed<InsightResult>(`/workspaces/${workspaceId}/analytics/insight?${q}`);
     },
   };
 }
