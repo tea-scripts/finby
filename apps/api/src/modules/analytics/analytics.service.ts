@@ -123,9 +123,9 @@ export class AnalyticsService {
     const ids = grouped.map((g) => g.categoryId).filter((id): id is string => id !== null);
     const categories = await this.prisma.category.findMany({
       where: { id: { in: ids } },
-      select: { id: true, name: true },
+      select: { id: true, name: true, icon: true, color: true },
     });
-    const nameById = new Map(categories.map((c) => [c.id, c.name]));
+    const catById = new Map(categories.map((c) => [c.id, c]));
 
     const grandTotal = grouped.reduce(
       (acc, g) => acc.add(sum(g._sum.amountBase)),
@@ -135,10 +135,13 @@ export class AnalyticsService {
     const breakdown = grouped
       .map((g) => {
         const total = sum(g._sum.amountBase);
+        const cat = g.categoryId ? catById.get(g.categoryId) : undefined;
         return {
           category: {
             id: g.categoryId ?? 'uncategorized',
-            name: g.categoryId ? (nameById.get(g.categoryId) ?? 'Unknown') : 'Uncategorized',
+            name: g.categoryId ? (cat?.name ?? 'Unknown') : 'Uncategorized',
+            icon: cat?.icon ?? null,
+            color: cat?.color ?? null,
           },
           total: total.toString(),
           percent: percent(total, grandTotal),
