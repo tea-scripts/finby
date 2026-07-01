@@ -80,6 +80,22 @@ describe('InsightService', () => {
     expect(r.message).toMatch(/40/); // month-to-date spend
   });
 
+  it('applies the floor at the exact boundary: day 4 suppresses, day 5 projects', async () => {
+    const day4 = new Date('2026-07-04T00:00:00.000Z');
+    const svc4 = make(
+      summary({ totalExpenses: '40', netSavings: '-40', transactionCount: 2 }),
+      summary({ totalExpenses: '2000', transactionCount: 30 }),
+    );
+    expect((await svc4.insight('ws1', 'USD', '2026-07-01', '2026-07-04', day4)).projectionApplies).toBe(false);
+
+    const day5 = new Date('2026-07-05T00:00:00.000Z');
+    const svc5 = make(
+      summary({ totalExpenses: '400', netSavings: '400', transactionCount: 4 }),
+      summary({ totalExpenses: '2000', transactionCount: 30 }),
+    );
+    expect((await svc5.insight('ws1', 'USD', '2026-07-01', '2026-07-05', day5)).projectionApplies).toBe(true);
+  });
+
   it('still projects once enough of the month has elapsed', async () => {
     const midMonth = new Date('2026-07-15T00:00:00.000Z'); // day 15 → projects
     const svc = make(

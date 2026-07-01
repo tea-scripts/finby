@@ -47,7 +47,7 @@ export function BudgetList({ state, onRetry }: SectionProps<BudgetView[]>) {
       ) : state.error || !state.data ? (
         <SectionError onRetry={onRetry} />
       ) : state.data.length === 0 ? (
-        <SectionEmpty message="No budgets yet." />
+        <SectionEmpty message="No budgets for this month." />
       ) : (
         <View className="gap-4">
           {state.data.map((b) => (

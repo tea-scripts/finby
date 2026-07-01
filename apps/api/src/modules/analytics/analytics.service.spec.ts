@@ -85,6 +85,24 @@ describe('AnalyticsService.byCategory', () => {
       color: '#1A7A4A',
     });
   });
+
+  it('maps uncategorized spend with null icon and color', async () => {
+    const groupBy = jest.fn().mockResolvedValue([
+      { categoryId: null, _sum: { amountBase: dec('50') }, _count: 3 },
+    ]);
+    const findMany = jest.fn().mockResolvedValue([]);
+    const prisma = { transaction: { groupBy }, category: { findMany } };
+    const service = new AnalyticsService(prisma as unknown as PrismaService, {} as unknown as FxService, {} as unknown as PortfolioService);
+
+    const result = await service.byCategory('w1', 'USD', '2026-07-01', '2026-07-31', 'EXPENSE');
+
+    expect(result.breakdown[0]?.category).toEqual({
+      id: 'uncategorized',
+      name: 'Uncategorized',
+      icon: null,
+      color: null,
+    });
+  });
 });
 
 describe('AnalyticsService.trend', () => {
