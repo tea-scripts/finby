@@ -37,7 +37,11 @@ export function PlanDeckCard({
       <View className="flex-row items-center justify-between">
         <Text className="text-base font-semibold text-ink">{TIER_NAME[tier]}</Text>
         {isCurrent && (
-          <View style={{ backgroundColor: 'rgba(29,110,245,0.15)' }} className="rounded-full px-2 py-0.5">
+          <View
+            testID="current-pill"
+            style={{ backgroundColor: 'rgba(29,110,245,0.15)' }}
+            className="rounded-full px-2 py-0.5"
+          >
             <Text className="text-[11px] font-medium text-accent">Current plan</Text>
           </View>
         )}

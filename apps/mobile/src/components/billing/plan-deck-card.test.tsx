@@ -1,10 +1,5 @@
 import { render, screen, fireEvent } from '@testing-library/react-native';
 
-jest.mock('@expo/vector-icons', () => ({
-  Ionicons: ({ name }: { name: string }) =>
-    jest.requireActual<typeof import('react')>('react').createElement('Text', null, name),
-}));
-
 import { PlanDeckCard } from './plan-deck-card';
 
 describe('PlanDeckCard', () => {
@@ -26,8 +21,9 @@ describe('PlanDeckCard', () => {
   it('the current tier shows a disabled "Current plan" marker (pill + CTA) and a note', async () => {
     const onSelect = jest.fn();
     await render(<PlanDeckCard tier="PRO" currentTier="PRO" focused onSelect={onSelect} />);
-    // "Current plan" now appears twice: the header pill and the disabled CTA label.
-    expect(screen.getAllByText('Current plan').length).toBeGreaterThanOrEqual(1);
+    // "Current plan" appears twice: the header pill and the disabled CTA label.
+    expect(screen.getByTestId('current-pill')).toBeTruthy();
+    expect(screen.getAllByText('Current plan')).toHaveLength(2);
     expect(screen.getByText("You're on this plan")).toBeTruthy();
     await fireEvent.press(screen.getByTestId('deck-cta'));
     expect(onSelect).not.toHaveBeenCalled();

@@ -10,7 +10,9 @@ describe('PlanCarouselSheet', () => {
     expect(screen.getByText('Pro')).toBeTruthy();
     expect(screen.getByText('Premium')).toBeTruthy();
     expect(screen.getByText('Family')).toBeTruthy();
-    expect(screen.getAllByText('Current plan').length).toBeGreaterThanOrEqual(1);
+    // Exactly one card is current, so "Current plan" appears twice: pill + CTA.
+    expect(screen.getByTestId('current-pill')).toBeTruthy();
+    expect(screen.getAllByText('Current plan')).toHaveLength(2);
   });
 
   it('a non-current CTA closes the sheet and opens web billing', async () => {
