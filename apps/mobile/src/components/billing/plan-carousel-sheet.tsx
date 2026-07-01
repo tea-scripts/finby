@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Animated, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { BlurView } from 'expo-blur';
 import type { SubscriptionTier } from '@finby/shared';
 import { TIER_NAME } from '../../lib/billing-links';
@@ -88,6 +88,11 @@ export function PlanCarouselSheet({
   const cardW = Math.round(w * 0.84);
   const sidePad = Math.round((w - cardW) / 2);
   const stride = cardW + GAP;
+  // Keep the interpolation input range strictly increasing before layout settles
+  // (mirrors account-carousel's `safeW`).
+  const safeStride = stride || 1;
+
+  const scrollX = useRef(new Animated.Value(currentIndex * stride)).current;
 
   useEffect(() => {
     if (open && containerW > 0 && !didInitialScroll.current) {
@@ -100,6 +105,14 @@ export function PlanCarouselSheet({
     const clamped = Math.max(0, Math.min(TIERS.length - 1, i));
     scrollRef.current?.scrollTo({ x: clamped * stride, animated: true });
     setIndex(clamped);
+  }
+
+  // Tracks the finger the instant a card reaches center, so the accent border +
+  // dots update continuously during the swipe rather than waiting for momentum
+  // to settle. `onMomentumScrollEnd` below still reconciles the final rest index.
+  function onScrollListener(e: { nativeEvent: { contentOffset: { x: number } } }) {
+    const i = Math.round(e.nativeEvent.contentOffset.x / stride);
+    if (i !== index) setIndex(i);
   }
 
   function handleSelect() {
@@ -121,26 +134,44 @@ export function PlanCarouselSheet({
         </Pressable>
         <View className="w-full" style={{ maxWidth: 480, width: '100%' }}>
           <View onLayout={(e) => setContainerW(e.nativeEvent.layout.width)}>
-            <ScrollView
+            <Animated.ScrollView
               ref={scrollRef}
               horizontal
               showsHorizontalScrollIndicator={false}
               snapToInterval={stride}
               decelerationRate="fast"
+              scrollEventThrottle={16}
               contentContainerStyle={{ paddingHorizontal: sidePad, gap: GAP }}
+              onScroll={Animated.event([{ nativeEvent: { contentOffset: { x: scrollX } } }], {
+                useNativeDriver: true,
+                listener: onScrollListener,
+              })}
               onMomentumScrollEnd={(e) => setIndex(Math.round(e.nativeEvent.contentOffset.x / stride))}
             >
-              {TIERS.map((tier, i) => (
-                <View key={tier} style={{ width: cardW }}>
-                  <PlanDeckCard
-                    tier={tier}
-                    currentTier={currentTier}
-                    focused={i === index}
-                    onSelect={handleSelect}
-                  />
-                </View>
-              ))}
-            </ScrollView>
+              {TIERS.map((tier, i) => {
+                const inputRange = [(i - 1) * safeStride, i * safeStride, (i + 1) * safeStride];
+                const scale = scrollX.interpolate({
+                  inputRange,
+                  outputRange: [0.94, 1, 0.94],
+                  extrapolate: 'clamp',
+                });
+                const opacity = scrollX.interpolate({
+                  inputRange,
+                  outputRange: [0.5, 1, 0.5],
+                  extrapolate: 'clamp',
+                });
+                return (
+                  <Animated.View key={tier} style={{ width: cardW, transform: [{ scale }], opacity }}>
+                    <PlanDeckCard
+                      tier={tier}
+                      currentTier={currentTier}
+                      focused={i === index}
+                      onSelect={handleSelect}
+                    />
+                  </Animated.View>
+                );
+              })}
+            </Animated.ScrollView>
             <Dots index={index} onDot={goTo} />
           </View>
         </View>

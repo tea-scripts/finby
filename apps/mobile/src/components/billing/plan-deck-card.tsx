@@ -32,7 +32,6 @@ export function PlanDeckCard({
   return (
     <View
       className={`gap-2 rounded-2xl border p-5 ${focused ? 'border-accent bg-surface-2' : 'border-line bg-surface'}`}
-      style={focused ? undefined : { opacity: 0.5 }}
     >
       <View className="flex-row items-center justify-between">
         <Text className="text-base font-semibold text-ink">{TIER_NAME[tier]}</Text>
