@@ -33,7 +33,7 @@ describe('BudgetList', () => {
 
   it('renders empty state', async () => {
     await render(<BudgetList state={{ data: [], loading: false, error: null }} onRetry={jest.fn()} />);
-    expect(screen.getByText('No budgets yet.')).toBeTruthy();
+    expect(screen.getByText('No budgets for this month.')).toBeTruthy();
   });
 
   it('renders error with retry', async () => {
