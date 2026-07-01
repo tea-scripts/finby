@@ -43,9 +43,6 @@ export function DashboardScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const tabBarSpace = useTabBarSpace();
 
-  const now = currentMonth();
-  const isCurrentMonth = month.year === now.year && month.month === now.month;
-
   const loadMonth = useCallback(
     (m: MonthRef) => {
       if (!workspace) return Promise.resolve();
@@ -53,6 +50,7 @@ export function DashboardScreen() {
       setSummary(LOADING);
       setDonut(LOADING);
       setInsight(LOADING);
+      setBudgets(LOADING);
       return Promise.all([
         api.dashboard
           .getSummary(workspace.id, from, to)
@@ -66,6 +64,10 @@ export function DashboardScreen() {
           .getInsight(workspace.id, from, to)
           .then((d) => setInsight({ data: d, loading: false, error: null }))
           .catch((e) => setInsight({ data: null, loading: false, error: errMsg(e) })),
+        api.dashboard
+          .listBudgets(workspace.id, from)
+          .then((d) => setBudgets({ data: d, loading: false, error: null }))
+          .catch((e) => setBudgets({ data: null, loading: false, error: errMsg(e) })),
       ]);
     },
     [workspace],
@@ -73,14 +75,9 @@ export function DashboardScreen() {
 
   const loadStatic = useCallback(() => {
     if (!workspace) return Promise.resolve();
-    setBudgets(LOADING);
     setAccounts(LOADING);
     setTrend(LOADING);
     return Promise.all([
-      api.dashboard
-        .listBudgets(workspace.id)
-        .then((d) => setBudgets({ data: d, loading: false, error: null }))
-        .catch((e) => setBudgets({ data: null, loading: false, error: errMsg(e) })),
       api.dashboard
         .listAccounts(workspace.id)
         .then((d) => setAccounts({ data: d, loading: false, error: null }))
@@ -125,7 +122,7 @@ export function DashboardScreen() {
         <MonthSummary state={summary} onRetry={() => loadMonth(month)} />
         <AccountCarousel state={accounts} onRetry={loadStatic} />
         <SpendingDonut state={donut} onRetry={() => loadMonth(month)} />
-        {isCurrentMonth ? <BudgetList state={budgets} onRetry={loadStatic} /> : null}
+        <BudgetList state={budgets} onRetry={() => loadMonth(month)} />
         <SpendTrend state={trend} onRetry={loadStatic} />
         <InsightCard state={insight} onRetry={() => loadMonth(month)} />
       </ScrollView>
