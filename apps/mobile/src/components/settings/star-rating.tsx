@@ -4,7 +4,14 @@ export function StarRating({ value, onChange, size = 32 }: { value: number; onCh
   return (
     <View className="flex-row gap-1" accessibilityRole="radiogroup">
       {[1, 2, 3, 4, 5].map((n) => (
-        <Pressable key={n} onPress={() => onChange(n)} accessibilityRole="button" accessibilityLabel={`Rate ${n}`} hitSlop={6}>
+        <Pressable
+          key={n}
+          onPress={() => onChange(n)}
+          accessibilityRole="radio"
+          accessibilityState={{ checked: n === value }}
+          accessibilityLabel={`Rate ${n}`}
+          hitSlop={6}
+        >
           <Text style={{ fontSize: size }} className={n <= value ? 'text-warn' : 'text-line'}>★</Text>
         </Pressable>
       ))}
