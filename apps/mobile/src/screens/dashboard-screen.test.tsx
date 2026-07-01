@@ -1,5 +1,5 @@
 // apps/mobile/src/screens/dashboard-screen.test.tsx
-import { render, screen, waitFor } from '@testing-library/react-native';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 
 const authState = {
   workspace: { id: 'w1', tier: 'PRO', baseCurrency: 'USD' },
@@ -99,5 +99,16 @@ describe('DashboardScreen', () => {
     expect(dash.getByCategory).toHaveBeenCalledTimes(1);
     expect(dash.getTrend).toHaveBeenCalledTimes(1);
     expect(dash.getInsight).toHaveBeenCalledTimes(1);
+  });
+
+  it('retrying one section reloads only that endpoint', async () => {
+    dash.getByCategory.mockRejectedValueOnce(new Error('x'));
+    await render(<DashboardScreen />);
+    // donut is the only section in error → single Retry
+    await fireEvent.press(await screen.findByText('Retry'));
+    await waitFor(() => expect(dash.getByCategory).toHaveBeenCalledTimes(2)); // initial + retry
+    expect(dash.getSummary).toHaveBeenCalledTimes(1); // NOT re-fetched
+    expect(dash.getInsight).toHaveBeenCalledTimes(1);
+    expect(dash.listBudgets).toHaveBeenCalledTimes(1);
   });
 });
