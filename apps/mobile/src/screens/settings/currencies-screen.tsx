@@ -26,6 +26,7 @@ export function CurrenciesScreen() {
 
   const [selected, setSelected] = useState<string[]>(workspace?.preferredCurrencies ?? [base]);
   const [savingPreferred, setSavingPreferred] = useState(false);
+  const [preferredError, setPreferredError] = useState<string | null>(null);
   const preferredDirty = useMemo(() => {
     const a = [...selected].sort().join(',');
     const b = [...(workspace?.preferredCurrencies ?? [])].sort().join(',');
@@ -57,12 +58,13 @@ export function CurrenciesScreen() {
   async function savePreferred() {
     if (!workspace) return;
     setSavingPreferred(true);
+    setPreferredError(null);
     try {
       const res = await api.settings.updateCurrencies(workspace.id, selected);
       setWorkspace({ preferredCurrencies: res.preferredCurrencies });
       setSelected(res.preferredCurrencies);
-    } catch {
-      /* surfaced via toast elsewhere; keep local state */
+    } catch (e) {
+      setPreferredError(e instanceof ApiError ? e.message : 'Could not save currencies.');
     } finally {
       setSavingPreferred(false);
     }
@@ -107,6 +109,7 @@ export function CurrenciesScreen() {
               })}
             </View>
             <Button disabled={!preferredDirty} loading={savingPreferred} onPress={() => void savePreferred()}>Save</Button>
+            {preferredError ? <Text className="text-sm text-danger">{preferredError}</Text> : null}
           </UpgradeGate>
         </View>
       </ScrollView>

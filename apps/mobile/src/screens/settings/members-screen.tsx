@@ -13,10 +13,10 @@ import { ConfirmSheet } from '../../components/settings/confirm-sheet';
 import { useAuthStore } from '../../lib/use-auth-store';
 import { api } from '../../lib/runtime.native';
 
-const ROLE_OPTIONS = [
+const ROLE_OPTIONS: { value: 'VIEWER' | 'CO_MANAGER'; label: string }[] = [
   { value: 'VIEWER', label: 'Viewer' },
   { value: 'CO_MANAGER', label: 'Co-manager' },
-] as const;
+];
 
 export function MembersScreen() {
   const workspace = useAuthStore((s) => s.workspace);
@@ -28,6 +28,7 @@ export function MembersScreen() {
   const [inviteRole, setInviteRole] = useState<'VIEWER' | 'CO_MANAGER'>('VIEWER');
   const [busy, setBusy] = useState(false);
   const [leaving, setLeaving] = useState(false);
+  const [leaveError, setLeaveError] = useState<string | null>(null);
   const [removeTarget, setRemoveTarget] = useState<MemberView | null>(null);
 
   const isOwner = members.find((m) => m.isSelf)?.role === 'OWNER';
@@ -81,7 +82,16 @@ export function MembersScreen() {
 
   async function leave() {
     setBusy(true);
-    try { await api.members.leaveWorkspace(workspace!.id); } finally { setBusy(false); setLeaving(false); }
+    setLeaveError(null);
+    try {
+      await api.members.leaveWorkspace(workspace!.id);
+      setLeaving(false);
+    } catch (e) {
+      if (!(e instanceof ApiError)) throw e;
+      setLeaveError(e.message);
+    } finally {
+      setBusy(false);
+    }
   }
 
   async function resendInvite(inv: InviteView) {
@@ -121,8 +131,8 @@ export function MembersScreen() {
                   )}
                 </View>
                 {isOwner && m.role !== 'OWNER' ? (
-                  <Dropdown value={m.role === 'CO_MANAGER' ? 'CO_MANAGER' : 'VIEWER'} options={ROLE_OPTIONS as never}
-                    accessibilityLabel={`Role for ${m.displayName}`} onSelect={(r) => void changeRole(m, r as WorkspaceMemberRole)} />
+                  <Dropdown value={m.role === 'CO_MANAGER' ? 'CO_MANAGER' : 'VIEWER'} options={ROLE_OPTIONS}
+                    accessibilityLabel={`Role for ${m.displayName}`} onSelect={(r) => void changeRole(m, r)} />
                 ) : null}
               </View>
             ))}
@@ -131,7 +141,7 @@ export function MembersScreen() {
               <View className="gap-3 rounded-xl border border-line bg-surface px-4 py-4">
                 <Text className="text-sm font-semibold text-ink">Invite a member</Text>
                 <Field label="Email"><Input value={email} onChangeText={setEmail} autoCapitalize="none" keyboardType="email-address" placeholder="name@email.com" accessibilityLabel="Invite email" /></Field>
-                <Field label="Role"><Dropdown value={inviteRole} options={ROLE_OPTIONS as never} accessibilityLabel="Invite role" onSelect={(r) => setInviteRole(r as 'VIEWER' | 'CO_MANAGER')} /></Field>
+                <Field label="Role"><Dropdown value={inviteRole} options={ROLE_OPTIONS} accessibilityLabel="Invite role" onSelect={setInviteRole} /></Field>
                 <Button disabled={!email.trim()} loading={busy} onPress={() => void invite()}>Send invite</Button>
               </View>
             ) : null}
@@ -152,7 +162,10 @@ export function MembersScreen() {
             ) : null}
 
             {!isOwner ? (
-              <Button variant="ghost" onPress={() => setLeaving(true)}>Leave this family</Button>
+              <View className="gap-2">
+                <Button variant="ghost" onPress={() => setLeaving(true)}>Leave this family</Button>
+                {leaveError ? <Text className="text-sm text-danger">{leaveError}</Text> : null}
+              </View>
             ) : null}
           </>
         )}
