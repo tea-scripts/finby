@@ -47,8 +47,8 @@ describe('TransactionFiltersSheet', () => {
         onApply={onApply}
       />,
     );
-    fireEvent.press(screen.getByLabelText(/Filter by category/));
-    expect(screen.getByText('cart', { includeHiddenElements: true })).toBeTruthy();
+    await fireEvent.press(screen.getByLabelText(/Filter by category/));
+    expect(screen.getAllByText('cart', { includeHiddenElements: true }).length).toBeGreaterThanOrEqual(2);
   });
 
   it('reset clears the non-type filters', async () => {

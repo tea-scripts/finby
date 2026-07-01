@@ -60,8 +60,8 @@ describe('EditTransactionSheet', () => {
         onSaved={jest.fn()} onVoided={jest.fn()} onClose={jest.fn()}
       />,
     );
-    fireEvent.press(screen.getByLabelText(/Category/));
-    expect(screen.getByText('cart', { includeHiddenElements: true })).toBeTruthy();
+    await fireEvent.press(screen.getByLabelText(/Category/));
+    expect(screen.getAllByText('cart', { includeHiddenElements: true }).length).toBeGreaterThanOrEqual(2);
   });
 
   it('voids after confirmation', async () => {
