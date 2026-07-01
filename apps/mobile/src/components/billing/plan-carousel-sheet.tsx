@@ -134,7 +134,7 @@ export function PlanCarouselSheet({
           onPress={onClose}
           style={StyleSheet.absoluteFill}
         >
-          <BlurView intensity={90} tint="dark" style={StyleSheet.absoluteFill} />
+          <BlurView intensity={70} tint="dark" style={StyleSheet.absoluteFill} />
           <View style={StyleSheet.absoluteFill} className="bg-black/40" />
         </Pressable>
         <View className="w-full" style={{ maxWidth: 480, width: '100%' }}>
