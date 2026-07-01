@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { money, shortDate } from './format';
+import { money, shortDate, addMonths, currentMonth, formatMonthLabel, monthToRange } from './format';
 
 // A fixed UTC instant used across date assertions: 7 June 2026.
 const ISO = '2026-06-07T00:00:00.000Z';
@@ -51,5 +51,28 @@ describe('money', () => {
 
   it('passes a non-numeric amount through unformatted', () => {
     expect(money('NaN-ish', 'USD')).toBe('$NaN-ish');
+  });
+});
+
+describe('month helpers', () => {
+  const JUL = new Date('2026-07-15T00:00:00.000Z');
+
+  it('currentMonth returns 0-based month', () => {
+    expect(currentMonth(JUL)).toEqual({ year: 2026, month: 6 });
+  });
+
+  it('addMonths rolls across year boundaries', () => {
+    expect(addMonths({ year: 2026, month: 0 }, -1)).toEqual({ year: 2025, month: 11 });
+    expect(addMonths({ year: 2026, month: 11 }, 1)).toEqual({ year: 2027, month: 0 });
+  });
+
+  it('monthToRange caps the current month at today, past months at month end', () => {
+    expect(monthToRange({ year: 2026, month: 6 }, JUL)).toEqual({ from: '2026-07-01', to: '2026-07-15' });
+    expect(monthToRange({ year: 2026, month: 4 }, JUL)).toEqual({ from: '2026-05-01', to: '2026-05-31' });
+  });
+
+  it('formatMonthLabel omits the year only for the current year', () => {
+    expect(formatMonthLabel({ year: 2026, month: 6 }, JUL)).toBe('July');
+    expect(formatMonthLabel({ year: 2025, month: 4 }, JUL)).toBe('May 2025');
   });
 });

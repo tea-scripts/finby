@@ -1,17 +1,26 @@
 // apps/mobile/src/screens/dashboard-screen.tsx
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { RefreshControl, ScrollView, Text, View } from 'react-native';
+import { RefreshControl, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ApiError, currentMonthRange } from '@finby/core';
-import type { AccountView, BudgetView, SummaryResult, Transaction } from '@finby/shared';
+import { ApiError, currentMonth, monthToRange, type MonthRef } from '@finby/core';
+import type {
+  AccountView,
+  BudgetView,
+  CategoryBreakdownResult,
+  InsightResult,
+  SummaryResult,
+  TrendResult,
+} from '@finby/shared';
 import { useAuthStore } from '../lib/use-auth-store';
 import { api } from '../lib/runtime.native';
 import type { SectionState } from '../components/dashboard/section-card';
+import { MonthSelector } from '../components/dashboard/month-selector';
 import { MonthSummary } from '../components/dashboard/month-summary';
-import { BudgetList } from '../components/dashboard/budget-list';
 import { AccountCarousel } from '../components/dashboard/account-carousel';
-import { RecentTransactions } from '../components/dashboard/recent-transactions';
-import { StreakBadge } from '../components/dashboard/streak-badge';
+import { SpendingDonut } from '../components/dashboard/spending-donut';
+import { BudgetList } from '../components/dashboard/budget-list';
+import { SpendTrend } from '../components/dashboard/spend-trend';
+import { InsightCard } from '../components/dashboard/insight-card';
 import { useTabBarSpace } from '../components/nav/floating-tab-bar';
 
 const LOADING = { data: null, loading: true, error: null } as const;
@@ -22,86 +31,103 @@ function errMsg(e: unknown): string {
 
 export function DashboardScreen() {
   const workspace = useAuthStore((s) => s.workspace);
-  const user = useAuthStore((s) => s.user);
+  const tier = workspace?.tier ?? 'FREE';
 
+  const [month, setMonth] = useState<MonthRef>(() => currentMonth());
   const [summary, setSummary] = useState<SectionState<SummaryResult>>(LOADING);
+  const [donut, setDonut] = useState<SectionState<CategoryBreakdownResult>>(LOADING);
+  const [insight, setInsight] = useState<SectionState<InsightResult>>(LOADING);
   const [budgets, setBudgets] = useState<SectionState<BudgetView[]>>(LOADING);
   const [accounts, setAccounts] = useState<SectionState<AccountView[]>>(LOADING);
-  const [recent, setRecent] = useState<SectionState<Transaction[]>>(LOADING);
+  const [trend, setTrend] = useState<SectionState<TrendResult>>(LOADING);
   const [refreshing, setRefreshing] = useState(false);
   const tabBarSpace = useTabBarSpace();
 
-  const loadSummary = useCallback(() => {
-    if (!workspace) return Promise.resolve();
-    const { from, to } = currentMonthRange();
-    setSummary(LOADING);
-    return api.dashboard
-      .getSummary(workspace.id, from, to)
-      .then((d) => setSummary({ data: d, loading: false, error: null }))
-      .catch((e) => setSummary({ data: null, loading: false, error: errMsg(e) }));
-  }, [workspace]);
+  const now = currentMonth();
+  const isCurrentMonth = month.year === now.year && month.month === now.month;
 
-  const loadBudgets = useCallback(() => {
+  const loadMonth = useCallback(
+    (m: MonthRef) => {
+      if (!workspace) return Promise.resolve();
+      const { from, to } = monthToRange(m);
+      setSummary(LOADING);
+      setDonut(LOADING);
+      setInsight(LOADING);
+      return Promise.all([
+        api.dashboard
+          .getSummary(workspace.id, from, to)
+          .then((d) => setSummary({ data: d, loading: false, error: null }))
+          .catch((e) => setSummary({ data: null, loading: false, error: errMsg(e) })),
+        api.dashboard
+          .getByCategory(workspace.id, from, to, 'EXPENSE')
+          .then((d) => setDonut({ data: d, loading: false, error: null }))
+          .catch((e) => setDonut({ data: null, loading: false, error: errMsg(e) })),
+        api.dashboard
+          .getInsight(workspace.id, from, to)
+          .then((d) => setInsight({ data: d, loading: false, error: null }))
+          .catch((e) => setInsight({ data: null, loading: false, error: errMsg(e) })),
+      ]);
+    },
+    [workspace],
+  );
+
+  const loadStatic = useCallback(() => {
     if (!workspace) return Promise.resolve();
     setBudgets(LOADING);
-    return api.dashboard
-      .listBudgets(workspace.id)
-      .then((d) => setBudgets({ data: d, loading: false, error: null }))
-      .catch((e) => setBudgets({ data: null, loading: false, error: errMsg(e) }));
-  }, [workspace]);
-
-  const loadAccounts = useCallback(() => {
-    if (!workspace) return Promise.resolve();
     setAccounts(LOADING);
-    return api.dashboard
-      .listAccounts(workspace.id)
-      .then((d) => setAccounts({ data: d, loading: false, error: null }))
-      .catch((e) => setAccounts({ data: null, loading: false, error: errMsg(e) }));
-  }, [workspace]);
-
-  const loadRecent = useCallback(() => {
-    if (!workspace) return Promise.resolve();
-    setRecent(LOADING);
-    return api.dashboard
-      .listRecentTransactions(workspace.id, 10)
-      .then((d) => setRecent({ data: d, loading: false, error: null }))
-      .catch((e) => setRecent({ data: null, loading: false, error: errMsg(e) }));
+    setTrend(LOADING);
+    return Promise.all([
+      api.dashboard
+        .listBudgets(workspace.id)
+        .then((d) => setBudgets({ data: d, loading: false, error: null }))
+        .catch((e) => setBudgets({ data: null, loading: false, error: errMsg(e) })),
+      api.dashboard
+        .listAccounts(workspace.id)
+        .then((d) => setAccounts({ data: d, loading: false, error: null }))
+        .catch((e) => setAccounts({ data: null, loading: false, error: errMsg(e) })),
+      api.dashboard
+        .getTrend(workspace.id)
+        .then((d) => setTrend({ data: d, loading: false, error: null }))
+        .catch((e) => setTrend({ data: null, loading: false, error: errMsg(e) })),
+    ]);
   }, [workspace]);
 
   const initialized = useRef(false);
   useEffect(() => {
-    // Fetch once per mount. This screen unmounts on logout/workspace change, so we don't re-fetch on workspace identity changes (avoids a double-fetch on the initial mount under Strict Mode).
     if (!workspace || initialized.current) return;
     initialized.current = true;
-    void loadSummary();
-    void loadBudgets();
-    void loadAccounts();
-    void loadRecent();
-  }, [workspace, loadSummary, loadBudgets, loadAccounts, loadRecent]);
+    void loadMonth(month);
+    void loadStatic();
+  }, [workspace, month, loadMonth, loadStatic]);
+
+  const onSelectMonth = useCallback(
+    (m: MonthRef) => {
+      setMonth(m);
+      void loadMonth(m);
+    },
+    [loadMonth],
+  );
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await Promise.all([loadSummary(), loadBudgets(), loadAccounts(), loadRecent()]);
+    await Promise.all([loadMonth(month), loadStatic()]);
     setRefreshing(false);
-  }, [loadSummary, loadBudgets, loadAccounts, loadRecent]);
+  }, [loadMonth, loadStatic, month]);
 
   return (
     <SafeAreaView className="flex-1 bg-canvas" edges={['top']}>
       <ScrollView
         contentContainerClassName="gap-5 px-4 py-5"
         contentContainerStyle={{ paddingBottom: tabBarSpace }}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#8da3c0" />
-        }
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#8da3c0" />}
       >
-        <View className="flex-row items-center justify-between">
-          <Text className="text-2xl font-bold text-ink">Dashboard</Text>
-          <StreakBadge streak={user?.currentStreak ?? 0} />
-        </View>
-        <MonthSummary state={summary} onRetry={loadSummary} />
-        <BudgetList state={budgets} onRetry={loadBudgets} />
-        <AccountCarousel state={accounts} onRetry={loadAccounts} />
-        <RecentTransactions state={recent} onRetry={loadRecent} />
+        <MonthSelector month={month} onChange={onSelectMonth} tier={tier} />
+        <MonthSummary state={summary} onRetry={() => loadMonth(month)} />
+        <AccountCarousel state={accounts} onRetry={loadStatic} />
+        <SpendingDonut state={donut} onRetry={() => loadMonth(month)} />
+        {isCurrentMonth ? <BudgetList state={budgets} onRetry={loadStatic} /> : null}
+        <SpendTrend state={trend} onRetry={loadStatic} />
+        <InsightCard state={insight} onRetry={() => loadMonth(month)} />
       </ScrollView>
     </SafeAreaView>
   );

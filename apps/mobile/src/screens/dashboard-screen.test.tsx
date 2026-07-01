@@ -1,7 +1,10 @@
 // apps/mobile/src/screens/dashboard-screen.test.tsx
 import { render, screen, waitFor } from '@testing-library/react-native';
 
-const authState = { workspace: { id: 'w1' }, user: { displayName: 'Tee', currentStreak: 3 } };
+const authState = {
+  workspace: { id: 'w1', tier: 'PRO', baseCurrency: 'USD' },
+  user: { displayName: 'Tee', currentStreak: 3 },
+};
 jest.mock('../lib/use-auth-store', () => ({
   useAuthStore: (selector: (s: unknown) => unknown) => selector(authState),
 }));
@@ -12,7 +15,9 @@ jest.mock('../lib/runtime.native', () => ({
       getSummary: jest.fn(),
       listBudgets: jest.fn(),
       listAccounts: jest.fn(),
-      listRecentTransactions: jest.fn(),
+      getByCategory: jest.fn(),
+      getTrend: jest.fn(),
+      getInsight: jest.fn(),
     },
   },
 }));
@@ -38,7 +43,9 @@ const dash = api.dashboard as unknown as {
   getSummary: jest.Mock;
   listBudgets: jest.Mock;
   listAccounts: jest.Mock;
-  listRecentTransactions: jest.Mock;
+  getByCategory: jest.Mock;
+  getTrend: jest.Mock;
+  getInsight: jest.Mock;
 };
 
 beforeEach(() => {
@@ -50,14 +57,28 @@ beforeEach(() => {
   });
   dash.listBudgets.mockResolvedValue([]);
   dash.listAccounts.mockResolvedValue([]);
-  dash.listRecentTransactions.mockResolvedValue([]);
+  dash.getByCategory.mockResolvedValue({ breakdown: [], currency: 'USD' });
+  dash.getTrend.mockResolvedValue({ trend: [], currency: 'USD' });
+  dash.getInsight.mockResolvedValue({
+    period: { from: '2026-06-01', to: '2026-06-25' },
+    currency: 'USD',
+    direction: 'flat',
+    spendDeltaPercent: 0,
+    projectionApplies: false,
+    projectedSpend: null,
+    projectedSavings: null,
+    comparedTo: { from: '2026-05-01', to: '2026-05-31' },
+    message: 'Not enough history yet.',
+  });
 });
 
 describe('DashboardScreen', () => {
-  it('renders the header with the streak count', async () => {
+  it('fetches the month-scoped analytics on mount', async () => {
     await render(<DashboardScreen />);
-    expect(screen.getByText('Dashboard')).toBeTruthy();
-    await waitFor(() => expect(screen.getByText('3')).toBeTruthy());
+    await waitFor(() => expect(dash.getByCategory).toHaveBeenCalled());
+    expect(dash.getInsight).toHaveBeenCalled();
+    expect(dash.getTrend).toHaveBeenCalled();
+    expect(screen.queryByText('Recent transactions')).toBeNull(); // removed
   });
 
   it('paints summary data and isolates a failing section', async () => {
@@ -74,7 +95,8 @@ describe('DashboardScreen', () => {
     await waitFor(() => expect(dash.getSummary).toHaveBeenCalledTimes(1));
     expect(dash.listBudgets).toHaveBeenCalledTimes(1);
     expect(dash.listAccounts).toHaveBeenCalledTimes(1);
-    expect(dash.listRecentTransactions).toHaveBeenCalledWith('w1', 10);
-    expect(dash.listRecentTransactions).toHaveBeenCalledTimes(1);
+    expect(dash.getByCategory).toHaveBeenCalledTimes(1);
+    expect(dash.getTrend).toHaveBeenCalledTimes(1);
+    expect(dash.getInsight).toHaveBeenCalledTimes(1);
   });
 });
