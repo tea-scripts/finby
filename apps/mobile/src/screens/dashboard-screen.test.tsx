@@ -78,6 +78,7 @@ describe('DashboardScreen', () => {
     await waitFor(() => expect(dash.getByCategory).toHaveBeenCalled());
     expect(dash.getInsight).toHaveBeenCalled();
     expect(dash.getTrend).toHaveBeenCalled();
+    expect(dash.listBudgets).toHaveBeenCalledWith('w1', expect.stringMatching(/^\d{4}-\d{2}-01$/));
     expect(screen.queryByText('Recent transactions')).toBeNull(); // removed
   });
 

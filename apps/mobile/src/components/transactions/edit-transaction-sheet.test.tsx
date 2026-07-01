@@ -7,6 +7,12 @@ jest.mock('react-native-safe-area-context', () => ({
 jest.mock('../../lib/runtime.native', () => ({
   api: { transactions: { updateTransaction: jest.fn(), voidTransaction: jest.fn() } },
 }));
+// Mock Ionicons to render its `name` as text so we can assert which glyph shows
+// (same pattern as category-avatar.test.tsx).
+jest.mock('@expo/vector-icons', () => ({
+  Ionicons: ({ name }: { name: string }) =>
+    jest.requireActual<typeof import('react')>('react').createElement('Text', null, name),
+}));
 
 import { api } from '../../lib/runtime.native';
 import { EditTransactionSheet } from './edit-transaction-sheet';
@@ -22,7 +28,9 @@ const tx: Transaction = {
   category: { id: 'c1', name: 'Dining', icon: null, color: null }, account: null, transactionDate: '2026-06-24T10:00:00.000Z',
   tags: [], aiConfidence: null, loggedByUserId: 'u1', createdAt: '2026-06-24T10:00:00.000Z',
 };
-const categories: Category[] = [{ id: 'c1', name: 'Dining', isArchived: false }];
+const categories: Category[] = [
+  { id: 'c1', name: 'Dining', isArchived: false, icon: 'cart', color: '#1A7A4A' },
+];
 
 beforeEach(() => {
   txns.updateTransaction.mockReset().mockResolvedValue({ ...tx, merchant: 'Pizza Place' });
@@ -43,6 +51,17 @@ describe('EditTransactionSheet', () => {
       categoryId: 'c1', merchant: 'Pizza Hut', description: null, transactionDate: '2026-06-24', tags: [],
     })));
     await waitFor(() => expect(onSaved).toHaveBeenCalled());
+  });
+
+  it('shows a branded category avatar in the category dropdown', async () => {
+    await render(
+      <EditTransactionSheet
+        open workspaceId="w1" transaction={tx} categories={categories}
+        onSaved={jest.fn()} onVoided={jest.fn()} onClose={jest.fn()}
+      />,
+    );
+    await fireEvent.press(screen.getByLabelText(/Category/));
+    expect(screen.getAllByText('cart', { includeHiddenElements: true }).length).toBeGreaterThanOrEqual(2);
   });
 
   it('voids after confirmation', async () => {

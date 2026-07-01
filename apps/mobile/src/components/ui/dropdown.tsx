@@ -1,9 +1,10 @@
-import { useState } from 'react';
-import { FlatList, Modal, Pressable, Text } from 'react-native';
+import { useState, type ReactNode } from 'react';
+import { FlatList, Modal, Pressable, Text, View } from 'react-native';
 
 interface Option<T extends string> {
   value: T;
   label: string;
+  leading?: ReactNode;
 }
 
 interface DropdownProps<T extends string> {
@@ -32,9 +33,12 @@ export function Dropdown<T extends string>({
         accessibilityLabel={accessibilityLabel}
         className="min-h-12 flex-row items-center justify-between rounded-xl border border-line bg-canvas/60 px-3.5 py-3"
       >
-        <Text className={`text-base ${selected ? 'text-ink' : 'text-faint'}`}>
-          {selected ? selected.label : placeholder}
-        </Text>
+        <View className="min-w-0 flex-1 flex-row items-center gap-2">
+          {selected?.leading ?? null}
+          <Text className={`flex-1 text-base ${selected ? 'text-ink' : 'text-faint'}`} numberOfLines={1}>
+            {selected ? selected.label : placeholder}
+          </Text>
+        </View>
         <Text className="text-faint">▾</Text>
       </Pressable>
 
@@ -59,9 +63,12 @@ export function Dropdown<T extends string>({
                     accessibilityRole="button"
                     className="flex-row items-center justify-between px-4 py-3"
                   >
-                    <Text className={`text-base ${isSelected ? 'text-accent' : 'text-ink'}`}>
-                      {item.label}
-                    </Text>
+                    <View className="min-w-0 flex-1 flex-row items-center gap-2">
+                      {item.leading ?? null}
+                      <Text className={`flex-1 text-base ${isSelected ? 'text-accent' : 'text-ink'}`} numberOfLines={1}>
+                        {item.label}
+                      </Text>
+                    </View>
                     {isSelected ? <Text className="text-base text-accent">✓</Text> : null}
                   </Pressable>
                 );

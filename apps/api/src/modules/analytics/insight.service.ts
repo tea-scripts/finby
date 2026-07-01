@@ -3,6 +3,7 @@ import type { InsightResult } from '@finby/shared';
 import { AnalyticsService } from './analytics.service';
 
 const iso = (d: Date): string => d.toISOString().slice(0, 10);
+const MIN_PROJECTION_DAYS = 5;
 
 @Injectable()
 export class InsightService {
@@ -35,12 +36,27 @@ export class InsightService {
     const curSpend = Number(cur.totalExpenses);
     const prevSpend = Number(prev.totalExpenses);
 
+    const daysElapsed = Math.max(1, now.getUTCDate());
+    if (isCurrentMonth && daysElapsed < MIN_PROJECTION_DAYS) {
+      const mtd = Math.round(curSpend).toLocaleString('en-US');
+      return {
+        period: { from: iso(periodStart), to: periodTo },
+        currency,
+        direction: 'flat',
+        spendDeltaPercent: 0,
+        projectionApplies: false,
+        projectedSpend: null,
+        projectedSavings: null,
+        comparedTo: { from: iso(prevStart), to: iso(prevEnd) },
+        message: `You've spent ${currency} ${mtd} so far this month.`,
+      };
+    }
+
     let projectedSpend: number | null = null;
     let projectedSavings: number | null = null;
     let comparisonSpend = curSpend;
 
     if (isCurrentMonth) {
-      const daysElapsed = Math.max(1, now.getUTCDate());
       const daysInMonth = periodEnd.getUTCDate();
       const factor = daysInMonth / daysElapsed;
       projectedSpend = curSpend * factor;

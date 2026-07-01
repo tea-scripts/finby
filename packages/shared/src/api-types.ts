@@ -217,6 +217,8 @@ export interface Category {
   id: string;
   name: string;
   isArchived: boolean;
+  icon?: string | null;
+  color?: string | null;
 }
 
 /** GET/PATCH transactions item */

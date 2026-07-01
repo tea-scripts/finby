@@ -63,4 +63,31 @@ describe('InsightService', () => {
     expect(r.spendDeltaPercent).toBe(0);
     expect(r.message).toMatch(/not enough history/i);
   });
+
+  it('suppresses the projection in the first days of the current month', async () => {
+    const early = new Date('2026-07-03T00:00:00.000Z'); // day 3 → below the 5-day floor
+    const svc = make(
+      summary({ totalExpenses: '40', netSavings: '-40', transactionCount: 2 }),
+      summary({ totalExpenses: '2000', transactionCount: 30 }),
+    );
+    const r = await svc.insight('ws1', 'USD', '2026-07-01', '2026-07-03', early);
+    expect(r.projectionApplies).toBe(false);
+    expect(r.projectedSpend).toBeNull();
+    expect(r.projectedSavings).toBeNull();
+    expect(r.direction).toBe('flat');
+    expect(r.spendDeltaPercent).toBe(0);
+    expect(r.message).toMatch(/so far this month/i);
+    expect(r.message).toMatch(/40/); // month-to-date spend
+  });
+
+  it('still projects once enough of the month has elapsed', async () => {
+    const midMonth = new Date('2026-07-15T00:00:00.000Z'); // day 15 → projects
+    const svc = make(
+      summary({ totalExpenses: '500', netSavings: '500', transactionCount: 5 }),
+      summary({ totalExpenses: '2000', transactionCount: 30 }),
+    );
+    const r = await svc.insight('ws1', 'USD', '2026-07-01', '2026-07-15', midMonth);
+    expect(r.projectionApplies).toBe(true);
+    expect(r.direction).toBe('less');
+  });
 });
