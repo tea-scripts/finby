@@ -3,6 +3,8 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react-nativ
 
 import { PlanCarouselSheet } from './plan-carousel-sheet';
 
+jest.mock('expo-blur', () => ({ BlurView: ({ children }: { children?: unknown }) => children ?? null }));
+
 describe('PlanCarouselSheet', () => {
   it('renders all four tiers and marks the current one', async () => {
     await render(<PlanCarouselSheet open onClose={jest.fn()} currentTier="FREE" />);

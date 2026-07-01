@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
-import { Modal, Pressable, ScrollView, Text, View } from 'react-native';
+import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { BlurView } from 'expo-blur';
 import type { SubscriptionTier } from '@finby/shared';
 import { TIER_NAME } from '../../lib/billing-links';
 import { openWebBilling } from '../../lib/open-web-billing';
@@ -113,8 +114,11 @@ export function PlanCarouselSheet({
           testID="carousel-scrim"
           accessibilityLabel="Close"
           onPress={onClose}
-          className="absolute inset-0 bg-black/60"
-        />
+          style={StyleSheet.absoluteFill}
+        >
+          <BlurView intensity={90} tint="dark" style={StyleSheet.absoluteFill} />
+          <View style={StyleSheet.absoluteFill} className="bg-black/40" />
+        </Pressable>
         <View className="w-full" style={{ maxWidth: 480, width: '100%' }}>
           <View onLayout={(e) => setContainerW(e.nativeEvent.layout.width)}>
             <ScrollView
