@@ -50,8 +50,8 @@ function Dots({ index, onDot }: { index: number; onDot: (i: number) => void }) {
   );
 }
 
-/** A BottomSheet holding a peek-carousel of all four plans (current marked). Any
- *  non-current CTA closes the sheet and hands off to the web (no in-app purchase). */
+/** A centered modal holding a peek-carousel of all four plans (current marked). Any
+ *  non-current CTA closes it and hands off to the web (no in-app purchase). */
 export function PlanCarouselSheet({
   open,
   onClose,
