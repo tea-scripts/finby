@@ -3,6 +3,7 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react-nativ
 jest.mock('../../lib/use-auth-store', () => ({ useAuthStore: (s: (x: unknown) => unknown) => s({ workspace: { id: 'w1', tier: 'FAMILY' } }) }));
 jest.mock('expo-router', () => ({ useRouter: () => ({ back: jest.fn() }) }));
 jest.mock('react-native-safe-area-context', () => ({ SafeAreaView: ({ children }: { children: unknown }) => children, useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }) }));
+jest.mock('expo-blur', () => ({ BlurView: ({ children }: { children: unknown }) => children }));
 jest.mock('@finby/core', () => ({ ApiError: class extends Error {} }));
 jest.mock('../../lib/runtime.native', () => ({ api: { members: {
   listMembers: jest.fn(), listInvites: jest.fn(), inviteMember: jest.fn(),

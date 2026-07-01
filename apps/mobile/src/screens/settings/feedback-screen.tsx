@@ -7,12 +7,14 @@ import { StarRating } from '../../components/settings/star-rating';
 import { Field } from '../../components/ui/field';
 import { Input } from '../../components/ui/input';
 import { Button } from '../../components/ui/button';
+import { useTabBarSpace } from '../../components/nav/floating-tab-bar';
 import { api } from '../../lib/runtime.native';
 
 export function FeedbackScreen() {
   const [rating, setRating] = useState(0);
   const [comment, setComment] = useState('');
   const [status, setStatus] = useState<'idle' | 'submitting' | 'done' | 'error'>('idle');
+  const tabBarSpace = useTabBarSpace();
 
   async function submit() {
     if (rating < 1) return;
@@ -27,9 +29,9 @@ export function FeedbackScreen() {
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-canvas" edges={['top', 'bottom']}>
+    <SafeAreaView className="flex-1 bg-canvas" edges={['top']}>
       <SettingsHeader title="Feedback" />
-      <ScrollView contentContainerClassName="gap-5 p-6">
+      <ScrollView contentContainerClassName="gap-5 p-6" contentContainerStyle={{ paddingBottom: tabBarSpace }}>
         {status === 'done' ? (
           <View className="items-center gap-3 py-8">
             <Text className="text-4xl">⭐</Text>

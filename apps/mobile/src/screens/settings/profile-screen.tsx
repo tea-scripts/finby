@@ -8,6 +8,7 @@ import { SettingsHeader } from '../../components/settings/settings-header';
 import { Field } from '../../components/ui/field';
 import { Input } from '../../components/ui/input';
 import { Button } from '../../components/ui/button';
+import { useTabBarSpace } from '../../components/nav/floating-tab-bar';
 import { useAuthStore } from '../../lib/use-auth-store';
 import { api } from '../../lib/runtime.native';
 
@@ -19,6 +20,7 @@ export function ProfileScreen() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const tabBarSpace = useTabBarSpace();
 
   const dirty = name !== (user?.displayName ?? '') || timezone !== (user?.timezone ?? '');
 
@@ -43,9 +45,9 @@ export function ProfileScreen() {
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-canvas" edges={['top', 'bottom']}>
+    <SafeAreaView className="flex-1 bg-canvas" edges={['top']}>
       <SettingsHeader title="Profile" />
-      <ScrollView contentContainerClassName="gap-5 p-6">
+      <ScrollView contentContainerClassName="gap-5 p-6" contentContainerStyle={{ paddingBottom: tabBarSpace }}>
         {user?.accountNumber ? (
           <View className="gap-1.5">
             <Text className="text-xs font-medium uppercase tracking-wide text-muted">Account number</Text>

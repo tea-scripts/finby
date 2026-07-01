@@ -6,6 +6,7 @@ import { ApiError } from '@finby/core';
 import { SettingsHeader } from '../../components/settings/settings-header';
 import { Field } from '../../components/ui/field';
 import { Dropdown } from '../../components/ui/dropdown';
+import { useTabBarSpace } from '../../components/nav/floating-tab-bar';
 import { useAuthStore } from '../../lib/use-auth-store';
 import { api } from '../../lib/runtime.native';
 
@@ -27,6 +28,7 @@ export function PreferencesScreen() {
   const prefs = useAuthStore((s) => s.user?.preferences);
   const setUser = useAuthStore((s) => s.setUser);
   const [status, setStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+  const tabBarSpace = useTabBarSpace();
 
   async function savePref(patch: Partial<UserPreferences>) {
     setStatus('saving');
@@ -43,9 +45,9 @@ export function PreferencesScreen() {
   const statusLabel = status === 'saving' ? 'Saving…' : status === 'saved' ? 'Saved' : status === 'error' ? 'Could not save' : '';
 
   return (
-    <SafeAreaView className="flex-1 bg-canvas" edges={['top', 'bottom']}>
+    <SafeAreaView className="flex-1 bg-canvas" edges={['top']}>
       <SettingsHeader title="Preferences" />
-      <ScrollView contentContainerClassName="gap-5 p-6">
+      <ScrollView contentContainerClassName="gap-5 p-6" contentContainerStyle={{ paddingBottom: tabBarSpace }}>
         {statusLabel ? <Text className={`text-xs ${status === 'error' ? 'text-danger' : 'text-faint'}`}>{statusLabel}</Text> : null}
 
         <Field label="Date format" hint="How dates appear across the app.">

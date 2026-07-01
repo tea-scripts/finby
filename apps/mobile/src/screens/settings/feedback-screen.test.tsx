@@ -1,6 +1,7 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react-native';
 jest.mock('expo-router', () => ({ useRouter: () => ({ back: jest.fn() }) }));
 jest.mock('react-native-safe-area-context', () => ({ SafeAreaView: ({ children }: { children: unknown }) => children, useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }) }));
+jest.mock('expo-blur', () => ({ BlurView: ({ children }: { children: unknown }) => children }));
 jest.mock('../../lib/runtime.native', () => ({ api: { feedback: { submitFeedback: jest.fn() } } }));
 import { FeedbackScreen } from './feedback-screen';
 import { api } from '../../lib/runtime.native';

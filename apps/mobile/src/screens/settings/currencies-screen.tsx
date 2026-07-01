@@ -9,6 +9,7 @@ import { Dropdown } from '../../components/ui/dropdown';
 import { Button } from '../../components/ui/button';
 import { ConfirmSheet } from '../../components/settings/confirm-sheet';
 import { UpgradeGate } from '../../components/settings/upgrade-gate';
+import { useTabBarSpace } from '../../components/nav/floating-tab-bar';
 import { useAuthStore } from '../../lib/use-auth-store';
 import { api } from '../../lib/runtime.native';
 
@@ -27,6 +28,7 @@ export function CurrenciesScreen() {
   const [selected, setSelected] = useState<string[]>(workspace?.preferredCurrencies ?? [base]);
   const [savingPreferred, setSavingPreferred] = useState(false);
   const [preferredError, setPreferredError] = useState<string | null>(null);
+  const tabBarSpace = useTabBarSpace();
   const preferredDirty = useMemo(() => {
     const a = [...selected].sort().join(',');
     const b = [...(workspace?.preferredCurrencies ?? [])].sort().join(',');
@@ -71,9 +73,9 @@ export function CurrenciesScreen() {
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-canvas" edges={['top', 'bottom']}>
+    <SafeAreaView className="flex-1 bg-canvas" edges={['top']}>
       <SettingsHeader title="Currencies" />
-      <ScrollView contentContainerClassName="gap-6 p-6">
+      <ScrollView contentContainerClassName="gap-6 p-6" contentContainerStyle={{ paddingBottom: tabBarSpace }}>
         <Field label="Base currency" hint={`All totals are reported in ${base}.`}>
           <Dropdown
             value={base}

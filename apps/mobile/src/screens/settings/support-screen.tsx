@@ -8,6 +8,7 @@ import { Field } from '../../components/ui/field';
 import { Dropdown } from '../../components/ui/dropdown';
 import { Input } from '../../components/ui/input';
 import { Button } from '../../components/ui/button';
+import { useTabBarSpace } from '../../components/nav/floating-tab-bar';
 import { api } from '../../lib/runtime.native';
 
 const CATEGORY_OPTIONS = SUPPORT_CATEGORIES.map((c) => ({ value: c, label: SUPPORT_CATEGORY_LABELS[c] }));
@@ -33,6 +34,7 @@ export function SupportScreen() {
   const [error, setError] = useState<string | null>(null);
   const [sent, setSent] = useState(false);
   const [tickets, setTickets] = useState<SupportTicketView[]>([]);
+  const tabBarSpace = useTabBarSpace();
 
   useEffect(() => {
     api.support.listSupportTickets().then(setTickets).catch(() => { /* history is best-effort */ });
@@ -56,9 +58,9 @@ export function SupportScreen() {
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-canvas" edges={['top', 'bottom']}>
+    <SafeAreaView className="flex-1 bg-canvas" edges={['top']}>
       <SettingsHeader title="Support" />
-      <ScrollView contentContainerClassName="gap-5 p-6">
+      <ScrollView contentContainerClassName="gap-5 p-6" contentContainerStyle={{ paddingBottom: tabBarSpace }}>
         <Text className="text-sm text-muted">Hit a snag? Send us a ticket and we&apos;ll reply by email.</Text>
         <Field label="Category">
           <Dropdown value={category} options={CATEGORY_OPTIONS} accessibilityLabel="Category" onSelect={(v) => setCategory(v)} />

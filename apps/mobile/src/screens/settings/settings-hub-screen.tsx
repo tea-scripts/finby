@@ -12,6 +12,7 @@ import { CurrentPlanCard } from '../../components/billing/current-plan-card';
 import { PlanCarouselSheet } from '../../components/billing/plan-carousel-sheet';
 import { SettingsGroup } from '../../components/settings/settings-group';
 import { SettingsRow } from '../../components/settings/settings-row';
+import { useTabBarSpace } from '../../components/nav/floating-tab-bar';
 import { useAuthStore } from '../../lib/use-auth-store';
 import { api } from '../../lib/runtime.native';
 
@@ -32,6 +33,7 @@ export function SettingsHubScreen() {
   const [sub, setSub] = useState<SectionState<SubscriptionView>>(LOADING);
   const [managing, setManaging] = useState(false);
   const [sheetOpen, setSheetOpen] = useState(false);
+  const tabBarSpace = useTabBarSpace();
 
   const load = useCallback(() => {
     if (!workspace) return Promise.resolve();
@@ -68,12 +70,12 @@ export function SettingsHubScreen() {
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-canvas" edges={['top', 'bottom']}>
+    <SafeAreaView className="flex-1 bg-canvas" edges={['top']}>
       <View className="border-b border-line px-4 py-3">
         <Text className="text-lg font-semibold text-ink">Settings</Text>
       </View>
 
-      <ScrollView contentContainerClassName="gap-6 p-6">
+      <ScrollView contentContainerClassName="gap-6 p-6" contentContainerStyle={{ paddingBottom: tabBarSpace }}>
         <Pressable
           onPress={() => router.push('/streaks')}
           accessibilityRole="button"

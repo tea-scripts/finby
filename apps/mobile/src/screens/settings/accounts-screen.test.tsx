@@ -4,6 +4,7 @@ jest.mock('../../lib/use-auth-store', () => ({ useAuthStore: (s: (x: unknown) =>
 jest.mock('../../lib/use-workspace-role', () => ({ useWorkspaceRole: jest.fn(() => 'OWNER') }));
 jest.mock('expo-router', () => ({ useRouter: () => ({ back: jest.fn() }) }));
 jest.mock('react-native-safe-area-context', () => ({ SafeAreaView: ({ children }: { children: unknown }) => children, useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }) }));
+jest.mock('expo-blur', () => ({ BlurView: ({ children }: { children: unknown }) => children }));
 jest.mock('@finby/core', () => ({ ApiError: class extends Error {}, money: (v: string, c: string) => `${c} ${v}` }));
 jest.mock('../../lib/runtime.native', () => ({ api: {
   dashboard: { listAccounts: jest.fn() },

@@ -12,6 +12,7 @@ import { Dropdown } from '../../components/ui/dropdown';
 import { Button } from '../../components/ui/button';
 import { ColorPicker } from '../../components/settings/color-picker';
 import { ConfirmSheet } from '../../components/settings/confirm-sheet';
+import { useTabBarSpace } from '../../components/nav/floating-tab-bar';
 import { useWorkspaceRole } from '../../lib/use-workspace-role';
 import { useAuthStore } from '../../lib/use-auth-store';
 import { api } from '../../lib/runtime.native';
@@ -41,6 +42,7 @@ export function AccountsScreen() {
   const [busy, setBusy] = useState(false);
 
   const [archiveTarget, setArchiveTarget] = useState<AccountView | null>(null);
+  const tabBarSpace = useTabBarSpace();
 
   const load = useCallback(() => {
     if (!workspace) return;
@@ -99,9 +101,9 @@ export function AccountsScreen() {
   const archived = accounts.filter((a) => a.isArchived);
 
   return (
-    <SafeAreaView className="flex-1 bg-canvas" edges={['top', 'bottom']}>
+    <SafeAreaView className="flex-1 bg-canvas" edges={['top']}>
       <SettingsHeader title="Accounts" />
-      <ScrollView contentContainerClassName="gap-4 p-6">
+      <ScrollView contentContainerClassName="gap-4 p-6" contentContainerStyle={{ paddingBottom: tabBarSpace }}>
         {loading ? (
           <SectionLoading />
         ) : loadError ? (

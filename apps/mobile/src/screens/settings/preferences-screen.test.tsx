@@ -5,6 +5,7 @@ const mockState = { user: { preferences: { dateFormat: 'MEDIUM', currencyDisplay
 jest.mock('../../lib/use-auth-store', () => ({ useAuthStore: (s: (x: unknown) => unknown) => s(mockState) }));
 jest.mock('expo-router', () => ({ useRouter: () => ({ back: jest.fn() }) }));
 jest.mock('react-native-safe-area-context', () => ({ SafeAreaView: ({ children }: { children: unknown }) => children, useSafeAreaInsets: () => ({ top: 0, bottom: 0, left: 0, right: 0 }) }));
+jest.mock('expo-blur', () => ({ BlurView: ({ children }: { children: unknown }) => children }));
 jest.mock('../../lib/runtime.native', () => ({ api: { settings: { updateProfile: jest.fn() } } }));
 
 import { PreferencesScreen } from './preferences-screen';
