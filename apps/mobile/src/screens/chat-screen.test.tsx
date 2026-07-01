@@ -117,7 +117,7 @@ describe('ChatScreen', () => {
     await waitFor(() => expect(screen.getByText('Service unavailable')).toBeTruthy());
   });
 
-  it('routes the upgrade notice to the subscription screen on tap', async () => {
+  it('opens the plans carousel when the upgrade notice is tapped', async () => {
     mockChat.streamMessage.mockRejectedValue(
       new ApiError(429, 'LIMIT', 'Daily limit reached', { upgradeRequired: true }),
     );
@@ -127,7 +127,9 @@ describe('ChatScreen', () => {
     await fireEvent.press(screen.getByTestId('composer-send'));
     await waitFor(() => expect(screen.getByText('Daily limit reached')).toBeTruthy());
     await fireEvent.press(screen.getByText('Daily limit reached'));
-    expect(mockPush).toHaveBeenCalledWith('/subscription');
+    // The carousel deck is now visible (all four tiers render)
+    await waitFor(() => expect(screen.getByText('Premium')).toBeTruthy());
+    expect(screen.getByText('Family')).toBeTruthy();
   });
 
   it('opens the streak sheet when the header badge is tapped', async () => {

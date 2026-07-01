@@ -8,13 +8,13 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
 import type { ChatAction, ChatMessageView, NewAchievement, PendingConfirmation } from '@finby/shared';
 import { ActionCard } from '../components/chat/action-card';
 import { Composer } from '../components/chat/composer';
 import { ConfirmationCard } from '../components/chat/confirmation-card';
 import { MessageBubble } from '../components/chat/message-bubble';
 import { TypingIndicator } from '../components/chat/typing-indicator';
+import { PlanCarouselSheet } from '../components/billing/plan-carousel-sheet';
 import { Wordmark } from '../components/ui/wordmark';
 import { StreakBadge } from '../components/dashboard/streak-badge';
 import { StreakSheet } from '../components/streak/streak-sheet';
@@ -48,7 +48,6 @@ const NOTICE_STYLES: Record<ChatNotice['kind'], string> = {
 };
 
 export function ChatScreen() {
-  const router = useRouter();
   const workspace = useAuthStore((s) => s.workspace);
   const user = useAuthStore((s) => s.user);
   const [conversationId, setConversationId] = useState<string | null>(null);
@@ -58,6 +57,7 @@ export function ChatScreen() {
   const [notice, setNotice] = useState<ChatNotice | null>(null);
   const [streakOpen, setStreakOpen] = useState(false);
   const [celebration, setCelebration] = useState<NewAchievement[]>([]);
+  const [plansOpen, setPlansOpen] = useState(false);
   const listRef = useRef<FlatList<UiMessage>>(null);
   const tabBarSpace = useTabBarSpace();
   const keyboardVisible = useKeyboardVisible();
@@ -237,7 +237,7 @@ export function ChatScreen() {
         {notice ? (
           <Pressable
             disabled={!notice.upgrade}
-            onPress={() => router.push('/subscription')}
+            onPress={() => setPlansOpen(true)}
             accessibilityRole="link"
             accessibilityLabel={notice.upgrade ? 'See subscription plans' : undefined}
             className={`mx-3 mb-2 rounded-xl border px-3.5 py-2.5 ${NOTICE_STYLES[notice.kind]}`}
@@ -266,6 +266,11 @@ export function ChatScreen() {
           onContinue={() => setCelebration((c) => c.slice(1))}
         />
       ) : null}
+      <PlanCarouselSheet
+        open={plansOpen}
+        onClose={() => setPlansOpen(false)}
+        currentTier={workspace?.tier ?? 'FREE'}
+      />
     </SafeAreaView>
   );
 }
