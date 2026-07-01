@@ -11,7 +11,7 @@ import { pinHasher } from '../adapters/crypto.native';
 import { createBiometric } from '../adapters/biometric';
 import { localAuth } from '../adapters/local-auth.native';
 import { createNotifications } from '../adapters/notifications';
-import { notificationsBinding } from '../adapters/notifications.native';
+import { notificationsBinding } from '../adapters/notifications-binding.native';
 import { secureStore } from '../adapters/secure-store.native';
 import { streamFetch } from '../adapters/stream.native';
 import { createMobileSession } from './session';

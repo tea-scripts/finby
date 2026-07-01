@@ -4,7 +4,13 @@ import * as Device from 'expo-device';
 import type { NotificationsLike } from './notifications';
 
 /** expo-notifications + expo-device binding. Verified on device (no unit
- *  coverage — pure pass-through to the native modules). */
+ *  coverage — pure pass-through to the native modules).
+ *
+ *  NOTE: do NOT rename this to `notifications.native.ts`. Metro's platform
+ *  resolution would then make `import … from '../adapters/notifications'`
+ *  resolve to THIS file (the binding) instead of `notifications.ts` (the
+ *  factory), so `createNotifications` would be undefined at runtime. Keep a
+ *  distinct base name (like `local-auth.native.ts` does for biometric). */
 export const notificationsBinding: NotificationsLike = {
   isDevice: Device.isDevice,
   platformOS: Platform.OS,
