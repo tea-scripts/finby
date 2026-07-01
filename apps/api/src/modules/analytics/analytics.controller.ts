@@ -6,11 +6,14 @@ import { WorkspaceMemberGuard } from '../../common/guards/workspace-member.guard
 import { ZodValidationPipe } from '../../common/pipes/zod-validation.pipe';
 import type { WorkspaceContext } from '../../common/context';
 import { AnalyticsService } from './analytics.service';
+import { InsightService } from './insight.service';
 import {
   byCategoryQuerySchema,
+  insightQuerySchema,
   summaryQuerySchema,
   trendQuerySchema,
   type ByCategoryQuery,
+  type InsightQuery,
   type SummaryQuery,
   type TrendQuery,
 } from './dto/analytics.schemas';
@@ -20,11 +23,15 @@ import type {
   SummaryResult,
   TrendResult,
 } from './analytics.types';
+import type { InsightResult } from '@finby/shared';
 
 @Controller('workspaces/:workspaceId/analytics')
 @UseGuards(WorkspaceMemberGuard)
 export class AnalyticsController {
-  constructor(private readonly analytics: AnalyticsService) {}
+  constructor(
+    private readonly analytics: AnalyticsService,
+    private readonly insights: InsightService,
+  ) {}
 
   @Get('summary')
   summary(
@@ -61,5 +68,13 @@ export class AnalyticsController {
   @UseGuards(TierGuard)
   netWorth(@Workspace() workspace: WorkspaceContext): Promise<NetWorthResult> {
     return this.analytics.netWorth(workspace.id, workspace.baseCurrency);
+  }
+
+  @Get('insight')
+  insight(
+    @Workspace() workspace: WorkspaceContext,
+    @Query(new ZodValidationPipe(insightQuerySchema)) query: InsightQuery,
+  ): Promise<InsightResult> {
+    return this.insights.insight(workspace.id, workspace.baseCurrency, query.from, query.to);
   }
 }

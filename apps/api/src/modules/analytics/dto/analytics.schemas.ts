@@ -19,3 +19,9 @@ export const trendQuerySchema = z.object({
   months: z.coerce.number().int().min(1).max(24).default(6),
 });
 export type TrendQuery = z.infer<typeof trendQuerySchema>;
+
+export const insightQuerySchema = z.object({
+  from: isoDate,
+  to: isoDate,
+});
+export type InsightQuery = z.infer<typeof insightQuerySchema>;
