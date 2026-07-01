@@ -43,7 +43,7 @@ export function ProfileScreen() {
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-canvas" edges={['bottom']}>
+    <SafeAreaView className="flex-1 bg-canvas" edges={['top', 'bottom']}>
       <SettingsHeader title="Profile" />
       <ScrollView contentContainerClassName="gap-5 p-6">
         {user?.accountNumber ? (

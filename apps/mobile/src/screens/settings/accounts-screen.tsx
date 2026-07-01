@@ -99,7 +99,7 @@ export function AccountsScreen() {
   const archived = accounts.filter((a) => a.isArchived);
 
   return (
-    <SafeAreaView className="flex-1 bg-canvas" edges={['bottom']}>
+    <SafeAreaView className="flex-1 bg-canvas" edges={['top', 'bottom']}>
       <SettingsHeader title="Accounts" />
       <ScrollView contentContainerClassName="gap-4 p-6">
         {loading ? (

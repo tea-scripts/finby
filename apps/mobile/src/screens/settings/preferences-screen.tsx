@@ -43,7 +43,7 @@ export function PreferencesScreen() {
   const statusLabel = status === 'saving' ? 'Saving…' : status === 'saved' ? 'Saved' : status === 'error' ? 'Could not save' : '';
 
   return (
-    <SafeAreaView className="flex-1 bg-canvas" edges={['bottom']}>
+    <SafeAreaView className="flex-1 bg-canvas" edges={['top', 'bottom']}>
       <SettingsHeader title="Preferences" />
       <ScrollView contentContainerClassName="gap-5 p-6">
         {statusLabel ? <Text className={`text-xs ${status === 'error' ? 'text-danger' : 'text-faint'}`}>{statusLabel}</Text> : null}

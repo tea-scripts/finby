@@ -71,7 +71,7 @@ export function CurrenciesScreen() {
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-canvas" edges={['bottom']}>
+    <SafeAreaView className="flex-1 bg-canvas" edges={['top', 'bottom']}>
       <SettingsHeader title="Currencies" />
       <ScrollView contentContainerClassName="gap-6 p-6">
         <Field label="Base currency" hint={`All totals are reported in ${base}.`}>

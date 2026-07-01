@@ -56,7 +56,7 @@ export function SupportScreen() {
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-canvas" edges={['bottom']}>
+    <SafeAreaView className="flex-1 bg-canvas" edges={['top', 'bottom']}>
       <SettingsHeader title="Support" />
       <ScrollView contentContainerClassName="gap-5 p-6">
         <Text className="text-sm text-muted">Hit a snag? Send us a ticket and we&apos;ll reply by email.</Text>
