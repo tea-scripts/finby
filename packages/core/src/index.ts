@@ -6,7 +6,11 @@ export { ApiError, createHttpClient } from './http';
 export type { HttpClient } from './http';
 export { parseSseFrames } from './sse';
 export type { ParsedSseEvent } from './sse';
-export { money, shortDate, timeOfDay, dayKey, dayLabel, currentMonthRange } from './format';
+export {
+  money, shortDate, timeOfDay, dayKey, dayLabel, currentMonthRange,
+  currentMonth, addMonths, monthToRange, formatMonthLabel,
+} from './format';
+export type { MonthRef } from './format';
 export { createAuthedClient } from './authed';
 export type { AuthedClient, AuthedClientConfig, TokenPair } from './authed';
 export type { AuthedFetch, ApiFetch, AuthedStream } from './api/contract';

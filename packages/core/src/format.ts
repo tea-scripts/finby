@@ -103,3 +103,34 @@ export function currentMonthRange(): { from: string; to: string } {
   const from = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
   return { from: from.toISOString().slice(0, 10), to: now.toISOString().slice(0, 10) };
 }
+
+export type MonthRef = { year: number; month: number }; // month is 0-based
+
+export function currentMonth(now: Date = new Date()): MonthRef {
+  return { year: now.getUTCFullYear(), month: now.getUTCMonth() };
+}
+
+export function addMonths(ref: MonthRef, delta: number): MonthRef {
+  const d = new Date(Date.UTC(ref.year, ref.month + delta, 1));
+  return { year: d.getUTCFullYear(), month: d.getUTCMonth() };
+}
+
+/** from = first of the month; to = today when `ref` is the current month, else
+ *  the last day of that month. All YYYY-MM-DD (UTC). */
+export function monthToRange(ref: MonthRef, now: Date = new Date()): { from: string; to: string } {
+  const start = new Date(Date.UTC(ref.year, ref.month, 1));
+  const end = new Date(Date.UTC(ref.year, ref.month + 1, 0));
+  const isCurrent = ref.year === now.getUTCFullYear() && ref.month === now.getUTCMonth();
+  const to = isCurrent ? now : end;
+  return { from: start.toISOString().slice(0, 10), to: to.toISOString().slice(0, 10) };
+}
+
+const MONTH_NAMES = [
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December',
+];
+
+export function formatMonthLabel(ref: MonthRef, now: Date = new Date()): string {
+  const name = MONTH_NAMES[ref.month] ?? '';
+  return ref.year === now.getUTCFullYear() ? name : `${name} ${ref.year}`;
+}
