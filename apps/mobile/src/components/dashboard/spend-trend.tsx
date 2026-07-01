@@ -1,5 +1,6 @@
 import { Text, View } from 'react-native';
 import Svg, { Circle, Defs, LinearGradient, Path, Stop } from 'react-native-svg';
+import { money } from '@finby/core';
 import type { TrendResult } from '@finby/shared';
 import { SectionCard, SectionLoading, SectionError, SectionEmpty, type SectionProps } from './section-card';
 import { trendGeometry } from '../charts/trend-geometry';
@@ -15,7 +16,7 @@ function label(month: string): string {
 
 export function SpendTrend({ state, onRetry }: SectionProps<TrendResult>) {
   return (
-    <SectionCard title="6-month trend">
+    <SectionCard title="Spending trend">
       {state.loading ? (
         <SectionLoading />
       ) : state.error || !state.data ? (
@@ -33,8 +34,17 @@ function Content({ data }: { data: TrendResult }) {
   const values = data.trend.map((p) => Number(p.expenses));
   const g = trendGeometry(values, { width: W, height: H, padding: 16 });
   const last = g.points[g.points.length - 1];
+  const lastPoint = data.trend[data.trend.length - 1];
   return (
-    <View className="gap-1.5">
+    <View className="gap-2">
+      {lastPoint ? (
+        <View className="flex-row items-baseline gap-1.5">
+          <Text className="text-base font-semibold text-ink">
+            {money(lastPoint.expenses, data.currency)}
+          </Text>
+          <Text className="text-xs text-muted">spent in {label(lastPoint.month)}</Text>
+        </View>
+      ) : null}
       <Svg width="100%" height={H} viewBox={`0 0 ${W} ${H}`}>
         <Defs>
           <LinearGradient id="trendFill" x1="0" y1="0" x2="0" y2="1">

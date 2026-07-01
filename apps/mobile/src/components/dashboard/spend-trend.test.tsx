@@ -35,6 +35,12 @@ describe('SpendTrend', () => {
     expect(screen.getByText('Jun')).toBeTruthy();
   });
 
+  it('shows the latest month spend as a readout so the line is self-explanatory', async () => {
+    await render(<SpendTrend state={{ data, loading: false, error: null }} onRetry={() => {}} />);
+    expect(screen.getByText(/2,540/)).toBeTruthy(); // latest month expenses
+    expect(screen.getByText(/spent in Jun/i)).toBeTruthy();
+  });
+
   it('shows an empty state with no data', async () => {
     await render(<SpendTrend state={{ data: { currency: 'USD', trend: [] }, loading: false, error: null }} onRetry={() => {}} />);
     expect(screen.getByText(/not enough/i)).toBeTruthy();
