@@ -14,7 +14,6 @@ export default function AppLayout() {
           <Tabs.Screen key={t.name} name={t.name} />
         ))}
         <Tabs.Screen name="streaks" options={{ href: null }} />
-        <Tabs.Screen name="subscription" options={{ href: null }} />
       </Tabs>
     </AppLockGate>
   );
