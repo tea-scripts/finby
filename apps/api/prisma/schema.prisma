@@ -271,6 +271,7 @@ model Workspace {
   alerts            Alert[]
   fxRateSnapshots   FxRateSnapshot[]
   pushSubscriptions PushSubscription[]
+  mobilePushDevices MobilePushDevice[]
 
   @@index([slug])
   @@map("workspaces")
@@ -822,6 +823,23 @@ model PushSubscription {
 
   @@index([workspaceId, userId])
   @@map("push_subscriptions")
+}
+
+/// One row per mobile device's Expo push token. Separate from PushSubscription
+/// (which is Web Push/VAPID only). expoPushToken is globally unique so a device
+/// appears once regardless of how many workspaces it registered under.
+model MobilePushDevice {
+  id            String   @id @default(cuid())
+  workspaceId   String
+  userId        String
+  expoPushToken String   @unique
+  platform      String   // 'ios' | 'android'
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@index([workspaceId, userId])
 }
 
 // ============================================================
