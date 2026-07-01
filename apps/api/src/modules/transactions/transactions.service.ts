@@ -20,7 +20,7 @@ import type {
 const FREE_HISTORY_DAYS = 90;
 
 const VIEW_INCLUDE = {
-  category: { select: { id: true, name: true } },
+  category: { select: { id: true, name: true, icon: true, color: true } },
   fromAccount: { select: { id: true, name: true } },
 } as const;
 
@@ -459,7 +459,9 @@ export class TransactionsService {
       fxRateUsed: row.fxRateUsed.toString(),
       merchant: row.merchant,
       description: row.description,
-      category: row.category ? { id: row.category.id, name: row.category.name } : null,
+      category: row.category
+        ? { id: row.category.id, name: row.category.name, icon: row.category.icon, color: row.category.color }
+        : null,
       account: row.fromAccount ? { id: row.fromAccount.id, name: row.fromAccount.name } : null,
       transactionDate: row.transactionDate.toISOString(),
       tags: row.tags,

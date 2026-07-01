@@ -151,7 +151,7 @@ export interface SummaryResult {
 /** GET budgets → { budgets: BudgetView[] } */
 export interface BudgetView {
   id: string;
-  category: { id: string; name: string };
+  category: { id: string; name: string; icon: string | null; color: string | null };
   amountLimit: string;
   amountSpent: string;
   currency: string;
@@ -193,7 +193,7 @@ export interface Transaction {
   fxRateUsed: string;
   merchant: string | null;
   description: string | null;
-  category: { id: string; name: string } | null;
+  category: { id: string; name: string; icon: string | null; color: string | null } | null;
   account: { id: string; name: string } | null;
   transactionDate: string;
   tags: string[];

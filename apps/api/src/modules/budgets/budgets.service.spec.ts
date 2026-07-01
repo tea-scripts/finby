@@ -27,7 +27,7 @@ const budgetRow = (extra: Record<string, unknown> = {}) => ({
   periodStart: new Date('2026-06-01T00:00:00.000Z'),
   periodEnd: new Date('2026-06-30T23:59:59.999Z'),
   isActive: true,
-  category: { id: 'c1', name: 'Groceries' },
+  category: { id: 'c1', name: 'Groceries', icon: 'cart', color: '#1A7A4A' },
   ...extra,
 });
 
@@ -75,6 +75,12 @@ describe('BudgetsService.createOrUpdate', () => {
     );
     expect(arg.create.currency).toBe('PHP');
     expect(view.utilizationPercent).toBeCloseTo(65.33, 1);
+    expect(view.category).toEqual({
+      id: 'c1',
+      name: 'Groceries',
+      icon: 'cart',
+      color: '#1A7A4A',
+    });
   });
 
   it('does not touch the transaction path when no replaceCategoryId is given', async () => {
@@ -97,7 +103,7 @@ describe('BudgetsService.createOrUpdate', () => {
     const stale = budgetRow({
       id: 'b-other',
       amountSpent: new Prisma.Decimal('500'),
-      category: { id: 'c-other', name: 'Other' },
+      category: { id: 'c-other', name: 'Other', icon: 'ellipsis', color: '#6B7280' },
     });
     prisma.budget.findUnique.mockResolvedValue(stale);
     prisma.budget.upsert.mockResolvedValue(budgetRow({ id: 'b-groceries' }));
