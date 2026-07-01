@@ -18,7 +18,11 @@ export function PlanDeckCard({
   onSelect: () => void;
 }) {
   const isCurrent = tier === currentTier;
-  const price = tier === 'FREE' ? 'Free' : `${formatTierPrice(tier)}/mo`;
+  // Deliberately distinct from TIER_NAME.FREE ('Free'): rendering the same literal
+  // string in two separate <Text> nodes on this card breaks text-based a11y/test
+  // queries (RNTL getByText('Free') matches both) once all four tiers are shown
+  // together, as PlanCarouselSheet does.
+  const price = tier === 'FREE' ? '$0/mo' : `${formatTierPrice(tier)}/mo`;
   const ctaLabel = isCurrent
     ? 'Current plan'
     : TIER_RANK[tier] > TIER_RANK[currentTier]
