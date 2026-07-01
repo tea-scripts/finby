@@ -1,9 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
-import { Pressable, ScrollView, Text, View } from 'react-native';
+import { Modal, Pressable, ScrollView, Text, View } from 'react-native';
 import type { SubscriptionTier } from '@finby/shared';
 import { TIER_NAME } from '../../lib/billing-links';
 import { openWebBilling } from '../../lib/open-web-billing';
-import { BottomSheet } from '../ui/bottom-sheet';
 import { PlanDeckCard } from './plan-deck-card';
 
 const TIERS: SubscriptionTier[] = ['FREE', 'PRO', 'PREMIUM', 'FAMILY'];
@@ -62,15 +61,24 @@ export function PlanCarouselSheet({
   onClose: () => void;
   currentTier: SubscriptionTier;
 }) {
+  const currentIndex = Math.max(0, TIERS.indexOf(currentTier));
+
   const [containerW, setContainerW] = useState(0);
-  const [index, setIndex] = useState(0);
+  const [index, setIndex] = useState(currentIndex);
   const scrollRef = useRef<ScrollView>(null);
+  // Guards the initial scroll-to-current-tier so it only fires once per open,
+  // after the container width has been measured via onLayout.
+  const didInitialScroll = useRef(false);
 
   // Modal unmounts its children when closed, so the ScrollView remounts at offset 0
-  // on reopen — reset index to match, else the dots/highlight desync from the viewport.
+  // on reopen — reset index to the current tier (mirrors the web modal opening on
+  // the current plan) and re-arm the one-shot initial scroll.
   useEffect(() => {
-    if (open) setIndex(0);
-  }, [open]);
+    if (open) {
+      setIndex(currentIndex);
+      didInitialScroll.current = false;
+    }
+  }, [open, currentIndex]);
 
   // Focused card is 84% of the container; neighbours peek via symmetric side padding.
   // Fall back to 360 before the first onLayout — this also lets the deck render under
@@ -79,6 +87,13 @@ export function PlanCarouselSheet({
   const cardW = Math.round(w * 0.84);
   const sidePad = Math.round((w - cardW) / 2);
   const stride = cardW + GAP;
+
+  useEffect(() => {
+    if (open && containerW > 0 && !didInitialScroll.current) {
+      didInitialScroll.current = true;
+      scrollRef.current?.scrollTo({ x: currentIndex * stride, animated: false });
+    }
+  }, [open, containerW, currentIndex, stride]);
 
   function goTo(i: number) {
     const clamped = Math.max(0, Math.min(TIERS.length - 1, i));
@@ -92,30 +107,40 @@ export function PlanCarouselSheet({
   }
 
   return (
-    <BottomSheet open={open} onClose={onClose} title="Choose your plan">
-      <View onLayout={(e) => setContainerW(e.nativeEvent.layout.width)}>
-        <ScrollView
-          ref={scrollRef}
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          snapToInterval={stride}
-          decelerationRate="fast"
-          contentContainerStyle={{ paddingHorizontal: sidePad, gap: GAP }}
-          onMomentumScrollEnd={(e) => setIndex(Math.round(e.nativeEvent.contentOffset.x / stride))}
-        >
-          {TIERS.map((tier, i) => (
-            <View key={tier} style={{ width: cardW }}>
-              <PlanDeckCard
-                tier={tier}
-                currentTier={currentTier}
-                focused={i === index}
-                onSelect={handleSelect}
-              />
-            </View>
-          ))}
-        </ScrollView>
-        <Dots index={index} onDot={goTo} />
+    <Modal visible={open} transparent animationType="fade" onRequestClose={onClose}>
+      <View className="flex-1 items-center justify-center p-4">
+        <Pressable
+          testID="carousel-scrim"
+          accessibilityLabel="Close"
+          onPress={onClose}
+          className="absolute inset-0 bg-black/60"
+        />
+        <View className="w-full" style={{ maxWidth: 480, width: '100%' }}>
+          <View onLayout={(e) => setContainerW(e.nativeEvent.layout.width)}>
+            <ScrollView
+              ref={scrollRef}
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              snapToInterval={stride}
+              decelerationRate="fast"
+              contentContainerStyle={{ paddingHorizontal: sidePad, gap: GAP }}
+              onMomentumScrollEnd={(e) => setIndex(Math.round(e.nativeEvent.contentOffset.x / stride))}
+            >
+              {TIERS.map((tier, i) => (
+                <View key={tier} style={{ width: cardW }}>
+                  <PlanDeckCard
+                    tier={tier}
+                    currentTier={currentTier}
+                    focused={i === index}
+                    onSelect={handleSelect}
+                  />
+                </View>
+              ))}
+            </ScrollView>
+            <Dots index={index} onDot={goTo} />
+          </View>
+        </View>
       </View>
-    </BottomSheet>
+    </Modal>
   );
 }
