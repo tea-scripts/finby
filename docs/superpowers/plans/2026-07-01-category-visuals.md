@@ -13,7 +13,8 @@
 - Custom UI only — no new UI dependencies. Mobile icons come from the already-installed `@expo/vector-icons` (Ionicons). (Finby UI hard-rule.)
 - The shared resolver must have **zero renderer dependencies** (no React, no icon libs) — pure data/logic.
 - Scope is **mobile only, rows-first**: Transaction rows + Budget rows. Do not touch web, the edit/filter sheets, or the dashboard donut.
-- Run `npm run test`, `npm run lint`, and the build before the final commit. Prefer per-task commits.
+- Package manager is **pnpm** (v10, turbo). Run `pnpm test`, `pnpm lint`, and `pnpm build` before the final commit. Prefer per-task commits.
+- Workspace names for `--filter`: `@finby/shared`, `finby-mobile`, `finby-api` (NOT `@finby/mobile`/`@finby/api`).
 - Commit messages: no AI-attribution trailers.
 
 ---
@@ -82,7 +83,7 @@ describe('resolveCategoryVisual', () => {
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `npm run test -w @finby/shared -- category-visuals`
+Run: `pnpm --filter @finby/shared test -- category-visuals`
 Expected: FAIL — `Cannot find module './category-visuals'`.
 
 - [ ] **Step 3: Write the implementation**
@@ -186,7 +187,7 @@ export * from './category-visuals';
 
 - [ ] **Step 5: Run test to verify it passes**
 
-Run: `npm run test -w @finby/shared -- category-visuals`
+Run: `pnpm --filter @finby/shared test -- category-visuals`
 Expected: PASS (6 tests).
 
 - [ ] **Step 6: Commit**
@@ -249,7 +250,7 @@ Then, in the test that asserts the mapped view (the one calling `toView` / listi
 
 - [ ] **Step 3: Run test to verify it fails**
 
-Run: `npm run test -w @finby/api -- budgets.service`
+Run: `pnpm --filter finby-api test -- budgets.service`
 Expected: FAIL — received `category` lacks `icon`/`color`.
 
 - [ ] **Step 4: Widen the API selects, serializers, and backend types**
@@ -296,7 +297,7 @@ In `apps/api/src/modules/budgets/budgets.types.ts` (line 5):
 
 - [ ] **Step 5: Run tests to verify they pass**
 
-Run: `npm run test -w @finby/api -- budgets.service transactions.service`
+Run: `pnpm --filter finby-api test -- budgets.service transactions.service`
 Expected: PASS. If the transactions spec asserts a `{ id, name }` category literal, add `icon`/`color` to that fixture + expectation the same way.
 
 - [ ] **Step 6: Commit**
@@ -348,7 +349,7 @@ describe('CategoryAvatar', () => {
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `npm run test:components -w @finby/mobile -- category-avatar`
+Run: `pnpm --filter finby-mobile test:components -- category-avatar`
 Expected: FAIL — cannot resolve `./category-avatar`.
 
 - [ ] **Step 3: Write the icon map**
@@ -428,7 +429,7 @@ export function CategoryAvatar({
 
 - [ ] **Step 5: Run test to verify it passes**
 
-Run: `npm run test:components -w @finby/mobile -- category-avatar`
+Run: `pnpm --filter finby-mobile test:components -- category-avatar`
 Expected: PASS (3 tests).
 
 - [ ] **Step 6: Commit**
@@ -472,7 +473,7 @@ Then inside the existing test body, after the amount assertion, add:
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `npm run test:components -w @finby/mobile -- transaction-row`
+Run: `pnpm --filter finby-mobile test:components -- transaction-row`
 Expected: FAIL — no element with text `🍽️` (avatar not rendered yet).
 
 - [ ] **Step 3: Rewrite the row with the avatar + subtitle**
@@ -539,7 +540,7 @@ export function TransactionRow({ tx, onPress }: { tx: Transaction; onPress: () =
 
 - [ ] **Step 4: Run test to verify it passes**
 
-Run: `npm run test:components -w @finby/mobile -- transaction-row`
+Run: `pnpm --filter finby-mobile test:components -- transaction-row`
 Expected: PASS — merchant, category subtitle, amount, avatar emoji, and onPress all assert.
 
 - [ ] **Step 5: Commit**
@@ -581,7 +582,7 @@ import { Ionicons } from '@expo/vector-icons';
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `npm run test:components -w @finby/mobile -- budget-list`
+Run: `pnpm --filter finby-mobile test:components -- budget-list`
 Expected: FAIL — no `Ionicons` in the tree yet.
 
 - [ ] **Step 3: Add the avatar to `BudgetRow`**
@@ -610,16 +611,16 @@ Leave the progress-bar row below it unchanged.
 
 - [ ] **Step 4: Run test to verify it passes**
 
-Run: `npm run test:components -w @finby/mobile -- budget-list`
+Run: `pnpm --filter finby-mobile test:components -- budget-list`
 Expected: PASS.
 
 - [ ] **Step 5: Full verification**
 
 Run:
 ```bash
-npm run test
-npm run lint
-npm run build
+pnpm test
+pnpm lint
+pnpm build
 ```
 Expected: all pass. `CategoryAvatar` accepts `BudgetView.category` directly because that shape is a superset of `CategoryVisualInput` (`name` + optional `icon`/`color`).
 
