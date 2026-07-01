@@ -13,6 +13,7 @@ jest.mock('expo-blur', () => ({ BlurView: ({ children }: { children: unknown }) 
 
 const mockEnablePush = jest.fn().mockResolvedValue('on');
 const mockDisablePush = jest.fn().mockResolvedValue('off');
+const mockGetPushState = jest.fn().mockResolvedValue('off');
 let mockPushState = 'off';
 jest.mock('../../lib/use-push-store', () => ({
   usePushStore: (sel: (s: unknown) => unknown) => sel({ state: mockPushState, busy: false }),
@@ -22,6 +23,7 @@ jest.mock('../../lib/runtime.native', () => ({
   push: {
     enablePush: (...args: unknown[]) => mockEnablePush(...args),
     disablePush: (...args: unknown[]) => mockDisablePush(...args),
+    getPushState: (...args: unknown[]) => mockGetPushState(...args),
   },
 }));
 
@@ -34,6 +36,7 @@ beforeEach(() => {
   settings.updateProfile.mockReset().mockResolvedValue({ preferences: { dateFormat: 'ISO' } });
   mockEnablePush.mockClear();
   mockDisablePush.mockClear();
+  mockGetPushState.mockClear();
   mockPushState = 'off';
 });
 

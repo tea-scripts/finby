@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { CurrencyDisplay, DateFormat, NumberFormat, UserPreferences } from '@finby/shared';
@@ -34,6 +34,13 @@ export function PreferencesScreen() {
   const pushState = usePushStore((s) => s.state);
   const [status, setStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const tabBarSpace = useTabBarSpace();
+
+  // Reconcile the real device state on mount: the toggle otherwise reflects
+  // stale in-memory state (defaulting to 'off') after an app restart, even
+  // though OS permission is granted and the token is still registered.
+  useEffect(() => {
+    void push.getPushState();
+  }, []);
 
   const pushOn = pushState === 'on';
   const dailyReminders = prefs?.dailyReminders ?? true;

@@ -1,6 +1,7 @@
 import type { StoreApi } from 'zustand/vanilla';
 import type { Notifications } from '../adapters/notifications';
 import type { PushApi } from '@finby/core';
+import type { PushPref } from '../adapters/push-pref';
 import type { PushState, PushStoreState } from './push-store';
 
 export interface Push {
@@ -13,16 +14,22 @@ export function createPush(deps: {
   notifications: Notifications;
   api: PushApi;
   store: StoreApi<PushStoreState>;
+  storage: PushPref;
   projectId?: string;
   platform: 'ios' | 'android';
 }): Push {
-  const { notifications, api, store, projectId, platform } = deps;
+  const { notifications, api, store, storage, projectId, platform } = deps;
 
   async function reconcile(): Promise<PushState> {
     if (!notifications.isPhysicalDevice) return 'unsupported';
     const perm = await notifications.getPermissionStatus();
     if (perm === 'denied') return 'denied';
-    return store.getState().token ? 'on' : 'off';
+    const token = store.getState().token ?? (await storage.getToken());
+    if (perm === 'granted' && token) {
+      store.getState().setToken(token);
+      return 'on';
+    }
+    return 'off';
   }
 
   return {
@@ -51,16 +58,18 @@ export function createPush(deps: {
       }
       await api.registerExpoDevice(workspaceId, token, platform);
       store.getState().setToken(token);
+      await storage.setToken(token);
       store.getState().setState('on');
       return 'on';
     },
 
     async disablePush(workspaceId) {
-      const token = store.getState().token;
+      const token = store.getState().token ?? (await storage.getToken());
       if (token) {
         await api.unregisterExpoDevice(workspaceId, token).catch(() => undefined);
-        store.getState().setToken(null);
       }
+      store.getState().setToken(null);
+      await storage.clear();
       store.getState().setState('off');
       return 'off';
     },

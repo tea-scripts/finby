@@ -6,6 +6,7 @@ import { createIdentityStore } from '../adapters/identity-store';
 import { createOnboardingFlag } from '../adapters/onboarding-flag';
 import { createLockPref } from '../adapters/lock-pref';
 import { createLockCode } from '../adapters/lock-code';
+import { createPushPref } from '../adapters/push-pref';
 import { pinHasher } from '../adapters/crypto.native';
 import { createBiometric } from '../adapters/biometric';
 import { localAuth } from '../adapters/local-auth.native';
@@ -56,6 +57,7 @@ export const push = createPush({
   notifications,
   api: api.push,
   store: pushStore,
+  storage: createPushPref(secureStore),
   projectId,
   platform: Platform.OS === 'android' ? 'android' : 'ios',
 });
