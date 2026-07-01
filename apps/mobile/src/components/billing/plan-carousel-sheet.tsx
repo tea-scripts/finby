@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import type { SubscriptionTier } from '@finby/shared';
+import { TIER_NAME } from '../../lib/billing-links';
 import { openWebBilling } from '../../lib/open-web-billing';
 import { BottomSheet } from '../ui/bottom-sheet';
 import { PlanDeckCard } from './plan-deck-card';
@@ -14,6 +15,8 @@ function Dots({ index, onDot }: { index: number; onDot: (i: number) => void }) {
     <View className="mt-3 flex-row items-center justify-center gap-2">
       <Pressable
         testID="deck-prev"
+        accessibilityRole="button"
+        accessibilityLabel="Previous plan"
         disabled={index === 0}
         onPress={() => onDot(index - 1)}
         hitSlop={8}
@@ -22,12 +25,21 @@ function Dots({ index, onDot }: { index: number; onDot: (i: number) => void }) {
         <Text className="text-muted">‹</Text>
       </Pressable>
       {TIERS.map((t, i) => (
-        <Pressable key={t} testID={`deck-dot-${i}`} onPress={() => onDot(i)} hitSlop={8}>
+        <Pressable
+          key={t}
+          testID={`deck-dot-${i}`}
+          accessibilityRole="button"
+          accessibilityLabel={`Show ${TIER_NAME[t]} plan`}
+          onPress={() => onDot(i)}
+          hitSlop={8}
+        >
           <View className={`h-1.5 rounded-full ${i === index ? 'w-5 bg-accent' : 'w-1.5 bg-line'}`} />
         </Pressable>
       ))}
       <Pressable
         testID="deck-next"
+        accessibilityRole="button"
+        accessibilityLabel="Next plan"
         disabled={index === TIERS.length - 1}
         onPress={() => onDot(index + 1)}
         hitSlop={8}
