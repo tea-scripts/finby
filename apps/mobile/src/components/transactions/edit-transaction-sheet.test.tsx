@@ -19,7 +19,7 @@ const txns = api.transactions as unknown as {
 const tx: Transaction = {
   id: 't1', type: 'EXPENSE', status: 'CONFIRMED', amountOriginal: '11.08', currencyOriginal: 'USD',
   amountBase: '11.08', currencyBase: 'USD', fxRateUsed: '1', merchant: 'Pizza Hut', description: null,
-  category: { id: 'c1', name: 'Dining' }, account: null, transactionDate: '2026-06-24T10:00:00.000Z',
+  category: { id: 'c1', name: 'Dining', icon: null, color: null }, account: null, transactionDate: '2026-06-24T10:00:00.000Z',
   tags: [], aiConfidence: null, loggedByUserId: 'u1', createdAt: '2026-06-24T10:00:00.000Z',
 };
 const categories: Category[] = [{ id: 'c1', name: 'Dining', isArchived: false }];

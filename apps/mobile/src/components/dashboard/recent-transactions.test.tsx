@@ -13,7 +13,7 @@ const tx: Transaction = {
   fxRateUsed: '1',
   merchant: 'Coffee Shop',
   description: null,
-  category: { id: 'c1', name: 'Food' },
+  category: { id: 'c1', name: 'Food', icon: null, color: null },
   account: { id: 'a1', name: 'Cash' },
   transactionDate: '2026-06-20T10:00:00.000Z',
   tags: [],
