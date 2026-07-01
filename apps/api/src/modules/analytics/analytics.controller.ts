@@ -1,4 +1,4 @@
-import { Controller, Get, Query, UseGuards } from '@nestjs/common';
+import { Controller, ForbiddenException, Get, Query, UseGuards } from '@nestjs/common';
 import { RequireTier } from '../../common/decorators/require-tier.decorator';
 import { Workspace } from '../../common/decorators/workspace.decorator';
 import { TierGuard } from '../../common/guards/tier.guard';
@@ -23,7 +23,7 @@ import type {
   SummaryResult,
   TrendResult,
 } from './analytics.types';
-import type { InsightResult } from '@finby/shared';
+import { earliestAllowedMonthStart, type InsightResult } from '@finby/shared';
 
 @Controller('workspaces/:workspaceId/analytics')
 @UseGuards(WorkspaceMemberGuard)
@@ -33,19 +33,33 @@ export class AnalyticsController {
     private readonly insights: InsightService,
   ) {}
 
+  /** User-facing month endpoints only: capped tiers cannot view months older
+   *  than their history window. Internal AnalyticsService callers bypass this. */
+  private assertWithinHistory(tier: WorkspaceContext['tier'], from: string): void {
+    const floor = earliestAllowedMonthStart(tier);
+    if (floor && from.slice(0, 10) < floor) {
+      throw new ForbiddenException({
+        error: 'tier_limit',
+        message: 'Viewing older months requires Pro.',
+      });
+    }
+  }
+
   @Get('summary')
-  summary(
+  async summary(
     @Workspace() workspace: WorkspaceContext,
     @Query(new ZodValidationPipe(summaryQuerySchema)) query: SummaryQuery,
   ): Promise<SummaryResult> {
+    this.assertWithinHistory(workspace.tier, query.from);
     return this.analytics.summary(workspace.id, workspace.baseCurrency, query.from, query.to);
   }
 
   @Get('by-category')
-  byCategory(
+  async byCategory(
     @Workspace() workspace: WorkspaceContext,
     @Query(new ZodValidationPipe(byCategoryQuerySchema)) query: ByCategoryQuery,
   ): Promise<CategoryBreakdownResult> {
+    this.assertWithinHistory(workspace.tier, query.from);
     return this.analytics.byCategory(
       workspace.id,
       workspace.baseCurrency,
@@ -71,10 +85,11 @@ export class AnalyticsController {
   }
 
   @Get('insight')
-  insight(
+  async insight(
     @Workspace() workspace: WorkspaceContext,
     @Query(new ZodValidationPipe(insightQuerySchema)) query: InsightQuery,
   ): Promise<InsightResult> {
+    this.assertWithinHistory(workspace.tier, query.from);
     return this.insights.insight(workspace.id, workspace.baseCurrency, query.from, query.to);
   }
 }
