@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import type { SubscriptionTier } from '@finby/shared';
 import { openWebBilling } from '../../lib/open-web-billing';
@@ -53,6 +53,12 @@ export function PlanCarouselSheet({
   const [containerW, setContainerW] = useState(0);
   const [index, setIndex] = useState(0);
   const scrollRef = useRef<ScrollView>(null);
+
+  // Modal unmounts its children when closed, so the ScrollView remounts at offset 0
+  // on reopen — reset index to match, else the dots/highlight desync from the viewport.
+  useEffect(() => {
+    if (open) setIndex(0);
+  }, [open]);
 
   // Focused card is 84% of the container; neighbours peek via symmetric side padding.
   // Fall back to 360 before the first onLayout — this also lets the deck render under

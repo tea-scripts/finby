@@ -31,4 +31,19 @@ describe('PlanCarouselSheet', () => {
     await waitFor(() => expect(spy).toHaveBeenCalledWith('https://chat.finby.app/settings'));
     spy.mockRestore();
   });
+
+  it('resets to the first card on reopen (Modal unmounts the ScrollView on close)', async () => {
+    const { rerender } = await render(
+      <PlanCarouselSheet open onClose={jest.fn()} currentTier="FREE" />,
+    );
+    await fireEvent.press(screen.getByTestId('deck-dot-2'));
+
+    await rerender(<PlanCarouselSheet open={false} onClose={jest.fn()} currentTier="FREE" />);
+    await rerender(<PlanCarouselSheet open onClose={jest.fn()} currentTier="FREE" />);
+
+    const dot0 = screen.getByTestId('deck-dot-0').children[0] as unknown as { props: { className: string } };
+    const dot2 = screen.getByTestId('deck-dot-2').children[0] as unknown as { props: { className: string } };
+    expect(dot0.props.className).toContain('w-5 bg-accent');
+    expect(dot2.props.className).toContain('w-1.5 bg-line');
+  });
 });
