@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { WEB_BILLING_URL, TIER_NAME, TIER_RANK } from './billing-links';
 
 describe('billing-links', () => {
