@@ -169,7 +169,13 @@ export function PlanCarouselSheet({
                   <Animated.View
                     key={tier}
                     style={{ width: cardW, transform: [{ scale }], opacity }}
-                    onLayout={(e) => setCardH((h) => Math.max(h, Math.round(e.nativeEvent.layout.height)))}
+                    onLayout={(e) => {
+                      // Read the height synchronously — RN recycles the synthetic
+                      // event, so e.nativeEvent is null by the time the setState
+                      // updater runs (event pooling).
+                      const h = Math.round(e.nativeEvent.layout.height);
+                      setCardH((prev) => Math.max(prev, h));
+                    }}
                   >
                     <PlanDeckCard
                       tier={tier}
