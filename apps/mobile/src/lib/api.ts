@@ -3,7 +3,7 @@ import {
   createDashboardApi, createTransactionsApi, createAccountsApi, createStreaksApi,
   createAlertsApi, createSettingsApi, createSupportApi, createFeedbackApi,
   createMembersApi, createAuthApi, createBillingApi, createReceiptsApi,
-  createGamificationApi, createChatApi,
+  createGamificationApi, createChatApi, createPushApi,
 } from '@finby/core';
 import type { MobileSession } from './session';
 
@@ -29,6 +29,7 @@ export function createMobileApi(session: MobileSession, apiBase: string) {
     receipts: createReceiptsApi(authed),
     gamification: createGamificationApi({ authed, authedStream, apiBase }),
     chat: createChatApi({ authed, authedStream }),
+    push: createPushApi(authed),
   };
 }
 

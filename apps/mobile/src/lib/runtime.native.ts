@@ -1,18 +1,24 @@
 import Constants from 'expo-constants';
+import { Platform } from 'react-native';
 import { resolveApiBase } from '../config';
 import { createTokenStore } from '../adapters/token-store';
 import { createIdentityStore } from '../adapters/identity-store';
 import { createOnboardingFlag } from '../adapters/onboarding-flag';
 import { createLockPref } from '../adapters/lock-pref';
 import { createLockCode } from '../adapters/lock-code';
+import { createPushPref } from '../adapters/push-pref';
 import { pinHasher } from '../adapters/crypto.native';
 import { createBiometric } from '../adapters/biometric';
 import { localAuth } from '../adapters/local-auth.native';
+import { createNotifications } from '../adapters/notifications';
+import { notificationsBinding } from '../adapters/notifications.native';
 import { secureStore } from '../adapters/secure-store.native';
 import { streamFetch } from '../adapters/stream.native';
 import { createMobileSession } from './session';
 import { createAuthStore } from './auth-store';
 import { createMobileApi } from './api';
+import { createPush } from './push';
+import { pushStore } from './push-store';
 
 const apiBase = resolveApiBase({
   envUrl: process.env.EXPO_PUBLIC_API_URL,
@@ -40,4 +46,18 @@ export const authStore = createAuthStore({
  *  UnlockScreen behind the AppLockGate that wraps the (app) group. */
 export const biometric = createBiometric(localAuth);
 
+export const projectId =
+  (Constants.expoConfig?.extra as { eas?: { projectId?: string } } | undefined)?.eas?.projectId;
+
+export const notifications = createNotifications(notificationsBinding);
+
 export const api = createMobileApi(session, apiBase);
+
+export const push = createPush({
+  notifications,
+  api: api.push,
+  store: pushStore,
+  storage: createPushPref(secureStore),
+  projectId,
+  platform: Platform.OS === 'android' ? 'android' : 'ios',
+});

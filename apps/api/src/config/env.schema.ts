@@ -76,6 +76,7 @@ export const envSchema = z.object({
   VAPID_PUBLIC_KEY: z.string().optional(),
   VAPID_PRIVATE_KEY: z.string().optional(),
   VAPID_SUBJECT: z.string().default('mailto:support@finby.app'),
+  EXPO_ACCESS_TOKEN: z.string().optional(), // Expo push security (optional; SDK works without it)
 
   // Email (Resend)
   RESEND_API_KEY: z.string().optional(),

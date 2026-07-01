@@ -17,8 +17,12 @@ import { PushService } from './push.service';
 import {
   subscribeSchema,
   unsubscribeSchema,
+  expoRegisterSchema,
+  expoUnregisterSchema,
   type SubscribeInput,
   type UnsubscribeInput,
+  type ExpoRegisterInput,
+  type ExpoUnregisterInput,
 } from './dto/push.schemas';
 
 @Controller('workspaces/:workspaceId/push')
@@ -49,5 +53,23 @@ export class PushController {
     @Body(new ZodValidationPipe(unsubscribeSchema)) body: UnsubscribeInput,
   ): Promise<void> {
     await this.push.unsubscribe(workspace.id, user.userId, body.endpoint);
+  }
+
+  @Post('expo/register')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async expoRegister(
+    @Workspace() workspace: WorkspaceContext,
+    @CurrentUser() user: AuthUser,
+    @Body(new ZodValidationPipe(expoRegisterSchema)) body: ExpoRegisterInput,
+  ): Promise<void> {
+    await this.push.registerExpoDevice(workspace.id, user.userId, body.token, body.platform);
+  }
+
+  @Post('expo/unregister')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async expoUnregister(
+    @Body(new ZodValidationPipe(expoUnregisterSchema)) body: ExpoUnregisterInput,
+  ): Promise<void> {
+    await this.push.unregisterExpoDevice(body.token);
   }
 }
