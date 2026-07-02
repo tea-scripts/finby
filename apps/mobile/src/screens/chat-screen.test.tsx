@@ -18,7 +18,7 @@ jest.mock('react-native-view-shot', () => ({ captureRef: jest.fn(async () => 'fi
 jest.mock('expo-sharing', () => ({ isAvailableAsync: jest.fn(async () => true), shareAsync: jest.fn(async () => {}) }));
 
 jest.mock('../components/receipts/receipt-scanner-sheet', () => {
-  const { Pressable, Text } = require('react-native');
+  const { Pressable, Text } = jest.requireActual('react-native');
   return {
     ReceiptScannerSheet: ({
       open,
