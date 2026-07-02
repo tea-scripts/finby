@@ -152,6 +152,16 @@ describe('PushService (configured)', () => {
     );
   });
 
+  it('sendToUser targets the user\'s devices/subscriptions by userId, not the last-registered workspace', async () => {
+    const subFind = jest.fn().mockResolvedValue([]);
+    const devFind = jest.fn().mockResolvedValue([]);
+    const prisma = { pushSubscription: { findMany: subFind }, mobilePushDevice: { findMany: devFind } };
+    const service = new PushService(prisma as unknown as PrismaService, makeConfig(CONFIGURED));
+    await service.sendToUser('w1', 'u1', { title: 'Budget', body: 'over' });
+    expect(subFind).toHaveBeenCalledWith({ where: { userId: 'u1' } });
+    expect(devFind).toHaveBeenCalledWith({ where: { userId: 'u1' } });
+  });
+
   it('unregisterExpoDevice deletes only the caller-owned device (scoped by userId)', async () => {
     const deleteMany = jest.fn().mockResolvedValue({ count: 1 });
     const prisma = { mobilePushDevice: { deleteMany } };
