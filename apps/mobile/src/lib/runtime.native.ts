@@ -1,4 +1,4 @@
-import Constants from 'expo-constants';
+import Constants, { ExecutionEnvironment } from 'expo-constants';
 import { Platform } from 'react-native';
 import { resolveApiBase } from '../config';
 import { createTokenStore } from '../adapters/token-store';
@@ -10,7 +10,7 @@ import { createPushPref } from '../adapters/push-pref';
 import { pinHasher } from '../adapters/crypto.native';
 import { createBiometric } from '../adapters/biometric';
 import { localAuth } from '../adapters/local-auth.native';
-import { createNotifications } from '../adapters/notifications';
+import { createNotifications, noopNotificationsBinding } from '../adapters/notifications';
 import { notificationsBinding } from '../adapters/notifications-binding.native';
 import { secureStore } from '../adapters/secure-store.native';
 import { streamFetch } from '../adapters/stream.native';
@@ -49,7 +49,13 @@ export const biometric = createBiometric(localAuth);
 export const projectId =
   (Constants.expoConfig?.extra as { eas?: { projectId?: string } } | undefined)?.eas?.projectId;
 
-export const notifications = createNotifications(notificationsBinding);
+// Expo Go (StoreClient) can't load expo-notifications (SDK 53 removed remote
+// push on Android and errors on import), so wire the no-op binding there; dev/
+// EAS builds get the real one. This keeps the app runnable in Expo Go.
+const supportsNativePush = Constants.executionEnvironment !== ExecutionEnvironment.StoreClient;
+export const notifications = createNotifications(
+  supportsNativePush ? notificationsBinding : noopNotificationsBinding,
+);
 
 export const api = createMobileApi(session, apiBase);
 

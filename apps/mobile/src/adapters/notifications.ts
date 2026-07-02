@@ -91,3 +91,20 @@ export function createNotifications(deps: NotificationsLike): Notifications {
     },
   };
 }
+
+/** A no-op `NotificationsLike` for environments without native push — notably
+ *  Expo Go on Android, where expo-notifications remote push was removed in SDK
+ *  53 and importing it errors. Pure (no expo imports), so wiring this in Expo
+ *  Go lets the app run without ever loading expo-notifications. Push shows as
+ *  'unsupported' there; it works in dev/EAS builds via the real binding. */
+export const noopNotificationsBinding: NotificationsLike = {
+  isDevice: false,
+  platformOS: 'unsupported',
+  getPermissionsAsync: async () => ({ status: 'undetermined', canAskAgain: false }),
+  requestPermissionsAsync: async () => ({ status: 'denied' }),
+  getExpoPushTokenAsync: async () => ({ data: '' }),
+  setNotificationChannelAsync: async () => undefined,
+  setNotificationHandler: () => undefined,
+  addNotificationResponseReceivedListener: () => ({ remove: () => undefined }),
+  getLastNotificationResponseAsync: async () => null,
+};
