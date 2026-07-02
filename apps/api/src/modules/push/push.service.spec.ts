@@ -152,6 +152,14 @@ describe('PushService (configured)', () => {
     );
   });
 
+  it('unregisterExpoDevice deletes only the caller-owned device (scoped by userId)', async () => {
+    const deleteMany = jest.fn().mockResolvedValue({ count: 1 });
+    const prisma = { mobilePushDevice: { deleteMany } };
+    const service = new PushService(prisma as unknown as PrismaService, makeConfig(CONFIGURED));
+    await service.unregisterExpoDevice('u1', 'ExponentPushToken[abc]');
+    expect(deleteMany).toHaveBeenCalledWith({ where: { expoPushToken: 'ExponentPushToken[abc]', userId: 'u1' } });
+  });
+
   it('sendToUser delivers to Expo devices and prunes DeviceNotRegistered', async () => {
     const subFind = jest.fn().mockResolvedValue([]); // no web-push subs
     const devFind = jest.fn().mockResolvedValue([

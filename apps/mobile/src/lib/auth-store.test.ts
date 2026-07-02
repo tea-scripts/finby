@@ -344,10 +344,12 @@ describe('createAuthStore', () => {
     );
   });
 
-  it('setActiveWorkspace is a no-op for an unknown id', () => {
-    const store = makeStore();
+  it('setActiveWorkspace is a no-op for an unknown id (no persist)', () => {
+    const identityStore = fakeIdentityStore();
+    const store = makeStore({ identityStore });
     store.setState({ user: { id: 'u1' } as never, workspace: { id: 'w1' } as never, workspaces: [] as never });
     store.getState().setActiveWorkspace('nope');
     expect(store.getState().workspace).toEqual({ id: 'w1' });
+    expect(identityStore.save).not.toHaveBeenCalled();
   });
 });

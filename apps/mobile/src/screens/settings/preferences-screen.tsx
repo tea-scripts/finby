@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { CurrencyDisplay, DateFormat, NumberFormat, UserPreferences } from '@finby/shared';
@@ -33,6 +33,7 @@ export function PreferencesScreen() {
   const setUser = useAuthStore((s) => s.setUser);
   const pushState = usePushStore((s) => s.state);
   const [status, setStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+  const savedTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const tabBarSpace = useTabBarSpace();
 
   // Reconcile the real device state on mount: the toggle otherwise reflects
@@ -42,16 +43,23 @@ export function PreferencesScreen() {
     void push.getPushState();
   }, []);
 
+  // Clear any pending "Saved" auto-dismiss timer on unmount.
+  useEffect(() => () => {
+    if (savedTimer.current) clearTimeout(savedTimer.current);
+  }, []);
+
   const pushOn = pushState === 'on';
   const dailyReminders = prefs?.dailyReminders ?? true;
   const reminderOn = pushOn && dailyReminders;
 
   async function savePref(patch: Partial<UserPreferences>) {
+    if (savedTimer.current) clearTimeout(savedTimer.current);
     setStatus('saving');
     try {
       const updated = await api.settings.updateProfile({ preferences: patch });
       setUser(updated);
       setStatus('saved');
+      savedTimer.current = setTimeout(() => setStatus('idle'), 2000);
     } catch (e) {
       setStatus('error');
       if (!(e instanceof ApiError)) throw e;

@@ -21,8 +21,8 @@ export function ConfirmSheet({
       <View className="gap-4 pb-2">
         <Text className="text-base text-muted">{message}</Text>
         <View className="gap-2">
-          <Button variant="primary" loading={busy} onPress={onConfirm}>
-            <Text className={`text-base font-medium ${danger ? 'text-danger' : 'text-white'}`}>{confirmLabel}</Text>
+          <Button variant={danger ? 'danger' : 'primary'} loading={busy} onPress={onConfirm}>
+            {confirmLabel}
           </Button>
           <Button variant="ghost" disabled={busy} onPress={onClose}>Cancel</Button>
         </View>

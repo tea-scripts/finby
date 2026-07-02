@@ -26,4 +26,22 @@ describe('Button', () => {
     expect(screen.getByTestId('button-spinner')).toBeTruthy();
     expect(screen.getByText('Sign in')).toBeTruthy();
   });
+
+  it('danger variant uses the danger background, white label, and a spinner while loading', async () => {
+    const onPress = jest.fn();
+    await render(<Button variant="danger" onPress={onPress} loading testID="del">Delete</Button>);
+    expect(screen.getByTestId('del').props.className).toContain('bg-danger');
+    expect(screen.getByText('Delete').props.className).toContain('text-white');
+    expect(screen.getByTestId('button-spinner')).toBeTruthy();
+    expect(screen.getByTestId('del').props.accessibilityState.busy).toBe(true);
+  });
+
+  it('link variant is text-only (no min-height chrome), accent-colored, and fires onPress', async () => {
+    const onPress = jest.fn();
+    await render(<Button variant="link" onPress={onPress} testID="lnk">Copy</Button>);
+    expect(screen.getByTestId('lnk').props.className).not.toContain('min-h-12');
+    expect(screen.getByText('Copy').props.className).toContain('text-accent');
+    fireEvent.press(screen.getByText('Copy'));
+    expect(onPress).toHaveBeenCalledTimes(1);
+  });
 });

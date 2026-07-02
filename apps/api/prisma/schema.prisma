@@ -840,6 +840,7 @@ model MobilePushDevice {
   workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
 
   @@index([workspaceId, userId])
+  @@index([userId])
 }
 
 // ============================================================

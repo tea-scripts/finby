@@ -37,9 +37,9 @@ describe('PushController expo endpoints', () => {
     expect(push.registerExpoDevice).toHaveBeenCalledWith('w1', 'u1', 'ExponentPushToken[a]', 'ios');
   });
 
-  it('unregisters an expo device by token', async () => {
+  it('unregisters an expo device scoped to the current user', async () => {
     const { push, controller } = make();
-    await controller.expoUnregister({ token: 'ExponentPushToken[a]' });
-    expect(push.unregisterExpoDevice).toHaveBeenCalledWith('ExponentPushToken[a]');
+    await controller.expoUnregister(user, { token: 'ExponentPushToken[a]' });
+    expect(push.unregisterExpoDevice).toHaveBeenCalledWith('u1', 'ExponentPushToken[a]');
   });
 });

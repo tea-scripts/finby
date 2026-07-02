@@ -68,8 +68,9 @@ export class PushController {
   @Post('expo/unregister')
   @HttpCode(HttpStatus.NO_CONTENT)
   async expoUnregister(
+    @CurrentUser() user: AuthUser,
     @Body(new ZodValidationPipe(expoUnregisterSchema)) body: ExpoUnregisterInput,
   ): Promise<void> {
-    await this.push.unregisterExpoDevice(body.token);
+    await this.push.unregisterExpoDevice(user.userId, body.token);
   }
 }
