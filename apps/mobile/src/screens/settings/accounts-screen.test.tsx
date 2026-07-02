@@ -61,6 +61,19 @@ it('archives an account after confirming', async () => {
   await waitFor(() => expect(accounts.updateAccount).toHaveBeenCalledWith('w1', 'a1', { isArchived: true }));
 });
 
+it('edits an account name via the shared sheet', async () => {
+  accounts.updateAccount.mockResolvedValue({ ...ACC, name: 'BDO 2' });
+  await render(<AccountsScreen />);
+  await waitFor(() => expect(screen.getByText('BDO')).toBeTruthy());
+  await fireEvent.press(screen.getByLabelText('Edit BDO'));
+  await fireEvent.changeText(screen.getByLabelText('Account name'), 'BDO 2');
+  await fireEvent.press(screen.getByText('Save'));
+  await waitFor(() =>
+    expect(accounts.updateAccount).toHaveBeenCalledWith('w1', 'a1', { name: 'BDO 2', color: null }),
+  );
+  await waitFor(() => expect(screen.getByText('BDO 2')).toBeTruthy());
+});
+
 it('hides account management for viewers', async () => {
   role.mockReturnValue('VIEWER');
 

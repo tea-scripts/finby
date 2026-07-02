@@ -16,6 +16,7 @@ import { useTabBarSpace } from '../../components/nav/floating-tab-bar';
 import { useWorkspaceRole } from '../../lib/use-workspace-role';
 import { useAuthStore } from '../../lib/use-auth-store';
 import { api } from '../../lib/runtime.native';
+import { formatAmountInput } from '../../lib/format-amount-input';
 
 const TYPE_OPTIONS = ACCOUNT_TYPES.map((t) => ({ value: t, label: ACCOUNT_TYPE_LABELS[t] }));
 
@@ -33,12 +34,12 @@ export function AccountsScreen() {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
 
-  const [adding, setAdding] = useState(false);
+  const [sheet, setSheet] = useState<{ mode: 'add' } | { mode: 'edit'; account: AccountView } | null>(null);
   const [name, setName] = useState('');
   const [type, setType] = useState<AccountType>('BANK');
   const [currency, setCurrency] = useState(workspace?.baseCurrency ?? 'USD');
   const [initialBalance, setInitialBalance] = useState('0');
-  const [addColor, setAddColor] = useState<string | null>(null);
+  const [color, setColor] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
   const [archiveTarget, setArchiveTarget] = useState<AccountView | null>(null);
@@ -66,17 +67,42 @@ export function AccountsScreen() {
     setAccounts((prev) => (prev.some((a) => a.id === acc.id) ? prev.map((a) => (a.id === acc.id ? acc : a)) : [...prev, acc]));
   }
 
-  async function addAccount() {
-    if (!workspace || !name.trim()) return;
+  function openAdd() {
+    setName('');
+    setType('BANK');
+    setCurrency(workspace?.baseCurrency ?? 'USD');
+    setInitialBalance('0');
+    setColor(null);
+    setSheet({ mode: 'add' });
+  }
+
+  function openEdit(acc: AccountView) {
+    setName(acc.name);
+    setColor(acc.color);
+    setSheet({ mode: 'edit', account: acc });
+  }
+
+  async function submit() {
+    if (!workspace || !name.trim() || !sheet) return;
     setBusy(true);
     try {
-      const acc = await api.accounts.createAccount(workspace.id, {
-        name: name.trim(), accountType: type, currency,
-        initialBalance: initialBalance.trim() || '0', ...(addColor ? { color: addColor } : {}),
-      });
-      upsert(acc);
-      setAdding(false);
-      setName(''); setType('BANK'); setInitialBalance('0'); setAddColor(null);
+      if (sheet.mode === 'add') {
+        const acc = await api.accounts.createAccount(workspace.id, {
+          name: name.trim(),
+          accountType: type,
+          currency,
+          initialBalance: initialBalance.replace(/,/g, '').trim() || '0',
+          ...(color ? { color } : {}),
+        });
+        upsert(acc);
+      } else {
+        const acc = await api.accounts.updateAccount(workspace.id, sheet.account.id, {
+          name: name.trim(),
+          color,
+        });
+        upsert(acc);
+      }
+      setSheet(null);
     } catch (e) {
       if (!(e instanceof ApiError)) throw e;
     } finally {
@@ -128,29 +154,47 @@ export function AccountsScreen() {
                 <View className="items-end gap-1">
                   <Text className="text-sm text-ink">{money(acc.balance, acc.currency)}</Text>
                   {canManage ? (
-                    <Text onPress={() => setArchiveTarget(acc)} accessibilityRole="button" className="text-xs font-medium text-accent">
-                      {acc.isArchived ? 'Unarchive' : 'Archive'}
-                    </Text>
+                    <View className="flex-row gap-3">
+                      <Text onPress={() => openEdit(acc)} accessibilityRole="button" accessibilityLabel={`Edit ${acc.name}`} className="text-xs font-medium text-accent">
+                        Edit
+                      </Text>
+                      <Text onPress={() => setArchiveTarget(acc)} accessibilityRole="button" className="text-xs font-medium text-accent">
+                        {acc.isArchived ? 'Unarchive' : 'Archive'}
+                      </Text>
+                    </View>
                   ) : null}
                 </View>
               </View>
             ))}
 
             {canManage ? (
-              <Button variant="ghost" onPress={() => setAdding(true)}>Add account</Button>
+              <Button variant="ghost" onPress={openAdd}>Add account</Button>
             ) : null}
           </>
         )}
       </ScrollView>
 
-      <BottomSheet open={adding} onClose={() => setAdding(false)} title="Add account">
+      <BottomSheet open={sheet !== null} onClose={() => setSheet(null)} title={sheet?.mode === 'edit' ? 'Edit account' : 'Add account'}>
         <View className="gap-4">
           <Field label="Name"><Input value={name} onChangeText={setName} placeholder="e.g. BDO Savings" accessibilityLabel="Account name" /></Field>
-          <Field label="Type"><Dropdown value={type} options={TYPE_OPTIONS} accessibilityLabel="Account type" onSelect={setType} /></Field>
-          <Field label="Currency"><Dropdown value={currency} options={currencyOptions} accessibilityLabel="Account currency" onSelect={setCurrency} /></Field>
-          <Field label="Opening balance"><Input value={initialBalance} onChangeText={setInitialBalance} keyboardType="decimal-pad" accessibilityLabel="Opening balance" /></Field>
-          <Field label="Color"><ColorPicker value={addColor} onChange={setAddColor} /></Field>
-          <Button disabled={!name.trim()} loading={busy} onPress={() => void addAccount()}>Add</Button>
+          {sheet?.mode === 'add' ? (
+            <>
+              <Field label="Type"><Dropdown value={type} options={TYPE_OPTIONS} accessibilityLabel="Account type" onSelect={setType} /></Field>
+              <Field label="Currency"><Dropdown value={currency} options={currencyOptions} accessibilityLabel="Account currency" onSelect={setCurrency} /></Field>
+              <Field label="Opening balance">
+                <Input
+                  value={initialBalance}
+                  onChangeText={(t) => setInitialBalance(formatAmountInput(t))}
+                  keyboardType="decimal-pad"
+                  accessibilityLabel="Opening balance"
+                />
+              </Field>
+            </>
+          ) : null}
+          <Field label="Color"><ColorPicker value={color} onChange={setColor} /></Field>
+          <Button disabled={!name.trim()} loading={busy} onPress={() => void submit()}>
+            {sheet?.mode === 'edit' ? 'Save' : 'Add'}
+          </Button>
         </View>
       </BottomSheet>
 
