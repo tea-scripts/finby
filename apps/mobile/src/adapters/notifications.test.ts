@@ -31,6 +31,33 @@ describe('createNotifications', () => {
     const n = createNotifications(fake({ isDevice: false }));
     expect(await n.getExpoPushToken('proj')).toBeNull();
   });
+
+  it('addResponseListener delivers the payload url when present', () => {
+    let handler: ((resp: unknown) => void) | undefined;
+    const n = createNotifications(
+      fake({
+        addNotificationResponseReceivedListener: vi.fn((cb: (resp: unknown) => void) => {
+          handler = cb;
+          return { remove: vi.fn() };
+        }),
+      }),
+    );
+    const seen: (string | null)[] = [];
+    n.addResponseListener((url) => seen.push(url));
+    handler?.({ notification: { request: { content: { data: { url: '/chat' } } } } });
+    expect(seen).toEqual(['/chat']);
+  });
+
+  it('getInitialUrl returns the cold-start url when present', async () => {
+    const n = createNotifications(
+      fake({
+        getLastNotificationResponseAsync: vi
+          .fn()
+          .mockResolvedValue({ notification: { request: { content: { data: { url: '/budgets' } } } } }),
+      }),
+    );
+    expect(await n.getInitialUrl()).toBe('/budgets');
+  });
 });
 
 describe('noopNotificationsBinding (Expo Go / unsupported)', () => {
