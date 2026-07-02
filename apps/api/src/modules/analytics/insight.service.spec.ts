@@ -1,4 +1,5 @@
 import { InsightService } from './insight.service';
+import { AnalyticsService } from './analytics.service';
 import type { SummaryResult } from '@finby/shared';
 
 function summary(over: Partial<SummaryResult>): SummaryResult {
@@ -18,9 +19,15 @@ describe('InsightService', () => {
   const NOW = new Date('2026-07-15T00:00:00.000Z'); // 15 days elapsed, July has 31 days
 
   function make(cur: SummaryResult, prev: SummaryResult) {
-    const analytics = { summary: jest.fn() } as unknown as { summary: jest.Mock };
-    analytics.summary.mockResolvedValueOnce(cur).mockResolvedValueOnce(prev);
-    return new InsightService(analytics as never);
+    const summary = jest.fn<
+      ReturnType<AnalyticsService['summary']>,
+      Parameters<AnalyticsService['summary']>
+    >();
+    summary.mockResolvedValueOnce(cur).mockResolvedValueOnce(prev);
+    // `satisfies` validates the mock against the real method signature, so drift
+    // in AnalyticsService.summary fails the build instead of silently passing.
+    const analytics = { summary } satisfies Pick<AnalyticsService, 'summary'>;
+    return new InsightService(analytics as unknown as AnalyticsService);
   }
 
   it('projects the current month and reports spending on pace vs last month', async () => {
