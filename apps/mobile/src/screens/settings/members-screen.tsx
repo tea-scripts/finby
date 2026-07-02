@@ -147,7 +147,7 @@ export function MembersScreen() {
                     <Text className="text-xs text-faint">{m.email}</Text>
                   </View>
                   {isOwner && m.role !== 'OWNER' ? (
-                    <Text onPress={() => setRemoveTarget(m)} accessibilityRole="button" className="text-xs font-medium text-danger">Remove</Text>
+                    <Button variant="link" tone="danger" onPress={() => setRemoveTarget(m)}>Remove</Button>
                   ) : (
                     <Text className="text-xs text-muted">{m.role === 'OWNER' ? 'Owner' : m.role === 'CO_MANAGER' ? 'Co-manager' : 'Viewer'}</Text>
                   )}
@@ -175,8 +175,8 @@ export function MembersScreen() {
                   <View key={inv.id} className="flex-row items-center justify-between rounded-xl border border-line bg-surface px-4 py-3">
                     <Text className="flex-1 pr-2 text-sm text-ink">{inv.email}</Text>
                     <View className="flex-row gap-3">
-                      <Text onPress={() => void resendInvite(inv)} accessibilityRole="button" className="text-xs font-medium text-accent">Resend</Text>
-                      <Text onPress={() => void cancelInvite(inv)} accessibilityRole="button" className="text-xs font-medium text-danger">Cancel</Text>
+                      <Button variant="link" onPress={() => void resendInvite(inv)}>Resend</Button>
+                      <Button variant="link" tone="danger" onPress={() => void cancelInvite(inv)}>Cancel</Button>
                     </View>
                   </View>
                 ))}

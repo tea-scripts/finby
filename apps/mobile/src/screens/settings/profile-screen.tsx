@@ -53,9 +53,9 @@ export function ProfileScreen() {
             <Text className="text-xs font-medium uppercase tracking-wide text-muted">Account number</Text>
             <View className="flex-row items-center justify-between rounded-xl border border-line bg-surface px-3.5 py-3">
               <Text className="font-mono text-base text-ink">{user.accountNumber}</Text>
-              <Text onPress={() => void copyAccount()} accessibilityRole="button" className="text-sm font-medium text-accent">
+              <Button variant="link" onPress={() => void copyAccount()}>
                 {copied ? 'Copied' : 'Copy'}
-              </Text>
+              </Button>
             </View>
           </View>
         ) : null}

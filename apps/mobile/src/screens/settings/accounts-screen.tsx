@@ -155,12 +155,12 @@ export function AccountsScreen() {
                   <Text className="text-sm text-ink">{money(acc.balance, acc.currency)}</Text>
                   {canManage ? (
                     <View className="flex-row gap-3">
-                      <Text onPress={() => openEdit(acc)} accessibilityRole="button" accessibilityLabel={`Edit ${acc.name}`} className="text-xs font-medium text-accent">
+                      <Button variant="link" accessibilityLabel={`Edit ${acc.name}`} onPress={() => openEdit(acc)}>
                         Edit
-                      </Text>
-                      <Text onPress={() => setArchiveTarget(acc)} accessibilityRole="button" className="text-xs font-medium text-accent">
+                      </Button>
+                      <Button variant="link" onPress={() => setArchiveTarget(acc)}>
                         {acc.isArchived ? 'Unarchive' : 'Archive'}
-                      </Text>
+                      </Button>
                     </View>
                   ) : null}
                 </View>
