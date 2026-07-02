@@ -21,6 +21,9 @@ const ROLE_OPTIONS: { value: 'VIEWER' | 'CO_MANAGER'; label: string }[] = [
 
 export function MembersScreen() {
   const workspace = useAuthStore((s) => s.workspace);
+  const setWorkspaces = useAuthStore((s) => s.setWorkspaces);
+  const setActiveWorkspace = useAuthStore((s) => s.setActiveWorkspace);
+  const logout = useAuthStore((s) => s.logout);
   const [members, setMembers] = useState<MemberView[]>([]);
   const [invites, setInvites] = useState<InviteView[]>([]);
   const [loading, setLoading] = useState(true);
@@ -83,14 +86,31 @@ export function MembersScreen() {
   }
 
   async function leave() {
+    if (!workspace) return;
+    const leftId = workspace.id;
     setBusy(true);
     setLeaveError(null);
     try {
-      await api.members.leaveWorkspace(workspace!.id);
-      setLeaving(false);
+      await api.members.leaveWorkspace(leftId);
     } catch (e) {
+      setBusy(false);
       if (!(e instanceof ApiError)) throw e;
       setLeaveError(e.message);
+      return;
+    }
+    // Left successfully — switch to a remaining workspace, or log out if none.
+    try {
+      const list = await api.members.listWorkspaces();
+      setWorkspaces(list);
+      const remaining = list.find((w) => w.workspaceId !== leftId);
+      if (remaining) {
+        setLeaving(false);
+        setActiveWorkspace(remaining.workspaceId);
+      } else {
+        await logout();
+      }
+    } catch {
+      await logout();
     } finally {
       setBusy(false);
     }
