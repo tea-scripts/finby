@@ -44,4 +44,21 @@ describe('Button', () => {
     fireEvent.press(screen.getByText('Copy'));
     expect(onPress).toHaveBeenCalledTimes(1);
   });
+
+  it('link variant renders at the compact text-sm size', async () => {
+    await render(<Button variant="link" onPress={jest.fn()}>Edit</Button>);
+    expect(screen.getByText('Edit').props.className).toContain('text-sm');
+  });
+
+  it('link variant with tone="danger" uses danger text color', async () => {
+    await render(<Button variant="link" tone="danger" onPress={jest.fn()}>Remove</Button>);
+    const label = screen.getByText('Remove');
+    expect(label.props.className).toContain('text-danger');
+    expect(label.props.className).not.toContain('text-accent');
+  });
+
+  it('link variant defaults to accent tone', async () => {
+    await render(<Button variant="link" onPress={jest.fn()}>Resend</Button>);
+    expect(screen.getByText('Resend').props.className).toContain('text-accent');
+  });
 });

@@ -3,6 +3,8 @@ import { ActivityIndicator, Pressable, type PressableProps, Text, View } from 'r
 
 interface ButtonProps extends Pick<PressableProps, 'accessibilityLabel' | 'testID'> {
   variant?: 'primary' | 'ghost' | 'danger' | 'link';
+  /** Text color for the `link` variant: accent (default) or destructive red. Ignored by filled variants. */
+  tone?: 'default' | 'danger';
   loading?: boolean;
   disabled?: boolean;
   onPress?: () => void;
@@ -25,6 +27,7 @@ const TEXT_VARIANT = {
 
 export function Button({
   variant = 'primary',
+  tone = 'default',
   loading = false,
   disabled = false,
   onPress,
@@ -33,6 +36,11 @@ export function Button({
   testID,
 }: ButtonProps) {
   const isDisabled = disabled || loading;
+  // The `link` variant is a compact inline affordance: smaller text, and an
+  // optional destructive tone (the only variant that honors `tone`).
+  const textSize = variant === 'link' ? 'text-sm' : 'text-base';
+  const textColor =
+    variant === 'link' && tone === 'danger' ? 'text-danger' : TEXT_VARIANT[variant];
   return (
     <Pressable
       onPress={onPress}
@@ -52,7 +60,7 @@ export function Button({
       )}
       <View className={loading ? 'opacity-0' : ''}>
         {typeof children === 'string' ? (
-          <Text className={`text-base font-medium ${TEXT_VARIANT[variant]}`}>{children}</Text>
+          <Text className={`${textSize} font-medium ${textColor}`}>{children}</Text>
         ) : (
           children
         )}
