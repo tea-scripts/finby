@@ -61,6 +61,65 @@ describe('createPush', () => {
     expect(store.getState().state).toBe('off');
   });
 
+  it('disablePush falls back to the persisted token when the in-memory store is empty', async () => {
+    // After a restart the in-memory store has no token, but SecureStore still does.
+    const store = createPushStore();
+    const notifications = {
+      isPhysicalDevice: true,
+      getPermissionStatus: vi.fn().mockResolvedValue('granted'),
+      requestPermission: vi.fn().mockResolvedValue('granted'),
+      getExpoPushToken: vi.fn().mockResolvedValue('ExponentPushToken[a]'),
+      ensureAndroidChannel: vi.fn().mockResolvedValue(undefined),
+    };
+    const api = { registerExpoDevice: vi.fn().mockResolvedValue(undefined), unregisterExpoDevice: vi.fn().mockResolvedValue(undefined) };
+    const storage = fakeStorage('ExponentPushToken[persisted]');
+    const push = createPush({ notifications: notifications as never, api: api as never, store, storage: storage as never, projectId: 'proj', platform: 'ios' });
+
+    expect(store.getState().token).toBeNull();
+    expect(await push.disablePush('w1')).toBe('off');
+    expect(api.unregisterExpoDevice).toHaveBeenCalledWith('w1', 'ExponentPushToken[persisted]');
+    expect(storage.clear).toHaveBeenCalled();
+  });
+
+  it('getPushState(workspaceId) re-registers a rotated token and persists the new one', async () => {
+    // App restart: persisted token is stale (Expo rotated it). With a workspace in
+    // hand, reconcile should fetch the current token, re-register it, and persist.
+    const store = createPushStore();
+    const notifications = {
+      isPhysicalDevice: true,
+      getPermissionStatus: vi.fn().mockResolvedValue('granted'),
+      requestPermission: vi.fn().mockResolvedValue('granted'),
+      getExpoPushToken: vi.fn().mockResolvedValue('ExponentPushToken[NEW]'),
+      ensureAndroidChannel: vi.fn().mockResolvedValue(undefined),
+    };
+    const api = { registerExpoDevice: vi.fn().mockResolvedValue(undefined), unregisterExpoDevice: vi.fn().mockResolvedValue(undefined) };
+    const storage = fakeStorage('ExponentPushToken[OLD]');
+    const push = createPush({ notifications: notifications as never, api: api as never, store, storage: storage as never, projectId: 'proj', platform: 'ios' });
+
+    const result = await push.getPushState('w1');
+    expect(result).toBe('on');
+    expect(api.registerExpoDevice).toHaveBeenCalledWith('w1', 'ExponentPushToken[NEW]', 'ios');
+    expect(store.getState().token).toBe('ExponentPushToken[NEW]');
+    expect(storage.setToken).toHaveBeenCalledWith('ExponentPushToken[NEW]');
+  });
+
+  it('getPushState(workspaceId) does not re-register when the token is unchanged', async () => {
+    const store = createPushStore();
+    const notifications = {
+      isPhysicalDevice: true,
+      getPermissionStatus: vi.fn().mockResolvedValue('granted'),
+      requestPermission: vi.fn().mockResolvedValue('granted'),
+      getExpoPushToken: vi.fn().mockResolvedValue('ExponentPushToken[same]'),
+      ensureAndroidChannel: vi.fn().mockResolvedValue(undefined),
+    };
+    const api = { registerExpoDevice: vi.fn().mockResolvedValue(undefined), unregisterExpoDevice: vi.fn().mockResolvedValue(undefined) };
+    const storage = fakeStorage('ExponentPushToken[same]');
+    const push = createPush({ notifications: notifications as never, api: api as never, store, storage: storage as never, projectId: 'proj', platform: 'ios' });
+
+    expect(await push.getPushState('w1')).toBe('on');
+    expect(api.registerExpoDevice).not.toHaveBeenCalled();
+  });
+
   it('getPushState reconciles to on after a restart, using the persisted token', async () => {
     // Simulate an app restart: fresh in-memory store (no token), but the
     // secure-store adapter still has the token from before, and OS

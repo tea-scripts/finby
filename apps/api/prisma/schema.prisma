@@ -202,6 +202,7 @@ model User {
   xpTransactions XpTransaction[]
   achievements   UserAchievement[]
   mobilePushDevices MobilePushDevice[]
+  pushSubscriptions PushSubscription[]
 
   @@index([email])
   @@map("users")
@@ -815,6 +816,7 @@ model PushSubscription {
   workspaceId String
   workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   userId      String // Which member this device belongs to
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   endpoint    String    @unique // Push service endpoint URL
   p256dh      String // Client public key (base64url)

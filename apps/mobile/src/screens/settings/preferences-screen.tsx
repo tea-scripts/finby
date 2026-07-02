@@ -40,8 +40,8 @@ export function PreferencesScreen() {
   // stale in-memory state (defaulting to 'off') after an app restart, even
   // though OS permission is granted and the token is still registered.
   useEffect(() => {
-    void push.getPushState();
-  }, []);
+    void push.getPushState(workspace?.id);
+  }, [workspace?.id]);
 
   // Clear any pending "Saved" auto-dismiss timer on unmount.
   useEffect(() => () => {

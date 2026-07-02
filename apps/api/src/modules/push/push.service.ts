@@ -77,15 +77,14 @@ export class PushService {
     await this.prisma.mobilePushDevice.deleteMany({ where: { expoPushToken: token, userId } });
   }
 
-  /** Fan a notification out to a member's devices in one workspace (both transports). */
-  async sendToUser(workspaceId: string, userId: string, payload: PushPayload): Promise<void> {
-    const [subs, devices] = await Promise.all([
-      this.configured
-        ? this.prisma.pushSubscription.findMany({ where: { workspaceId, userId } })
-        : Promise.resolve([] as PushSubscription[]),
-      this.prisma.mobilePushDevice.findMany({ where: { workspaceId, userId } }),
-    ]);
-    await Promise.all([this.deliver(subs, payload), this.deliverExpo(devices, payload)]);
+  /** Fan a workspace-originated notification out to a member's devices (both transports).
+   *  Devices/subscriptions are keyed by a globally-unique token/endpoint, so their stored
+   *  `workspaceId` is last-write-wins — a member active in several workspaces would otherwise
+   *  only be reachable under the workspace they last registered from. The caller has already
+   *  authorized this (workspaceId, userId) pairing, and a device belongs to the *user*, so we
+   *  target by `userId` (delegating to sendToUserDevices) to reach all of their devices. */
+  async sendToUser(_workspaceId: string, userId: string, payload: PushPayload): Promise<void> {
+    await this.sendToUserDevices(userId, payload);
   }
 
   /** Fan a notification out to every device a user has, across all workspaces.

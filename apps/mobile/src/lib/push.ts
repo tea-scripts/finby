@@ -5,7 +5,9 @@ import type { PushPref } from '../adapters/push-pref';
 import type { PushState, PushStoreState } from './push-store';
 
 export interface Push {
-  getPushState(): Promise<PushState>;
+  /** Reconcile the real device state. Pass the active workspace to also re-register
+   *  a rotated Expo push token (Expo can issue a new token across app restarts). */
+  getPushState(workspaceId?: string): Promise<PushState>;
   enablePush(workspaceId: string): Promise<PushState>;
   disablePush(workspaceId: string): Promise<PushState>;
 }
@@ -20,12 +22,23 @@ export function createPush(deps: {
 }): Push {
   const { notifications, api, store, storage, projectId, platform } = deps;
 
-  async function reconcile(): Promise<PushState> {
+  async function reconcile(workspaceId?: string): Promise<PushState> {
     if (!notifications.isPhysicalDevice) return 'unsupported';
     const perm = await notifications.getPermissionStatus();
     if (perm === 'denied') return 'denied';
     const token = store.getState().token ?? (await storage.getToken());
     if (perm === 'granted' && token) {
+      // Token rotation: with a workspace in hand, check the current Expo token and
+      // re-register (+ persist) if it changed, so the backend keeps a live token.
+      if (workspaceId) {
+        const current = await notifications.getExpoPushToken(projectId);
+        if (current && current !== token) {
+          await api.registerExpoDevice(workspaceId, current, platform).catch(() => undefined);
+          store.getState().setToken(current);
+          await storage.setToken(current);
+          return 'on';
+        }
+      }
       store.getState().setToken(token);
       return 'on';
     }
@@ -33,8 +46,8 @@ export function createPush(deps: {
   }
 
   return {
-    async getPushState() {
-      const s = await reconcile();
+    async getPushState(workspaceId) {
+      const s = await reconcile(workspaceId);
       store.getState().setState(s);
       return s;
     },
