@@ -13,21 +13,25 @@ export function Skeleton({ style }: { style?: ViewStyle }) {
   useEffect(() => {
     let on = true;
     let loop: Animated.CompositeAnimation | undefined;
-    void AccessibilityInfo.isReduceMotionEnabled().then((rm) => {
-      if (!on) return;
-      if (rm) {
-        setReduce(true);
-        opacity.setValue(0.6);
-        return;
-      }
-      loop = Animated.loop(
-        Animated.sequence([
-          Animated.timing(opacity, { toValue: 1, duration: 700, useNativeDriver: true }),
-          Animated.timing(opacity, { toValue: 0.4, duration: 700, useNativeDriver: true }),
-        ]),
-      );
-      loop.start();
-    });
+    void AccessibilityInfo.isReduceMotionEnabled()
+      .then((rm) => {
+        if (!on) return;
+        if (rm) {
+          setReduce(true);
+          opacity.setValue(0.6);
+          return;
+        }
+        loop = Animated.loop(
+          Animated.sequence([
+            Animated.timing(opacity, { toValue: 1, duration: 700, useNativeDriver: true }),
+            Animated.timing(opacity, { toValue: 0.4, duration: 700, useNativeDriver: true }),
+          ]),
+        );
+        loop.start();
+      })
+      .catch(() => {
+        // Probe unavailable (rare) — leave the static default opacity in place.
+      });
     return () => {
       on = false;
       loop?.stop();
