@@ -201,6 +201,7 @@ model User {
   xp             UserXp?
   xpTransactions XpTransaction[]
   achievements   UserAchievement[]
+  mobilePushDevices MobilePushDevice[]
 
   @@index([email])
   @@map("users")
@@ -838,6 +839,7 @@ model MobilePushDevice {
   updatedAt     DateTime @updatedAt
 
   workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([workspaceId, userId])
   @@index([userId])
