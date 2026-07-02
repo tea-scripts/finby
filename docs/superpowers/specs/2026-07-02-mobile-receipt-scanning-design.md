@@ -86,15 +86,22 @@ RN rebuild of the web card using mobile `Field` / `Input` / `Dropdown`:
 - Emits `{ total, merchant, categoryId }`; the sheet then calls `createTransaction`.
 
 ### 5. Chat glue
-`apps/mobile/src/screens/chat-screen.tsx` gains a `handleReceiptLogged(tx, extraction)`
-mirroring web:
-- `track('transaction_logged', { source: 'receipt_scan' })`.
-- `void refreshUser()` (the transactions endpoint doesn't return streak, so re-fetch).
-- `api.chat.appendAssistantNote(workspace.id, conversationId, content)` with
-  `"Got it — logged {amount} {currency} at {merchant} under {category} from your receipt 🧾"`,
-  then append the returned `ChatMessageView` to the message list. If persistence fails, still
-  show the bubble locally for the session (web behavior).
+`apps/mobile/src/screens/chat-screen.tsx` gains a `handleReceiptLogged(tx, extraction)`:
+- Composes the note **from the returned `Transaction`** (which carries `category.name`,
+  `merchant`, and amounts): `api.chat.appendAssistantNote(workspace.id, conversationId,
+  "Got it — logged {money(amountOriginal, currencyOriginal)} at {merchant} under {category} from
+  your receipt 🧾")`, then append the returned `ChatMessageView` to the message list. If
+  persistence fails, still show the bubble locally for the session (web behavior).
 - The composer's `onScanReceipt` opens the sheet; the screen owns `scannerOpen` state.
+
+**Deviations from web (found during planning, deliberately out of scope):**
+- **No analytics `track('transaction_logged', …)`** — mobile has not wired the PostHog
+  `track` singleton into any screen yet (`createAnalytics` exists but is unused in screens);
+  adding an analytics call layer is a separate concern.
+- **No `refreshUser()`** — mobile has no `me`/refresh endpoint or `refreshUser` action, and the
+  existing mobile chat does not refresh the streak after logging either. The streak badge
+  updates on the next natural hydrate. Matching this keeps behavior consistent with the rest of
+  the mobile app.
 
 ## Data flow
 
@@ -126,11 +133,18 @@ cast keeps this migration contained.)
 
 ## Testing
 
-Vitest + Testing Library, mirroring existing `*.test.tsx`:
-- `ReceiptConfirmationCard`: total validation, category resolution (known / unknown / Other),
-  line-item visibility toggle, low-confidence warning.
-- `ReceiptScannerSheet`: state-machine transitions with mocked `extractReceipt` /
-  `createTransaction`, error mapping (403/429/422/503), and the FREE-tier gate short-circuit.
+The mobile app splits tests by file type: **pure logic → Vitest (`*.test.ts`, node env)**;
+**components → Jest (`*.test.tsx`, jest-expo + React Native Testing Library)**.
+- `resolveCategoryId` + `image-picker` mapping (Vitest): category resolution (known / unknown /
+  Other), and asset→file / permission-denied / canceled mapping with `expo-image-picker` mocked.
+- `ReceiptConfirmationCard` (Jest): total validation, initial category resolution, line-item
+  visibility toggle, low-confidence warning, confirm payload.
+- `ReceiptScannerSheet` (Jest): state-machine transitions with mocked `pickImage` /
+  `extractReceipt` / `createTransaction`, error mapping (uses backend `ApiError.message`), and
+  the FREE-tier gate short-circuit.
+- `Composer` (Jest): renders the scan button only when `onScanReceipt` is provided.
+- `ChatScreen` (Jest): the scan button opens the sheet, and a logged receipt appends the
+  assistant note (sheet stubbed to isolate the chat glue).
 
 ## Out of scope
 
