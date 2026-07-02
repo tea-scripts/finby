@@ -73,8 +73,8 @@ export class PushService {
     });
   }
 
-  async unregisterExpoDevice(token: string): Promise<void> {
-    await this.prisma.mobilePushDevice.deleteMany({ where: { expoPushToken: token } });
+  async unregisterExpoDevice(userId: string, token: string): Promise<void> {
+    await this.prisma.mobilePushDevice.deleteMany({ where: { expoPushToken: token, userId } });
   }
 
   /** Fan a notification out to a member's devices in one workspace (both transports). */
