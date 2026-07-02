@@ -14,4 +14,18 @@ describe('ConfirmSheet', () => {
     fireEvent.press(screen.getByText('Confirm change'));
     expect(onConfirm).toHaveBeenCalled();
   });
+
+  it('renders a danger-styled confirm button when danger is set', async () => {
+    const onConfirm = jest.fn();
+    await render(
+      <ConfirmSheet open onClose={jest.fn()} title="Remove member"
+        message="Remove them from this family?" confirmLabel="Remove" danger onConfirm={onConfirm} />,
+    );
+    const label = screen.getByText('Remove');
+    fireEvent.press(label);
+    expect(onConfirm).toHaveBeenCalled();
+    // The confirm label is plain white text on the danger button (no text-danger hack).
+    expect(label.props.className).toContain('text-white');
+    expect(label.props.className).not.toContain('text-danger');
+  });
 });
