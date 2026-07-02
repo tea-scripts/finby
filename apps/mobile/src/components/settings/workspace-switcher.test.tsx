@@ -1,5 +1,5 @@
 // apps/mobile/src/components/settings/workspace-switcher.test.tsx
-import { render, screen, fireEvent, waitFor } from '@testing-library/react-native';
+import { render, screen, fireEvent } from '@testing-library/react-native';
 
 const setWorkspaces = jest.fn();
 const setActiveWorkspace = jest.fn();
