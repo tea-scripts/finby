@@ -12,6 +12,7 @@ import { CurrentPlanCard } from '../../components/billing/current-plan-card';
 import { PlanCarouselSheet } from '../../components/billing/plan-carousel-sheet';
 import { SettingsGroup } from '../../components/settings/settings-group';
 import { SettingsRow } from '../../components/settings/settings-row';
+import { WorkspaceSwitcher } from '../../components/settings/workspace-switcher';
 import { useTabBarSpace } from '../../components/nav/floating-tab-bar';
 import { useAuthStore } from '../../lib/use-auth-store';
 import { api } from '../../lib/runtime.native';
@@ -76,6 +77,8 @@ export function SettingsHubScreen() {
       </View>
 
       <ScrollView contentContainerClassName="gap-6 p-6" contentContainerStyle={{ paddingBottom: tabBarSpace }}>
+        <WorkspaceSwitcher />
+
         <Pressable
           onPress={() => router.push('/streaks')}
           accessibilityRole="button"

@@ -422,6 +422,7 @@ export interface WorkspaceMembershipSummary {
   tier: SubscriptionTier;
   role: WorkspaceMemberRole;
   baseCurrency: string;
+  preferredCurrencies: string[];
 }
 
 export interface MemberView {

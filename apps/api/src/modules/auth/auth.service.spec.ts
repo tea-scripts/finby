@@ -604,8 +604,8 @@ describe('AuthService', () => {
     it('returns all memberships mapped to summaries', async () => {
       const prisma = createPrismaMock();
       prisma.workspaceMember.findMany.mockResolvedValue([
-        { role: 'OWNER', workspace: { id: 'w1', name: 'Mine', slug: 's1', tier: 'FREE', baseCurrency: 'USD' } },
-        { role: 'VIEWER', workspace: { id: 'w2', name: 'Fam', slug: 's2', tier: 'FAMILY', baseCurrency: 'USD' } },
+        { role: 'OWNER', workspace: { id: 'w1', name: 'Mine', slug: 's1', tier: 'FREE', baseCurrency: 'USD', preferredCurrencies: ['USD'] } },
+        { role: 'VIEWER', workspace: { id: 'w2', name: 'Fam', slug: 's2', tier: 'FAMILY', baseCurrency: 'USD', preferredCurrencies: ['USD', 'EUR'] } },
       ]);
       const service = buildService(prisma);
       const result = await service.listWorkspaces('u1');
@@ -613,8 +613,8 @@ describe('AuthService', () => {
         expect.objectContaining({ where: { userId: 'u1' } }),
       );
       expect(result).toEqual([
-        { workspaceId: 'w1', name: 'Mine', slug: 's1', tier: 'FREE', role: 'OWNER', baseCurrency: 'USD' },
-        { workspaceId: 'w2', name: 'Fam', slug: 's2', tier: 'FAMILY', role: 'VIEWER', baseCurrency: 'USD' },
+        { workspaceId: 'w1', name: 'Mine', slug: 's1', tier: 'FREE', role: 'OWNER', baseCurrency: 'USD', preferredCurrencies: ['USD'] },
+        { workspaceId: 'w2', name: 'Fam', slug: 's2', tier: 'FAMILY', role: 'VIEWER', baseCurrency: 'USD', preferredCurrencies: ['USD', 'EUR'] },
       ]);
     });
   });

@@ -1,5 +1,5 @@
 import { createStore, type StoreApi } from 'zustand/vanilla';
-import type { ApiUser, ApiWorkspace, RegisterInput } from '@finby/shared';
+import type { ApiUser, ApiWorkspace, RegisterInput, WorkspaceMembershipSummary } from '@finby/shared';
 import type { MobileSession } from './session';
 import type { IdentityStore } from '../adapters/identity-store';
 import type { OnboardingFlag } from '../adapters/onboarding-flag';
@@ -9,6 +9,8 @@ import type { LockCode } from '../adapters/lock-code';
 export interface AuthState {
   user: ApiUser | null;
   workspace: ApiWorkspace | null;
+  /** All workspaces the user belongs to (for the switcher). */
+  workspaces: WorkspaceMembershipSummary[];
   status: 'loading' | 'idle' | 'authed';
   /** Whether the first-launch onboarding carousel has been shown. */
   onboarded: boolean;
@@ -41,6 +43,9 @@ export interface AuthState {
   setUser(patch: Partial<ApiUser>): void;
   /** Merge a patch into the cached workspace and persist the identity snapshot. */
   setWorkspace(patch: Partial<ApiWorkspace>): void;
+  setWorkspaces(list: WorkspaceMembershipSummary[]): void;
+  /** Replace the active workspace with another one the user belongs to (by id). */
+  setActiveWorkspace(id: string): void;
 }
 
 /** Mobile auth store: identity + status, plus the cold-start restore that the
@@ -59,6 +64,7 @@ export function createAuthStore(deps: {
   return createStore<AuthState>((set, get) => ({
     user: null,
     workspace: null,
+    workspaces: [],
     status: 'loading',
     onboarded: false,
     lockEnabled: false,
@@ -154,6 +160,24 @@ export function createAuthStore(deps: {
       set((s) => (s.workspace ? { workspace: { ...s.workspace, ...patch } } : {}));
       const { user, workspace } = get();
       if (user && workspace) void identityStore.save({ user, workspace });
+    },
+
+    setWorkspaces: (list) => set({ workspaces: list }),
+
+    setActiveWorkspace: (id) => {
+      const target = get().workspaces.find((w) => w.workspaceId === id);
+      if (!target) return;
+      const workspace: ApiWorkspace = {
+        id: target.workspaceId,
+        name: target.name,
+        slug: target.slug,
+        tier: target.tier,
+        baseCurrency: target.baseCurrency,
+        preferredCurrencies: target.preferredCurrencies,
+      };
+      set({ workspace });
+      const { user } = get();
+      if (user) void identityStore.save({ user, workspace });
     },
   }));
 }

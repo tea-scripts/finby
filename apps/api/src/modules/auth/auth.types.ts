@@ -51,6 +51,7 @@ export interface WorkspaceMembershipView {
   tier: SubscriptionTier;
   role: 'OWNER' | 'CO_MANAGER' | 'VIEWER';
   baseCurrency: string;
+  preferredCurrencies: string[];
 }
 
 /** JWT payloads. */

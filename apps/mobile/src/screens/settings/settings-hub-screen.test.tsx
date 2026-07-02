@@ -4,6 +4,9 @@ import { render, screen, fireEvent } from '@testing-library/react-native';
 const mockAuthState = {
   user: { displayName: 'Tee', currentStreak: 7 },
   workspace: { id: 'w1', tier: 'FREE' },
+  workspaces: [],
+  setWorkspaces: jest.fn(),
+  setActiveWorkspace: jest.fn(),
   logout: jest.fn(),
   resetOnboarding: jest.fn(),
   lockEnabled: false,
@@ -20,7 +23,10 @@ jest.mock('react-native-safe-area-context', () => ({
 }));
 jest.mock('expo-blur', () => ({ BlurView: ({ children }: { children: unknown }) => children }));
 jest.mock('../../lib/runtime.native', () => ({
-  api: { billing: { getSubscription: jest.fn(), openPortal: jest.fn() } },
+  api: {
+    billing: { getSubscription: jest.fn(), openPortal: jest.fn() },
+    members: { listWorkspaces: jest.fn().mockResolvedValue([]) },
+  },
 }));
 
 import { SettingsHubScreen } from './settings-hub-screen';
