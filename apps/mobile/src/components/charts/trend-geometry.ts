@@ -13,13 +13,14 @@ export function trendGeometry(
   const n = values.length;
   const innerW = width - padding * 2;
   const innerH = height - padding * 2;
+  // Zero baseline: the y-scale runs 0 → max, so a small month-over-month change
+  // reads as a small change rather than a full-height swing (min→max autoscaling
+  // exaggerated tiny deltas). Spend totals are always ≥ 0.
   const max = Math.max(...values);
-  const min = Math.min(...values);
-  const span = max - min;
 
   const points = values.map((v, i) => {
     const x = n <= 1 ? padding : padding + (innerW * i) / (n - 1);
-    const y = span === 0 ? padding + innerH / 2 : padding + innerH * (1 - (v - min) / span);
+    const y = max <= 0 ? padding + innerH : padding + innerH * (1 - v / max);
     return { x, y };
   });
 
