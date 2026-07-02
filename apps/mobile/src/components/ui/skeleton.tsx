@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { AccessibilityInfo, Animated, type ViewStyle } from 'react-native';
+import { TRACK } from '../../theme/tokens';
 
-const BASE: ViewStyle = { backgroundColor: '#16233a', borderRadius: 10 };
+const BASE: ViewStyle = { backgroundColor: TRACK, borderRadius: 10 };
 
 /** A glowing placeholder block. Pulses opacity 0.4↔1 (native driver); renders
  *  static when the user prefers reduced motion. Decorative — the section's

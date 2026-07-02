@@ -4,6 +4,10 @@ import type { SectionState } from '@finby/core';
 
 export type { SectionState };
 
+/** a11y label for a section's loading state. One const so it's a single edit
+ *  when i18n lands. */
+export const LOADING_LABEL = 'Loading';
+
 /** Props every dashboard section takes: its async state + a retry for just it. */
 export interface SectionProps<T> {
   state: SectionState<T>;

@@ -13,3 +13,8 @@ export const COLORS = {
   warn: '#f5a524',
   danger: '#ef4444',
 } as const;
+
+/** Dark-only fill for inert "track"/placeholder surfaces (donut track, skeleton
+ *  blocks). Deliberately NOT in COLORS — that palette mirrors web tailwind, and
+ *  this is a mobile detail until light-mode theming lands. */
+export const TRACK = '#16233a';

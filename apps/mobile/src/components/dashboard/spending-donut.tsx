@@ -5,6 +5,7 @@ import { resolveCategoryVisual, type CategoryBreakdownResult } from '@finby/shar
 import { SectionCard, SectionLoading, SectionError, SectionEmpty, type SectionProps } from './section-card';
 import { CategoryAvatar } from '../category/category-avatar';
 import { donutSegments } from '../charts/donut-geometry';
+import { TRACK } from '../../theme/tokens';
 
 const SIZE = 132;
 const STROKE = 18;
@@ -36,7 +37,7 @@ function Content({ data }: { data: CategoryBreakdownResult }) {
       <View style={{ width: SIZE, height: SIZE }}>
         <Svg width={SIZE} height={SIZE}>
           <G rotation={-90} originX={SIZE / 2} originY={SIZE / 2}>
-            <Circle cx={SIZE / 2} cy={SIZE / 2} r={R} stroke="#16233a" strokeWidth={STROKE} fill="none" />
+            <Circle cx={SIZE / 2} cy={SIZE / 2} r={R} stroke={TRACK} strokeWidth={STROKE} fill="none" />
             {data.breakdown.map((b, i) => {
               const seg = segments[i];
               if (!seg || seg.length <= 0) return null;
