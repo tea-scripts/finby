@@ -4,7 +4,15 @@ import { Ionicons } from '@expo/vector-icons';
 
 /** Chat input row: a multiline text field + a send button. Trims and clears on
  *  send; ignores empty/whitespace input and sends nothing while disabled. */
-export function Composer({ disabled, onSend }: { disabled: boolean; onSend: (text: string) => void }) {
+export function Composer({
+  disabled,
+  onSend,
+  onScanReceipt,
+}: {
+  disabled: boolean;
+  onSend: (text: string) => void;
+  onScanReceipt?: () => void;
+}) {
   const [text, setText] = useState('');
   const trimmed = text.trim();
   const canSend = trimmed.length > 0 && !disabled;
@@ -32,6 +40,18 @@ export function Composer({ disabled, onSend }: { disabled: boolean; onSend: (tex
 
   return (
     <View className="flex-row items-end gap-2 border-t border-line bg-canvas px-3 py-2">
+      {onScanReceipt ? (
+        <Pressable
+          testID="composer-scan"
+          accessibilityRole="button"
+          accessibilityLabel="Scan a receipt"
+          onPress={onScanReceipt}
+          disabled={disabled}
+          className="h-11 w-11 items-center justify-center rounded-full border border-line bg-surface"
+        >
+          <Ionicons name="camera-outline" size={22} color="#5b6f8c" />
+        </Pressable>
+      ) : null}
       <TextInput
         testID="composer-input"
         value={text}
