@@ -48,6 +48,23 @@ it('adds a new account', async () => {
   await waitFor(() => expect(screen.getByText('Test Account')).toBeTruthy());
 });
 
+it('strips a trailing decimal point from the opening balance on submit', async () => {
+  const created = { id: 'a3', name: 'Trailing Dot', currency: 'USD', accountType: 'BANK', balance: '12.00', color: null, icon: null, isArchived: false };
+  accounts.createAccount.mockResolvedValue(created);
+
+  await render(<AccountsScreen />);
+  await waitFor(() => expect(screen.getByText('BDO')).toBeTruthy());
+
+  await fireEvent.press(screen.getByText('Add account'));
+  await fireEvent.changeText(screen.getByLabelText('Opening balance'), '12.');
+  await fireEvent.changeText(screen.getByLabelText('Account name'), 'Trailing Dot');
+  await fireEvent.press(screen.getByText('Add'));
+
+  await waitFor(() => expect(accounts.createAccount).toHaveBeenCalledWith('w1', {
+    name: 'Trailing Dot', accountType: 'BANK', currency: 'USD', initialBalance: '12',
+  }));
+});
+
 it('archives an account after confirming', async () => {
   await render(<AccountsScreen />);
   await waitFor(() => expect(screen.getByText('BDO')).toBeTruthy());

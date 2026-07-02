@@ -91,7 +91,7 @@ export function AccountsScreen() {
           name: name.trim(),
           accountType: type,
           currency,
-          initialBalance: initialBalance.replace(/,/g, '').trim() || '0',
+          initialBalance: initialBalance.replace(/,/g, '').replace(/\.$/, '').trim() || '0',
           ...(color ? { color } : {}),
         });
         upsert(acc);
