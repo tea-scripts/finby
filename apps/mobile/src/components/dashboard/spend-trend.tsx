@@ -33,8 +33,13 @@ export function SpendTrend({ state, onRetry }: SectionProps<TrendResult>) {
 }
 
 function Content({ data }: { data: TrendResult }) {
+  // Measure the real width so the SVG viewBox matches it 1:1. With a fixed
+  // viewBox + width="100%", preserveAspectRatio rendered the chart at its native
+  // size and centered it, so the points drifted away from the full-width labels
+  // (aligned only at the middle). At scale 1 the mapping is exact everywhere.
+  const [chartW, setChartW] = useState(W);
   const values = data.trend.map((p) => Number(p.expenses));
-  const g = trendGeometry(values, { width: W, height: H, padding: PAD });
+  const g = trendGeometry(values, { width: chartW, height: H, padding: PAD });
   // null = show the latest month; tapping a column selects it, tapping it again resets.
   const [active, setActive] = useState<number | null>(null);
   const selectedIndex = active ?? data.trend.length - 1;
@@ -51,8 +56,8 @@ function Content({ data }: { data: TrendResult }) {
           <Text className="text-xs text-muted">spent in {label(selected.month)}</Text>
         </View>
       ) : null}
-      <View>
-        <Svg width="100%" height={H} viewBox={`0 0 ${W} ${H}`}>
+      <View onLayout={(e) => setChartW(e.nativeEvent.layout.width)}>
+        <Svg width={chartW} height={H} viewBox={`0 0 ${chartW} ${H}`}>
           <Defs>
             <LinearGradient id="trendFill" x1="0" y1="0" x2="0" y2="1">
               <Stop offset="0" stopColor="#1d6ef5" stopOpacity={0.28} />
@@ -97,15 +102,22 @@ function Content({ data }: { data: TrendResult }) {
           ))}
         </View>
       </View>
-      <View className="flex-row justify-between px-1">
-        {data.trend.map((p, i) => (
-          <Text
-            key={p.month}
-            className={`text-[11px] ${i === selectedIndex ? 'text-accent' : 'text-muted'}`}
-          >
-            {label(p.month)}
-          </Text>
-        ))}
+      {/* Labels sit centered under their data points (which are inset by PAD),
+          not spread edge-to-edge — otherwise each month drifts off its own dot. */}
+      <View className="h-4">
+        {data.trend.map((p, i) => {
+          const boxPct = 100 / data.trend.length;
+          const centerPct = ((g.points[i]?.x ?? 0) / chartW) * 100;
+          return (
+            <Text
+              key={p.month}
+              style={{ position: 'absolute', left: `${centerPct - boxPct / 2}%`, width: `${boxPct}%`, textAlign: 'center' }}
+              className={`text-[11px] ${i === selectedIndex ? 'text-accent' : 'text-muted'}`}
+            >
+              {label(p.month)}
+            </Text>
+          );
+        })}
       </View>
     </View>
   );
