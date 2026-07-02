@@ -1,4 +1,4 @@
-import { render, screen, fireEvent, waitFor } from '@testing-library/react-native';
+import { render, screen, fireEvent, waitFor, act } from '@testing-library/react-native';
 
 const setUser = jest.fn();
 const mockState = {
@@ -40,6 +40,10 @@ beforeEach(() => {
   mockPushState = 'off';
 });
 
+afterEach(() => {
+  jest.useRealTimers();
+});
+
 describe('PreferencesScreen', () => {
   it('saves a date format change immediately', async () => {
     await render(<PreferencesScreen />);
@@ -60,5 +64,25 @@ describe('PreferencesScreen', () => {
     mockPushState = 'off';
     await render(<PreferencesScreen />);
     expect(screen.getByLabelText('Daily reminder').props.accessibilityState.disabled).toBe(true);
+  });
+
+  it('saves a number format change (non-date dropdown)', async () => {
+    settings.updateProfile.mockResolvedValue({ preferences: { numberFormat: 'PLAIN' } });
+    await render(<PreferencesScreen />);
+    await fireEvent.press(screen.getByLabelText('Number format'));
+    await fireEvent.press(screen.getByText('1234.50'));                 // PLAIN option label
+    await waitFor(() => expect(settings.updateProfile).toHaveBeenCalledWith({ preferences: { numberFormat: 'PLAIN' } }));
+  });
+
+  it('the "Saved" status auto-dismisses after 2 seconds', async () => {
+    jest.useFakeTimers();
+    await render(<PreferencesScreen />);
+    await fireEvent.press(screen.getByLabelText('Date format'));
+    await fireEvent.press(screen.getByText('2026-06-07'));
+    await waitFor(() => expect(screen.getByText('Saved')).toBeTruthy());
+    await act(async () => {
+      jest.advanceTimersByTime(2000);
+    });
+    expect(screen.queryByText('Saved')).toBeNull();
   });
 });
