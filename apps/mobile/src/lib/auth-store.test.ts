@@ -321,4 +321,33 @@ describe('createAuthStore', () => {
     expect(store.getState().workspace).toBeNull();
     expect(identityStore.save).not.toHaveBeenCalled();
   });
+
+  it('setActiveWorkspace replaces the workspace from the summary list and persists', () => {
+    const identityStore = fakeIdentityStore();
+    const store = makeStore({ identityStore });
+    store.setState({
+      user: { id: 'u1' } as never,
+      workspace: { id: 'w1', name: 'Mine', slug: 's1', tier: 'FREE', baseCurrency: 'USD', preferredCurrencies: ['USD'] } as never,
+      workspaces: [
+        { workspaceId: 'w1', name: 'Mine', slug: 's1', tier: 'FREE', role: 'OWNER', baseCurrency: 'USD', preferredCurrencies: ['USD'] },
+        { workspaceId: 'w2', name: 'Fam', slug: 's2', tier: 'FAMILY', role: 'VIEWER', baseCurrency: 'EUR', preferredCurrencies: ['EUR', 'USD'] },
+      ] as never,
+    });
+
+    store.getState().setActiveWorkspace('w2');
+
+    expect(store.getState().workspace).toEqual({
+      id: 'w2', name: 'Fam', slug: 's2', tier: 'FAMILY', baseCurrency: 'EUR', preferredCurrencies: ['EUR', 'USD'],
+    });
+    expect(identityStore.save).toHaveBeenCalledWith(
+      expect.objectContaining({ workspace: expect.objectContaining({ id: 'w2', preferredCurrencies: ['EUR', 'USD'] }) }),
+    );
+  });
+
+  it('setActiveWorkspace is a no-op for an unknown id', () => {
+    const store = makeStore();
+    store.setState({ user: { id: 'u1' } as never, workspace: { id: 'w1' } as never, workspaces: [] as never });
+    store.getState().setActiveWorkspace('nope');
+    expect(store.getState().workspace).toEqual({ id: 'w1' });
+  });
 });
