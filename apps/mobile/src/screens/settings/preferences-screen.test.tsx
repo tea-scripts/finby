@@ -66,6 +66,14 @@ describe('PreferencesScreen', () => {
     expect(screen.getByLabelText('Daily reminder').props.accessibilityState.disabled).toBe(true);
   });
 
+  it('daily reminder toggle is enabled and on when push is on and reminders are set', async () => {
+    mockPushState = 'on';
+    await render(<PreferencesScreen />);
+    const toggle = screen.getByLabelText('Daily reminder');
+    expect(toggle.props.accessibilityState.disabled).toBe(false);
+    expect(toggle.props.value).toBe(true);
+  });
+
   it('saves a number format change (non-date dropdown)', async () => {
     settings.updateProfile.mockResolvedValue({ preferences: { numberFormat: 'PLAIN' } });
     await render(<PreferencesScreen />);
