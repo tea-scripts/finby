@@ -453,7 +453,7 @@ export class AuthService {
       orderBy: { joinedAt: 'asc' },
       select: {
         role: true,
-        workspace: { select: { id: true, name: true, slug: true, tier: true, baseCurrency: true } },
+        workspace: { select: { id: true, name: true, slug: true, tier: true, baseCurrency: true, preferredCurrencies: true } },
       },
     });
     return memberships.map((m) => ({
@@ -463,6 +463,7 @@ export class AuthService {
       tier: m.workspace.tier,
       role: m.role,
       baseCurrency: m.workspace.baseCurrency,
+      preferredCurrencies: m.workspace.preferredCurrencies,
     }));
   }
 
