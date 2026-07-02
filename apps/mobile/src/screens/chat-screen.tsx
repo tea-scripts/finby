@@ -8,13 +8,22 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import type { ChatAction, ChatMessageView, NewAchievement, PendingConfirmation } from '@finby/shared';
+import { money } from '@finby/core';
+import type {
+  ChatAction,
+  ChatMessageView,
+  NewAchievement,
+  PendingConfirmation,
+  ReceiptExtraction,
+  Transaction,
+} from '@finby/shared';
 import { ActionCard } from '../components/chat/action-card';
 import { Composer } from '../components/chat/composer';
 import { ConfirmationCard } from '../components/chat/confirmation-card';
 import { MessageBubble } from '../components/chat/message-bubble';
 import { TypingIndicator } from '../components/chat/typing-indicator';
 import { PlanCarouselSheet } from '../components/billing/plan-carousel-sheet';
+import { ReceiptScannerSheet } from '../components/receipts/receipt-scanner-sheet';
 import { Wordmark } from '../components/ui/wordmark';
 import { StreakBadge } from '../components/dashboard/streak-badge';
 import { StreakSheet } from '../components/streak/streak-sheet';
@@ -58,6 +67,7 @@ export function ChatScreen() {
   const [streakOpen, setStreakOpen] = useState(false);
   const [celebration, setCelebration] = useState<NewAchievement[]>([]);
   const [plansOpen, setPlansOpen] = useState(false);
+  const [scannerOpen, setScannerOpen] = useState(false);
   const listRef = useRef<FlatList<UiMessage>>(null);
   const tabBarSpace = useTabBarSpace();
   const keyboardVisible = useKeyboardVisible();
@@ -164,6 +174,27 @@ export function ChatScreen() {
     }
   }
 
+  async function handleReceiptLogged(tx: Transaction, _extraction: ReceiptExtraction) {
+    if (!workspace || !conversationId) return;
+    const amount = money(tx.amountOriginal, tx.currencyOriginal);
+    const merchant = tx.merchant ?? 'this merchant';
+    const category = tx.category?.name ?? 'Uncategorized';
+    const content = `Got it — logged ${amount} at ${merchant} under ${category} from your receipt 🧾`;
+    try {
+      const note = await api.chat.appendAssistantNote(workspace.id, conversationId, content);
+      setMessages((m) => [
+        ...m,
+        { id: note.id, role: note.role, content: note.content, createdAt: note.createdAt },
+      ]);
+    } catch {
+      // Persistence failed — still show the confirmation locally for the session.
+      setMessages((m) => [
+        ...m,
+        { id: genId(), role: 'ASSISTANT', content, createdAt: new Date().toISOString() },
+      ]);
+    }
+  }
+
   return (
     <SafeAreaView className="flex-1 bg-canvas" edges={['top']}>
       {/* Header */}
@@ -252,11 +283,18 @@ export function ChatScreen() {
         {/* While the keyboard is up it covers the floating tab bar, so drop that
             clearance — otherwise it stacks on the keyboard as a dead gap. */}
         <View style={{ paddingBottom: keyboardVisible ? 0 : tabBarSpace }}>
-          <Composer disabled={sending} onSend={send} />
+          <Composer disabled={sending} onSend={send} onScanReceipt={() => setScannerOpen(true)} />
         </View>
       </KeyboardAvoidingView>
       {workspace ? (
         <StreakSheet open={streakOpen} onClose={() => setStreakOpen(false)} workspaceId={workspace.id} />
+      ) : null}
+      {workspace ? (
+        <ReceiptScannerSheet
+          open={scannerOpen}
+          onClose={() => setScannerOpen(false)}
+          onLogged={(tx, extraction) => void handleReceiptLogged(tx, extraction)}
+        />
       ) : null}
       {workspace ? (
         <AchievementUnlockedModal

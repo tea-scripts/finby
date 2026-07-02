@@ -2,7 +2,7 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react-nativ
 import { ApiError } from '@finby/core';
 
 const authState = {
-  workspace: { id: 'w1' },
+  workspace: { id: 'w1', tier: 'PRO' },
   user: { id: 'u1', displayName: 'Tee', currentStreak: 7 },
 };
 jest.mock('../lib/use-auth-store', () => ({
@@ -17,6 +17,32 @@ jest.mock('react-native-svg', () => ({ SvgXml: () => null }));
 jest.mock('react-native-view-shot', () => ({ captureRef: jest.fn(async () => 'file://card.png') }));
 jest.mock('expo-sharing', () => ({ isAvailableAsync: jest.fn(async () => true), shareAsync: jest.fn(async () => {}) }));
 
+jest.mock('../components/receipts/receipt-scanner-sheet', () => {
+  const { Pressable, Text } = jest.requireActual('react-native');
+  return {
+    ReceiptScannerSheet: ({
+      open,
+      onLogged,
+    }: {
+      open: boolean;
+      onLogged: (tx: unknown, extraction: unknown) => void;
+    }) =>
+      open ? (
+        <Pressable
+          testID="mock-scanner-log"
+          onPress={() =>
+            onLogged(
+              { id: 't1', amountOriginal: '24.50', currencyOriginal: 'USD', merchant: 'Cafe Roma', category: { name: 'Dining' } },
+              { currency: 'USD' },
+            )
+          }
+        >
+          <Text>scanner-open</Text>
+        </Pressable>
+      ) : null,
+  };
+});
+
 jest.mock('../lib/runtime.native', () => ({
   api: {
     chat: {
@@ -24,6 +50,7 @@ jest.mock('../lib/runtime.native', () => ({
       createConversation: jest.fn(),
       listMessages: jest.fn(),
       streamMessage: jest.fn(),
+      appendAssistantNote: jest.fn(),
     },
     streaks: {
       getStreakStatus: jest.fn(async () => ({ currentStreak: 7, longestStreak: 10, atRisk: false, repairEligible: false, repairUsedThisMonth: false })),
@@ -56,6 +83,7 @@ const mockChat = api.chat as unknown as {
   createConversation: jest.Mock;
   listMessages: jest.Mock;
   streamMessage: jest.Mock;
+  appendAssistantNote: jest.Mock;
 };
 
 beforeEach(() => {
@@ -63,6 +91,7 @@ beforeEach(() => {
   mockChat.createConversation.mockReset().mockResolvedValue({ id: 'c1' });
   mockChat.listMessages.mockReset().mockResolvedValue({ messages: [] });
   mockChat.streamMessage.mockReset();
+  mockChat.appendAssistantNote.mockReset();
   mockPush.mockReset();
 });
 
@@ -166,6 +195,35 @@ describe('ChatScreen', () => {
 
     await waitFor(() => expect(screen.getByText('Achievement unlocked! 🎉')).toBeTruthy());
     expect(screen.getByText('Week Warrior')).toBeTruthy();
+  });
+
+  it('opens the receipt scanner from the composer camera button', async () => {
+    await render(<ChatScreen />);
+    await waitFor(() => expect(mockChat.listMessages).toHaveBeenCalled());
+    await fireEvent.press(screen.getByTestId('composer-scan'));
+    expect(screen.getByText('scanner-open')).toBeTruthy();
+  });
+
+  it('appends an assistant note after a receipt is logged', async () => {
+    mockChat.appendAssistantNote.mockResolvedValue({
+      id: 'note1',
+      role: 'ASSISTANT',
+      content: 'Got it — logged $24.50 at Cafe Roma under Dining from your receipt 🧾',
+      createdAt: '2026-07-02T00:00:00Z',
+    });
+    await render(<ChatScreen />);
+    await waitFor(() => expect(mockChat.listMessages).toHaveBeenCalled());
+    await fireEvent.press(screen.getByTestId('composer-scan'));
+    await fireEvent.press(screen.getByTestId('mock-scanner-log'));
+
+    await waitFor(() =>
+      expect(mockChat.appendAssistantNote).toHaveBeenCalledWith(
+        'w1',
+        'c1',
+        'Got it — logged $24.50 at Cafe Roma under Dining from your receipt 🧾',
+      ),
+    );
+    await waitFor(() => expect(screen.getByText(/logged \$24\.50 at Cafe Roma under Dining/)).toBeTruthy());
   });
 
 });

@@ -17,7 +17,9 @@
       "supportsTablet": true,
       "infoPlist": {
         "NSFaceIDUsageDescription": "Finby uses Face ID to unlock the app and keep your finances private.",
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSCameraUsageDescription": "Finby uses the camera so you can photograph a receipt to log an expense.",
+        "NSPhotoLibraryUsageDescription": "Finby uses your photos so you can attach a receipt to log an expense."
       }
     },
     "android": {
@@ -27,7 +29,14 @@
       "expo-router",
       "expo-secure-store",
       "expo-localization",
-      ["expo-notifications", { "color": "#1d6ef5" }]
+      ["expo-notifications", { "color": "#1d6ef5" }],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Finby uses your photos so you can attach a receipt to log an expense.",
+          "cameraPermission": "Finby uses the camera so you can photograph a receipt to log an expense."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true
